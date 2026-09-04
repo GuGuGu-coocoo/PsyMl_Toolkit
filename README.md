@@ -17,11 +17,12 @@ PsyML Toolkit 将本科科研与应用项目中积累的 Python 机器学习脚�
 - 支持 CSV、TSV、XLSX、XLS、SAV、DTA、SAS7BDAT、XPT 与 Parquet；训练集内预处理、五种验证策略、完整评价指标，以及 CSV/JSON 结果导出。
 - 自动生成分析清单、Methods 参考说明、可复现性报告，以及回归预测图或分类混淆矩阵图。
 - 提供版本化 JSON 配置/结果/状态接口、数据预览与能力查询；Windows、macOS、Linux 持续集成通过。
+- 提供默认中文、支持英文和法文的 Godot 图形界面，涵盖从导入数据到查看结果的完整流程。
 - 命令行入口：`psyml` 或 `python -m psyml`。
 
 ### 当前状态
 
-Phase 0–12 已完成，当前进入 Phase 13：开发默认中文、支持英文和法文的 Godot 图形界面。Legacy 审查已确认旧脚本存在数据泄漏、可移植性与可复现性风险，不应用于新的分析。
+Phase 0–13 已完成，当前进入 Phase 14：跨平台验收、三语图文操作说明与发布审计。Legacy 审查已确认旧脚本存在数据泄漏、可移植性与可复现性风险，不应用于新的分析。
 
 ### 文档
 
@@ -36,6 +37,7 @@ Phase 0–12 已完成，当前进入 Phase 13：开发默认中文、支持英�
 - [Phase 10 完成记录](docs/phase_10_completion.md)
 - [Phase 11 完成记录](docs/phase_11_completion.md)
 - [Phase 12 完成记录](docs/phase_12_completion.md)
+- [Phase 13 完成记录](docs/phase_13_completion.md)
 - [Core JSON 接口](docs/core_interface.md)
 - [Legacy 代码审查](docs/legacy_code_review.md)
 
@@ -54,11 +56,12 @@ PsyML Toolkit turns Python machine-learning scripts accumulated during undergrad
 - CSV, TSV, XLSX, XLS, SAV, DTA, SAS7BDAT, XPT and Parquet loading; training-only preprocessing, five validation strategies, comprehensive metrics, and CSV/JSON result export.
 - Automatic analysis manifests, Methods summaries, reproducibility reports, and regression-prediction or classification-confusion figures.
 - Versioned JSON configuration/result/event interfaces, private-by-default data preview and capability discovery; CI passes on Windows, macOS and Linux.
+- A Godot GUI that defaults to Chinese and covers the complete workflow in Chinese, English and French.
 - Command-line entry point: `psyml` or `python -m psyml`.
 
 ### Status
 
-Phases 0–12 are complete. Phase 13 is now building a Godot graphical interface that defaults to Chinese and also supports English and French. The legacy review found leakage, portability and reproducibility risks, so old scripts must not be used for new analyses.
+Phases 0–13 are complete. Phase 14 is now completing cross-platform acceptance, illustrated trilingual guidance and the release audit. The legacy review found leakage, portability and reproducibility risks, so old scripts must not be used for new analyses.
 
 Original data has been removed from the legacy tree. The repository retains only random synthetic datasets with the original file formats and structures for development and testing; the privacy recheck found no original personal data. License and release auditing remains scheduled for Phase 14.
 
@@ -75,10 +78,11 @@ PsyML Toolkit transforme les scripts Python d'apprentissage automatique issus de
 - Lecture CSV, TSV, XLSX, XLS, SAV, DTA, SAS7BDAT, XPT et Parquet ; prétraitement ajusté uniquement sur l'ensemble d'entraînement, cinq stratégies de validation, métriques complètes et export CSV/JSON.
 - Génération automatique d'un manifeste d'analyse, d'un résumé Methods, d'un rapport de reproductibilité et d'une figure de prédiction ou de matrice de confusion.
 - Interfaces JSON versionnées pour la configuration, les résultats et les événements, aperçu privé par défaut et découverte des capacités ; l’intégration continue passe sous Windows, macOS et Linux.
+- Une interface Godot, en chinois par défaut, qui couvre le flux complet en chinois, anglais et français.
 - Point d'entrée en ligne de commande : `psyml` ou `python -m psyml`.
 
 ### État du projet
 
-Les phases 0–12 sont terminées. La phase 13 développe maintenant une interface graphique Godot en chinois par défaut, également disponible en anglais et en français. La revue du code historique a identifié des risques de fuite, de portabilité et de reproductibilité ; les anciens scripts ne doivent donc pas servir aux nouvelles analyses.
+Les phases 0–13 sont terminées. La phase 14 finalise maintenant la validation multiplateforme, le guide illustré trilingue et l’audit de publication. La revue du code historique a identifié des risques de fuite, de portabilité et de reproductibilité ; les anciens scripts ne doivent donc pas servir aux nouvelles analyses.
 
 Les données originales ont été supprimées de l'arborescence historique. Le dépôt ne conserve que des jeux de données synthétiques aléatoires ayant les mêmes formats et structures pour le développement et les tests ; la nouvelle vérification de confidentialité n'a trouvé aucune donnée personnelle originale. L'audit des licences et de la publication reste prévu pour la phase 14.

@@ -1,0 +1,29 @@
+; PsyML Toolkit Godot client
+config_version=5
+
+[application]
+
+config/name="PsyML Toolkit"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.7")
+
+[display]
+
+window/size/viewport_width=1180
+window/size/viewport_height=800
+window/size/window_width_override=1180
+window/size/window_height_override=800
+window/stretch/mode="canvas_items"
+
+[internationalization]
+
+locale/fallback="zh_CN"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+
+[gui]
+
+theme/default_font_multichannel_signed_distance_field=true

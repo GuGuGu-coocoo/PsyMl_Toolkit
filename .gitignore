@@ -24,6 +24,9 @@ __pycache__/
 tools/node_modules/
 dist/
 build/
+gui/.godot/
+gui/tests/fixtures/*.translation
+gui/tests/fixtures/*.csv.import
 
 # Local working plan requested by the repository owner
 docs/PSYML_TOOLKIT_DEVELOPMENT_PLAN.md

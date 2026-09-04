@@ -53,3 +53,7 @@
 ## Phase 12 — Stable Core Interface and Packaging
 
 已冻结 version 1.0 的分析配置、结果和 JSONL event Schema，增加配置运行、数据预览、能力与 Schema 查询、本地子进程错误/取消协议、显式特征选择和 wheel 构建。66 项本地测试与隔离安装通过；GitHub Actions 在 Windows、macOS、Linux 全部成功。完整证据见 `docs/phase_12_completion.md`，接口说明见 `docs/core_interface.md`。
+
+## Phase 13 — Trilingual Godot GUI
+
+已建立默认中文并支持英文、法文的 Godot 4 图形界面，通过稳定 JSON/JSONL 接口完成数据预览、配置、运行/取消、warning、指标、预测、图形和结果目录流程。真实 GUI 自动化测试已完成分类与回归分析；完整证据见 `docs/phase_13_completion.md`。
