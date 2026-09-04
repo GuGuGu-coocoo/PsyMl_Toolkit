@@ -24,7 +24,7 @@ The following may contain raw records, derived research results, or model state 
 - `**/subdimensions-data-result/`
 - `**/saved_models/`
 - `*.rar`
-- `*.sav`
+- `*.sav` (except the verified synthetic SPSS test fixture)
 - `*.joblib`
 - `*.pth`
 - Python cache directories and IDE metadata

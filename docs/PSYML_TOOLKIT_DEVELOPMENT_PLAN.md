@@ -12,7 +12,7 @@ PsyML Toolkit 将本科研究与应用项目遗留的 Python 机器学习脚本�
 
 ## Phase 10 — Basic Model Completion
 
-在现有基础模型上补齐科研常用 baseline；不引入 XGBoost、LightGBM 或 Transformer。增加科研常用的数据格式支持.
+在现有基础模型上补齐科研常用 baseline 和常用机器学习方法；不引入 XGBoost、LightGBM 或 Transformer。增加科研常用的数据格式支持。
 
 - Regression：Linear Regression、Ridge Regression、Dummy Regressor；可选 Decision Tree Regression。
 - Classification：Logistic Regression、Dummy Classifier。
@@ -40,13 +40,15 @@ results/run_xxx/
 
 ## Phase 12 — Godot GUI
 
-Godot 只负责选择数据、变量和配置，启动 Python Core，显示状态、警告、结果与导出选项；不得重复训练、预处理、验证或指标计算。
+Godot 只负责选择数据、变量和配置，启动 Python Core，显示状态、警告、结果与导出选项；不得重复训练、预处理、验证或指标计算。GUI 界面须支持中文、英文和法文，默认语言为中文。
 
 v0.1 流程：支持的格式导入 → 任务与变量选择 → 预处理与验证选择 → 模型选择 → 配置确认 → 执行 → 回归或分类结果展示 → 导出。
 
 优先使用本地进程或本地 API 传递 `analysis_config.json` 和结果文件；不使用复杂 Python embedding。第一阶段支持 Windows 与 macOS，Linux 后续测试；Web 不在当前范围。
 
 核心必须先验证：回归和分类 Pipeline、交叉验证、group-aware validation、无泄漏预处理、指标、结果导出、中文和含空格路径，以及 Godot 与 Python 的配置和错误传递。
+
+完成后更新 README，以图片和文字说明的方式向使用者演示操作流程并介绍功能；三种语言应分别使用对应语言界面的截图。使用标准公开数据进行测试，便于研究者审查程序是否存在问题。
 
 ## Current development finish line
 
