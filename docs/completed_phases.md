@@ -45,3 +45,7 @@
 ## Phase 10 — Scientific Core Completion
 
 已完成九种表格格式、23 个回归/分类模型、四种缺失值策略、三种缩放策略、五种验证策略、完整评价指标、逐 fold 与汇总结果导出，以及目标/分组变量隔离。57 项自动化测试通过；完成范围、限制和验证证据见 `docs/phase_10_completion.md`。
+
+## Phase 11 — Research Methods & Reproducibility Output
+
+每次分析会按真实配置生成分析清单、Methods 参考说明、可复现性报告和回归/分类图，支持可选 SHA-256 数据指纹并避免在报告中复制路径和数据值。59 项测试与人工图形检查通过；完成证据见 `docs/phase_11_completion.md`。

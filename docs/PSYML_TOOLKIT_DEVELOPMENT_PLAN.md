@@ -4,22 +4,11 @@
 
 PsyML Toolkit 将本科研究与应用项目遗留的 Python 机器学习脚本，逐步整理为可运行、可复现、可维护、能避免常见数据泄漏，且对非程序研究者友好的研究工具。
 
-已完成的 Phase 0–10 已移至 [completed_phases.md](completed_phases.md)。遗留代码继续原样保存在 `legacy/original/program/`；新的实现只放在 `src/psyml/`。
+已完成的 Phase 0–11 已移至 [completed_phases.md](completed_phases.md)。遗留代码继续原样保存在 `legacy/original/program/`；新的实现只放在 `src/psyml/`。
 
 完成规则：每个阶段完成时，先在 `docs/` 写入可核验的完成记录，再追加到 `docs/completed_phases.md`，并从本计划移除该阶段的详细待办。
 
 当前不在范围内：AutoML、Transformer、LLM、云服务、数据库、SHAP、高级模型搜索、大规模深度学习、Web SaaS 与商业化。
-
-## Phase 11 — Research Methods & Reproducibility Output
-
-每次分析根据真实执行配置生成下列文件，不得写入姓名、学号、手机号等直接身份信息：
-
-- `analysis_manifest.json`：PsyML/Python/OS 与实际使用库版本、数据尺寸、可选数据 hash。
-- `methods_summary.md`：真实模型、预处理、验证、分组与指标的论文 Methods 参考说明。
-- `reproducibility_report.md`：环境、数据溯源、配置、fold 结果、warning 与泄漏风险。
-- `figures/`：回归预测图或分类混淆矩阵等由 Python Core 计算并生成的图。
-
-报告内容必须能从保存的配置重新执行；不声称未实际执行的步骤。
 
 ## Phase 12 — Stable Core Interface and Packaging
 

@@ -39,6 +39,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--missing", default="median", choices=["drop", "mean", "median", "mode"])
     parser.add_argument("--scaling", default="standard", choices=["none", "standard", "minmax"])
     parser.add_argument(
+        "--no-data-hash",
+        action="store_false",
+        dest="include_data_hash",
+        help="Do not calculate a SHA-256 fingerprint for the input data",
+    )
+    parser.add_argument(
         "--param", action="append", default=[], type=_parameter, metavar="KEY=VALUE"
     )
     return parser
@@ -59,6 +65,7 @@ def main() -> None:
         n_splits=args.folds,
         missing_strategy=args.missing,
         scaling=args.scaling,
+        include_data_hash=args.include_data_hash,
         model_params=dict(args.param),
     )
     result = run_experiment(config)

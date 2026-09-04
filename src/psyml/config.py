@@ -32,6 +32,7 @@ class ExperimentConfig:
     n_splits: int = 5
     missing_strategy: MissingStrategy = "median"
     scaling: ScalingStrategy = "standard"
+    include_data_hash: bool = True
     model_params: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
