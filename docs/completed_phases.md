@@ -49,3 +49,7 @@
 ## Phase 11 — Research Methods & Reproducibility Output
 
 每次分析会按真实配置生成分析清单、Methods 参考说明、可复现性报告和回归/分类图，支持可选 SHA-256 数据指纹并避免在报告中复制路径和数据值。59 项测试与人工图形检查通过；完成证据见 `docs/phase_11_completion.md`。
+
+## Phase 12 — Stable Core Interface and Packaging
+
+已冻结 version 1.0 的分析配置、结果和 JSONL event Schema，增加配置运行、数据预览、能力与 Schema 查询、本地子进程错误/取消协议、显式特征选择和 wheel 构建。66 项本地测试与隔离安装通过；GitHub Actions 在 Windows、macOS、Linux 全部成功。完整证据见 `docs/phase_12_completion.md`，接口说明见 `docs/core_interface.md`。
