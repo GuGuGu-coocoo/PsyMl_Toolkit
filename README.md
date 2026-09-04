@@ -8,7 +8,7 @@
 
 ## 中文
 
-PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查、变量角色、预处理、模型比较、参数选择、验证、结果解释和可复现性材料放进同一流程。Godot 图形界面负责配置与展示；训练和评价由 `src/psyml/` 中同一套 Python 核心完成。输入数据只在本机处理。
+PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查、变量角色、预处理、模型比较、参数选择、验证、结果解释和可复现性材料放进同一流程。Godot 图形界面采用“场景定义固定布局、脚本处理动态状态”的混合结构；训练和评价由 `src/psyml/` 中同一套 Python 核心完成。输入数据只在本机处理。
 
 当前支持分类与回归、23 个按任务划分的模型选项、9 种表格格式、6 种验证策略、多模型与多验证比较、训练集内部参数搜索、动态剩余时间、长任务终止，以及预测、图形、Methods 说明和复现报告导出。界面支持中文、英文和法文。
 
@@ -154,11 +154,17 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 除另行标注的第三方内容外，项目代码与文档采用 [Apache License 2.0](LICENSE)，允许使用、修改和分发，并包含明确的专利授权。第三方依赖与数据仍遵循各自许可证。
 
+### 开发与参与
+
+机器学习核心由项目作者编写；Godot GUI 在 AI 协助下开发。作者参与了项目设计、功能与隐私边界制定、代码审查和完整测试，并继续对项目发布与研究使用承担责任。这里所说的 AI 协助不改变作者对已有代码的权属，也不替代人工审查。
+
+欢迎研究者通过 GitHub Issue 反馈可复现的问题、方法建议和使用体验。请使用仓库中的随机合成测试数据或能够公开分享的最小示例，切勿上传真实参与者数据、未公开研究资料、访问凭据或其他敏感内容。
+
 <a id="english"></a>
 
 ## English
 
-PsyML Toolkit is a local machine-learning tool for researchers. It joins data review, variable roles, preprocessing, model comparison, parameter selection, validation, interpretation and reproducibility outputs in one workflow. The Godot GUI handles configuration and presentation; the Python core in `src/psyml/` performs training and evaluation. Input data stay on the local computer.
+PsyML Toolkit is a local machine-learning tool for researchers. It joins data review, variable roles, preprocessing, model comparison, parameter selection, validation, interpretation and reproducibility outputs in one workflow. The Godot GUI uses a hybrid structure in which scenes define the fixed layout and scripts manage dynamic state; the Python core in `src/psyml/` performs training and evaluation. Input data stay on the local computer.
 
 It supports classification and regression, 23 task-specific model choices, 9 tabular formats, 6 validation strategies, multi-model and multi-validation studies, training-only parameter search, dynamic time estimates, cancellation of long jobs, predictions, figures, Methods text and reproducibility reports. The GUI is available in Chinese, English and French.
 
@@ -261,11 +267,17 @@ Screenshots and test fixtures use random synthetic data. Public examples use UCI
 
 Except for separately identified third-party material, the project is licensed under the [Apache License 2.0](LICENSE), permitting use, modification and distribution and including an express patent grant. Dependencies and datasets retain their own licenses.
 
+### Development and participation
+
+The machine-learning core was written by the project author; the Godot GUI was developed with AI assistance. The author participated in project design, definition of functional and privacy boundaries, code review and complete testing, and remains responsible for the project’s release and research use. AI assistance does not change ownership of the existing code or replace human review.
+
+Researchers are welcome to report reproducible problems, methodological suggestions and usability feedback through GitHub Issues. Use the repository’s random synthetic fixture or a minimal example that can be shared publicly; never upload real participant data, unpublished research material, credentials or other sensitive information.
+
 <a id="french"></a>
 
 ## Français
 
-PsyML Toolkit est un outil local d’apprentissage automatique destiné à la recherche. Il réunit l’examen des données, les rôles des variables, le prétraitement, la comparaison des modèles, le choix des paramètres, la validation, l’interprétation et les éléments de reproductibilité. L’interface Godot gère la configuration et l’affichage ; le noyau Python de `src/psyml/` réalise l’entraînement et l’évaluation. Les données restent sur l’ordinateur local.
+PsyML Toolkit est un outil local d’apprentissage automatique destiné à la recherche. Il réunit l’examen des données, les rôles des variables, le prétraitement, la comparaison des modèles, le choix des paramètres, la validation, l’interprétation et les éléments de reproductibilité. L’interface Godot suit une structure hybride : les scènes définissent la mise en page fixe et les scripts gèrent l’état dynamique ; le noyau Python de `src/psyml/` réalise l’entraînement et l’évaluation. Les données restent sur l’ordinateur local.
 
 Il prend en charge la classification et la régression, 23 choix de modèles selon la tâche, 9 formats tabulaires, 6 stratégies de validation, plusieurs modèles et validations par étude, la recherche de paramètres dans les données d’entraînement, l’estimation dynamique du temps restant, l’arrêt des tâches longues, ainsi que les prédictions, figures, méthodes et rapports de reproductibilité. L’interface existe en chinois, anglais et français.
 
@@ -367,3 +379,9 @@ La sélection imbriquée des paramètres et le prétraitement limité à l’ent
 Les captures et jeux de test sont synthétiques et aléatoires. Les exemples publics utilisent [Iris](https://doi.org/10.24432/C56C76) et [Concrete Compressive Strength](https://doi.org/10.24432/C5PK67) d’UCI ; voir les [instructions](examples/public/README.md). Ne joignez jamais de données de recherche réelles ou sensibles à une issue GitHub.
 
 Sauf éléments tiers signalés séparément, le projet est sous [licence Apache 2.0](LICENSE), qui autorise l’utilisation, la modification et la distribution et inclut une concession explicite de brevets. Les dépendances et données conservent leurs propres licences.
+
+### Développement et participation
+
+Le noyau d’apprentissage automatique a été écrit par l’auteur du projet ; l’interface Godot a été développée avec l’aide de l’IA. L’auteur a participé à la conception du projet, à la définition des limites fonctionnelles et de confidentialité, à la revue du code et aux tests complets, et reste responsable de la publication du projet et de son usage en recherche. L’aide de l’IA ne modifie pas la propriété du code existant et ne remplace pas la revue humaine.
+
+Les chercheurs sont invités à signaler, via les issues GitHub, les problèmes reproductibles, suggestions méthodologiques et retours d’utilisation. Utilisez le jeu synthétique aléatoire du dépôt ou un exemple minimal publiable ; ne téléversez jamais de données réelles de participants, de documents de recherche non publiés, d’identifiants d’accès ou d’autres informations sensibles.

@@ -1,17 +1,21 @@
 extends Control
 
 const ACCENT := Color("5f7cf7")
-const SURFACE := Color("f6f7fb")
 const TEXT := Color("172033")
 
 var bridge: CoreBridge
 var capabilities: Dictionary = {}
 var preview_payload: Dictionary = {}
+var previewed_path := ""
+var pending_preview_path := ""
+var is_preview_loading := false
 var translated_controls: Array[Dictionary] = []
 var localized_value_options: Array[OptionButton] = []
 var tabs: TabContainer
 var language_label: Label
 var language_option: OptionButton
+var browse_button: Button
+var preview_button: Button
 var data_path_edit: LineEdit
 var data_summary_label: Label
 var variable_tree: Tree
@@ -32,6 +36,8 @@ var max_candidates_spin: SpinBox
 var parameter_editor: VBoxContainer
 var parameter_controls: Dictionary = {}
 var saved_parameter_values: Dictionary = {}
+var choose_folder_button: Button
+var refresh_review_button: Button
 var output_edit: LineEdit
 var review_text: TextEdit
 var status_label: Label
@@ -46,6 +52,7 @@ var metrics_tree: Tree
 var predictions_tree: Tree
 var figure_view: TextureRect
 var no_results_label: Label
+var open_results_button: Button
 var file_dialog: FileDialog
 var folder_dialog: FileDialog
 var last_result_dir := ""
@@ -53,15 +60,17 @@ var status_key := "READY"
 var status_detail := ""
 var last_warnings: Array = []
 var pending_config_path := ""
+var is_analysis_running := false
+var progress_key := "PROGRESS_WAITING"
+var progress_values: Dictionary = {}
 
 
 func _ready() -> void:
 	PsyMLI18n.install()
 	TranslationServer.set_locale("zh_CN")
 	_build_theme()
-	_build_interface()
-	bridge = CoreBridge.new()
-	add_child(bridge)
+	_bind_scene()
+	bridge = %CoreBridge
 	bridge.preview_ready.connect(_on_preview_ready)
 	bridge.preview_failed.connect(_on_preview_failed)
 	bridge.event_received.connect(_on_core_event)
@@ -85,23 +94,44 @@ func _build_theme() -> void:
 	app_theme.set_color("font_selected_color", "ItemList", Color.WHITE)
 	app_theme.set_color("font_readonly_color", "TextEdit", TEXT)
 	app_theme.set_stylebox("panel", "TabContainer", _style_box(Color.WHITE, 8))
+	app_theme.set_stylebox("panel", "PanelContainer", _style_box(Color("fbfcff"), 7, Color("d9deea")))
 	app_theme.set_stylebox("panel", "Tree", _style_box(Color("fbfcff"), 5, Color("d9deea")))
 	app_theme.set_stylebox("panel", "ItemList", _style_box(Color("fbfcff"), 5, Color("d9deea")))
 	app_theme.set_stylebox("selected", "ItemList", _style_box(ACCENT, 4))
 	app_theme.set_stylebox("selected_focus", "ItemList", _style_box(ACCENT, 4))
 	app_theme.set_stylebox("normal", "LineEdit", _style_box(Color.WHITE, 5, Color("cbd2e1")))
+	app_theme.set_stylebox("focus", "LineEdit", _style_box(Color.WHITE, 5, ACCENT))
 	app_theme.set_stylebox("normal", "TextEdit", _style_box(Color.WHITE, 5, Color("cbd2e1")))
 	app_theme.set_stylebox("read_only", "TextEdit", _style_box(Color("fbfcff"), 5, Color("cbd2e1")))
-	app_theme.set_stylebox("normal", "Button", _style_box(Color("eef1f8"), 5))
-	app_theme.set_stylebox("hover", "Button", _style_box(Color("e1e7fb"), 5))
-	app_theme.set_stylebox("pressed", "Button", _style_box(Color("d2dcfb"), 5))
+	for button_type in ["Button", "OptionButton"]:
+		app_theme.set_stylebox("normal", button_type, _style_box(Color("eef1f8"), 5))
+		app_theme.set_stylebox("hover", button_type, _style_box(Color("e1e7fb"), 5))
+		app_theme.set_stylebox("pressed", button_type, _style_box(Color("d2dcfb"), 5))
+		app_theme.set_stylebox("focus", button_type, _style_box(Color("eef1f8"), 5, ACCENT))
+		app_theme.set_stylebox("disabled", button_type, _style_box(Color("eef0f4"), 5))
+		app_theme.set_color("font_disabled_color", button_type, Color("9098a8"))
 	app_theme.set_stylebox("tab_selected", "TabBar", _style_box(Color.WHITE, 5))
 	app_theme.set_stylebox("tab_unselected", "TabBar", _style_box(Color("e3e7ef"), 5))
+	app_theme.set_stylebox("background", "ProgressBar", _style_box(Color("e3e7ef"), 5))
+	app_theme.set_stylebox("fill", "ProgressBar", _style_box(ACCENT, 5))
 	app_theme.set_type_variation("AccentButton", "Button")
 	app_theme.set_stylebox("normal", "AccentButton", _style_box(ACCENT, 5))
 	app_theme.set_stylebox("hover", "AccentButton", _style_box(Color("4d6bea"), 5))
+	app_theme.set_stylebox("pressed", "AccentButton", _style_box(Color("405ed8"), 5))
+	app_theme.set_stylebox("focus", "AccentButton", _style_box(ACCENT, 5, Color("263f9f")))
+	app_theme.set_stylebox("disabled", "AccentButton", _style_box(Color("b8c2e8"), 5))
 	app_theme.set_color("font_color", "AccentButton", Color.WHITE)
 	app_theme.set_color("font_hover_color", "AccentButton", Color.WHITE)
+	app_theme.set_color("font_disabled_color", "AccentButton", Color("f5f6fb"))
+	app_theme.set_type_variation("DangerButton", "Button")
+	app_theme.set_stylebox("normal", "DangerButton", _style_box(Color("fff0f0"), 5, Color("e6a3a3")))
+	app_theme.set_stylebox("hover", "DangerButton", _style_box(Color("ffe1e1"), 5, Color("cf6f6f")))
+	app_theme.set_stylebox("pressed", "DangerButton", _style_box(Color("f8caca"), 5, Color("b84f4f")))
+	app_theme.set_stylebox("focus", "DangerButton", _style_box(Color("fff0f0"), 5, Color("b84f4f")))
+	app_theme.set_stylebox("disabled", "DangerButton", _style_box(Color("eef0f4"), 5))
+	app_theme.set_color("font_color", "DangerButton", Color("9f3030"))
+	app_theme.set_color("font_hover_color", "DangerButton", Color("842424"))
+	app_theme.set_color("font_disabled_color", "DangerButton", Color("9098a8"))
 	theme = app_theme
 
 
@@ -122,199 +152,88 @@ func _style_box(color: Color, radius: int, border := Color.TRANSPARENT) -> Style
 	return style
 
 
-func _build_interface() -> void:
-	var background := ColorRect.new()
-	background.color = SURFACE
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(background)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 30)
-	margin.add_theme_constant_override("margin_right", 30)
-	margin.add_theme_constant_override("margin_top", 22)
-	margin.add_theme_constant_override("margin_bottom", 24)
-	add_child(margin)
-	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 16)
-	margin.add_child(page)
-
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 18)
-	page.add_child(header)
-	var brand := VBoxContainer.new()
-	brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(brand)
-	var title := Label.new()
-	title.name = "TitleLabel"
-	title.text = "PsyML Toolkit"
-	title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	title.add_theme_font_size_override("font_size", 30)
-	title.add_theme_color_override("font_color", ACCENT)
-	brand.add_child(title)
-	language_label = _translated_label("LANGUAGE")
-	header.add_child(language_label)
-	language_option = OptionButton.new()
-	language_option.name = "LanguageOption"
+func _bind_scene() -> void:
+	tabs = %Tabs
+	language_label = %LanguageLabel
+	language_option = %LanguageOption
+	translated_controls.append({"node": language_label, "key": "LANGUAGE"})
 	for item in ["中文", "English", "Français"]:
 		language_option.add_item(item)
 	language_option.selected = 0
 	language_option.item_selected.connect(_on_language_selected)
-	header.add_child(language_option)
-
-	tabs = TabContainer.new()
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	page.add_child(tabs)
-	_build_data_tab()
-	_build_config_tab()
-	_build_review_tab()
-	_build_results_tab()
-	_build_dialogs()
+	_bind_data_tab()
+	_bind_config_tab()
+	_bind_review_tab()
+	_bind_results_tab()
+	_bind_dialogs()
 
 
-func _tab_page(name_value: String) -> VBoxContainer:
-	var scroll := ScrollContainer.new()
-	scroll.name = name_value
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	tabs.add_child(scroll)
-	var padding := MarginContainer.new()
-	padding.add_theme_constant_override("margin_left", 16)
-	padding.add_theme_constant_override("margin_right", 16)
-	padding.add_theme_constant_override("margin_top", 18)
-	padding.add_theme_constant_override("margin_bottom", 18)
-	padding.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(padding)
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 12)
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	padding.add_child(content)
-	return content
-
-
-func _heading(key: String) -> Label:
-	var label := _translated_label(key)
-	label.add_theme_font_size_override("font_size", 23)
-	label.add_theme_color_override("font_color", TEXT)
-	return label
-
-
-func _translated_label(key: String) -> Label:
-	var label := Label.new()
-	translated_controls.append({"node": label, "key": key})
-	return label
-
-
-func _translated_button(key: String) -> Button:
-	var button := Button.new()
-	button.custom_minimum_size.y = 42
-	translated_controls.append({"node": button, "key": key})
-	return button
-
-
-func _build_data_tab() -> void:
-	var content := _tab_page("Data")
-	content.add_child(_heading("DATA_HEADING"))
-	var path_row := HBoxContainer.new()
-	path_row.add_theme_constant_override("separation", 10)
-	content.add_child(path_row)
-	path_row.add_child(_translated_label("DATA_PATH"))
-	data_path_edit = LineEdit.new()
-	data_path_edit.name = "DataPathEdit"
-	data_path_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	data_path_edit.placeholder_text = "CSV · TSV · XLSX · XLS · SAV · DTA · SAS7BDAT · XPT · Parquet"
-	path_row.add_child(data_path_edit)
-	var browse := _translated_button("BROWSE")
-	browse.pressed.connect(func(): file_dialog.popup_centered_ratio(0.8))
-	path_row.add_child(browse)
-	var preview := _translated_button("PREVIEW")
-	preview.pressed.connect(_request_preview)
-	path_row.add_child(preview)
-	data_summary_label = _translated_label("NO_DATA")
-	data_summary_label.name = "DataSummaryLabel"
-	content.add_child(data_summary_label)
-
-	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 18)
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_child(columns)
-	var left := VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.add_child(left)
-	left.add_child(_translated_label("VARIABLES"))
-	variable_tree = Tree.new()
-	variable_tree.custom_minimum_size = Vector2(500, 210)
-	variable_tree.columns = 3
-	variable_tree.column_titles_visible = true
-	left.add_child(variable_tree)
-	left.add_child(_translated_label("SAMPLE"))
-	sample_tree = Tree.new()
-	sample_tree.custom_minimum_size = Vector2(500, 180)
-	left.add_child(sample_tree)
-	var right := VBoxContainer.new()
-	right.custom_minimum_size.x = 330
-	columns.add_child(right)
-	right.add_child(_translated_label("FEATURES"))
-	feature_list = ItemList.new()
-	feature_list.name = "FeatureList"
-	feature_list.select_mode = ItemList.SELECT_MULTI
-	feature_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	feature_list.custom_minimum_size.y = 400
+func _bind_data_tab() -> void:
+	data_path_edit = %DataPathEdit
+	data_summary_label = %DataSummaryLabel
+	variable_tree = %VariableTree
+	sample_tree = %SampleTree
+	feature_list = %FeatureList
+	browse_button = %BrowseButton
+	preview_button = %PreviewButton
+	translated_controls.append_array(
+		[
+			{"node": %DataHeading, "key": "DATA_HEADING"},
+			{"node": %DataSourceSectionLabel, "key": "DATA_SOURCE_SECTION"},
+			{"node": %DataPathLabel, "key": "DATA_PATH"},
+			{"node": browse_button, "key": "BROWSE"},
+			{"node": preview_button, "key": "PREVIEW"},
+			{"node": %VariablesLabel, "key": "VARIABLES"},
+			{"node": %SampleLabel, "key": "SAMPLE"},
+			{"node": %FeaturesLabel, "key": "FEATURES"},
+		]
+	)
+	browse_button.pressed.connect(func(): file_dialog.popup_centered_ratio(0.8))
+	preview_button.pressed.connect(_request_preview)
+	data_path_edit.text_changed.connect(_on_data_path_changed)
 	feature_list.item_selected.connect(func(_index): _refresh_review())
-	right.add_child(feature_list)
 
 
-func _build_config_tab() -> void:
-	var content := _tab_page("Configure")
-	content.add_child(_heading("CONFIG_HEADING"))
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 24)
-	grid.add_theme_constant_override("v_separation", 14)
-	content.add_child(grid)
-	task_option = OptionButton.new()
-	_add_field(grid, "TASK", task_option)
-	target_option = OptionButton.new()
-	_add_field(grid, "TARGET", target_option)
-	group_option = OptionButton.new()
-	_add_field(grid, "GROUP", group_option)
-	missing_option = _value_option(["drop", "mean", "median", "mode"])
+func _bind_config_tab() -> void:
+	task_option = %TaskOption
+	target_option = %TargetOption
+	group_option = %GroupOption
+	missing_option = %MissingOption
+	scaling_option = %ScalingOption
+	validation_list = %ValidationList
+	folds_spin = %FoldsSpin
+	model_list = %ModelList
+	tuning_option = %TuningOption
+	selection_metric_option = %SelectionMetricOption
+	inner_folds_spin = %InnerFoldsSpin
+	max_candidates_spin = %MaxCandidatesSpin
+	parameter_editor = %ParameterEditor
+	translated_controls.append_array(
+		[
+			{"node": %ConfigureHeading, "key": "CONFIG_HEADING"},
+			{"node": %DesignSectionLabel, "key": "RESEARCH_DESIGN_SECTION"},
+			{"node": %TaskLabel, "key": "TASK"},
+			{"node": %TargetLabel, "key": "TARGET"},
+			{"node": %GroupLabel, "key": "GROUP"},
+			{"node": %MissingLabel, "key": "MISSING"},
+			{"node": %ScalingLabel, "key": "SCALING"},
+			{"node": %ValidationLabel, "key": "VALIDATION"},
+			{"node": %FoldsLabel, "key": "FOLDS"},
+			{"node": %ModelLabel, "key": "MODEL"},
+			{"node": %PrimaryValidationHelp, "key": "PRIMARY_VALIDATION_HELP"},
+			{"node": %ParameterSectionLabel, "key": "PARAMETER_SECTION"},
+			{"node": %TuningLabel, "key": "TUNING"},
+			{"node": %SelectionMetricLabel, "key": "SELECTION_METRIC"},
+			{"node": %InnerFoldsLabel, "key": "INNER_FOLDS"},
+			{"node": %MaxCandidatesLabel, "key": "MAX_CANDIDATES"},
+			{"node": %ParameterHelpLabel, "key": "PARAMETER_HELP"},
+		]
+	)
+	_populate_value_option(missing_option, ["drop", "mean", "median", "mode"])
 	missing_option.select(2)
-	_add_field(grid, "MISSING", missing_option)
-	scaling_option = _value_option(["none", "standard", "minmax"])
+	_populate_value_option(scaling_option, ["none", "standard", "minmax"])
 	scaling_option.select(1)
-	_add_field(grid, "SCALING", scaling_option)
-	validation_list = ItemList.new()
-	validation_list.select_mode = ItemList.SELECT_MULTI
-	validation_list.custom_minimum_size.y = 125
-	_add_field(grid, "VALIDATION", validation_list)
-	folds_spin = SpinBox.new()
-	folds_spin.min_value = 2
-	folds_spin.max_value = 20
-	folds_spin.value = 5
-	_add_field(grid, "FOLDS", folds_spin)
-	model_list = ItemList.new()
-	model_list.select_mode = ItemList.SELECT_MULTI
-	model_list.custom_minimum_size.y = 145
-	_add_field(grid, "MODEL", model_list)
-	tuning_option = _value_option(["tuning_none", "tuning_quick", "tuning_custom"])
-	_add_field(grid, "TUNING", tuning_option)
-	selection_metric_option = OptionButton.new()
-	_add_field(grid, "SELECTION_METRIC", selection_metric_option)
-	inner_folds_spin = SpinBox.new()
-	inner_folds_spin.min_value = 2
-	inner_folds_spin.max_value = 10
-	inner_folds_spin.value = 3
-	_add_field(grid, "INNER_FOLDS", inner_folds_spin)
-	max_candidates_spin = SpinBox.new()
-	max_candidates_spin.min_value = 1
-	max_candidates_spin.max_value = 200
-	max_candidates_spin.value = 20
-	_add_field(grid, "MAX_CANDIDATES", max_candidates_spin)
-	content.add_child(_translated_label("PARAMETER_HELP"))
-	parameter_editor = VBoxContainer.new()
-	parameter_editor.add_theme_constant_override("separation", 10)
-	content.add_child(parameter_editor)
+	_populate_value_option(tuning_option, ["tuning_none", "tuning_quick", "tuning_custom"])
 	_populate_task_options()
 	task_option.item_selected.connect(func(_index): _on_task_changed())
 	target_option.item_selected.connect(func(_index): _on_column_role_changed())
@@ -329,23 +248,11 @@ func _build_config_tab() -> void:
 	max_candidates_spin.value_changed.connect(func(_value): _refresh_review())
 
 
-func _add_field(grid: GridContainer, key: String, control: Control) -> void:
-	grid.add_child(_translated_label(key))
-	control.custom_minimum_size = Vector2(
-		maxf(control.custom_minimum_size.x, 420.0),
-		maxf(control.custom_minimum_size.y, 42.0)
-	)
-	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_child(control)
-
-
-func _value_option(values: Array) -> OptionButton:
-	var option := OptionButton.new()
+func _populate_value_option(option: OptionButton, values: Array) -> void:
 	for value in values:
 		option.add_item(tr("OPTION_" + str(value).to_upper()))
 		option.set_item_metadata(option.item_count - 1, value)
 	localized_value_options.append(option)
-	return option
 
 
 func _populate_task_options() -> void:
@@ -358,122 +265,69 @@ func _populate_task_options() -> void:
 			task_option.select(task_option.item_count - 1)
 
 
-func _build_review_tab() -> void:
-	var content := _tab_page("Review")
-	content.add_child(_heading("REVIEW_HEADING"))
-	var output_row := HBoxContainer.new()
-	content.add_child(output_row)
-	output_row.add_child(_translated_label("OUTPUT_FOLDER"))
-	output_edit = LineEdit.new()
-	output_edit.name = "OutputEdit"
-	output_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+func _bind_review_tab() -> void:
+	output_edit = %OutputEdit
+	review_text = %ReviewText
+	progress_detail_label = %ProgressDetailLabel
+	status_label = %StatusLabel
+	progress_bar = %ProgressBar
+	cancel_button = %CancelButton
+	run_button = %RunButton
+	choose_folder_button = %ChooseFolderButton
+	refresh_review_button = %RefreshReviewButton
 	output_edit.text = OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS).path_join("PsyML Results")
-	output_row.add_child(output_edit)
-	var choose := _translated_button("CHOOSE_FOLDER")
-	choose.pressed.connect(func(): folder_dialog.popup_centered_ratio(0.75))
-	output_row.add_child(choose)
-	var refresh := _translated_button("REFRESH_REVIEW")
-	refresh.pressed.connect(_refresh_review)
-	output_row.add_child(refresh)
-	review_text = TextEdit.new()
-	review_text.name = "ReviewText"
-	review_text.editable = false
-	review_text.custom_minimum_size.y = 390
-	review_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_child(review_text)
-	progress_detail_label = Label.new()
-	progress_detail_label.text = tr("PROGRESS_WAITING")
-	progress_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	content.add_child(progress_detail_label)
-	var run_row := HBoxContainer.new()
-	run_row.alignment = BoxContainer.ALIGNMENT_END
-	content.add_child(run_row)
-	status_label = _translated_label("READY")
-	status_label.name = "StatusLabel"
-	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	run_row.add_child(status_label)
-	progress_bar = ProgressBar.new()
-	progress_bar.custom_minimum_size.x = 180
-	progress_bar.max_value = 1.0
-	progress_bar.show_percentage = false
-	run_row.add_child(progress_bar)
-	cancel_button = _translated_button("CANCEL")
-	cancel_button.disabled = true
-	cancel_button.pressed.connect(_request_cancel)
-	run_row.add_child(cancel_button)
-	run_button = _translated_button("RUN")
-	run_button.name = "RunButton"
-	run_button.theme_type_variation = "AccentButton"
-	run_button.pressed.connect(_on_run_pressed)
-	run_row.add_child(run_button)
-
-
-func _build_results_tab() -> void:
-	var content := _tab_page("Results")
-	content.add_child(_heading("RESULTS_HEADING"))
-	no_results_label = _translated_label("NO_RESULTS")
-	content.add_child(no_results_label)
-	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 18)
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_child(body)
-	var details := VBoxContainer.new()
-	details.custom_minimum_size.x = 520
-	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(details)
-	best_result_label = Label.new()
-	best_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	details.add_child(best_result_label)
-	details.add_child(_translated_label("COMPARISONS"))
-	comparison_tree = Tree.new()
-	comparison_tree.custom_minimum_size.y = 170
-	details.add_child(comparison_tree)
-	details.add_child(_translated_label("WARNINGS"))
-	warnings_text = RichTextLabel.new()
-	warnings_text.fit_content = true
-	warnings_text.custom_minimum_size.y = 70
-	details.add_child(warnings_text)
-	details.add_child(_translated_label("METRICS"))
-	metrics_tree = Tree.new()
-	metrics_tree.columns = 2
-	metrics_tree.column_titles_visible = true
-	metrics_tree.custom_minimum_size.y = 180
-	details.add_child(metrics_tree)
-	details.add_child(_translated_label("PREDICTIONS"))
-	predictions_tree = Tree.new()
-	predictions_tree.custom_minimum_size.y = 190
-	details.add_child(predictions_tree)
-	var visual := VBoxContainer.new()
-	visual.custom_minimum_size.x = 500
-	visual.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(visual)
-	figure_view = TextureRect.new()
-	figure_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	figure_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	figure_view.custom_minimum_size = Vector2(480, 430)
-	figure_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	visual.add_child(figure_view)
-	var open_button := _translated_button("OPEN_RESULTS")
-	open_button.pressed.connect(_open_results)
-	visual.add_child(open_button)
-
-
-func _build_dialogs() -> void:
-	file_dialog = FileDialog.new()
-	file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	file_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	file_dialog.use_native_dialog = true
-	file_dialog.filters = PackedStringArray(
-		["*.csv,*.tsv,*.xlsx,*.xls,*.sav,*.dta,*.sas7bdat,*.xpt,*.parquet ; Research data"]
+	_set_progress("PROGRESS_WAITING")
+	translated_controls.append_array(
+		[
+			{"node": %ReviewHeading, "key": "REVIEW_HEADING"},
+			{"node": %ConfigReviewSectionLabel, "key": "CONFIG_REVIEW_SECTION"},
+			{"node": %OutputFolderLabel, "key": "OUTPUT_FOLDER"},
+			{"node": choose_folder_button, "key": "CHOOSE_FOLDER"},
+			{"node": refresh_review_button, "key": "REFRESH_REVIEW"},
+			{"node": %OutputHelpLabel, "key": "OUTPUT_HELP"},
+			{"node": %ExecutionSectionLabel, "key": "EXECUTION_SECTION"},
+			{"node": status_label, "key": "READY"},
+			{"node": cancel_button, "key": "CANCEL"},
+			{"node": run_button, "key": "RUN"},
+		]
 	)
+	choose_folder_button.pressed.connect(func(): folder_dialog.popup_centered_ratio(0.75))
+	refresh_review_button.pressed.connect(_refresh_review)
+	output_edit.text_changed.connect(func(_text): _refresh_review())
+	cancel_button.pressed.connect(_request_cancel)
+	run_button.pressed.connect(_on_run_pressed)
+
+
+func _bind_results_tab() -> void:
+	no_results_label = %NoResultsLabel
+	best_result_label = %BestResultLabel
+	comparison_tree = %ComparisonTree
+	warnings_text = %WarningsText
+	metrics_tree = %MetricsTree
+	predictions_tree = %PredictionsTree
+	figure_view = %FigureView
+	open_results_button = %OpenResultsButton
+	translated_controls.append_array(
+		[
+			{"node": %ResultsHeading, "key": "RESULTS_HEADING"},
+			{"node": no_results_label, "key": "NO_RESULTS"},
+			{"node": %ResultSummarySectionLabel, "key": "RESULT_SUMMARY_SECTION"},
+			{"node": %ComparisonsLabel, "key": "COMPARISONS"},
+			{"node": %WarningsLabel, "key": "WARNINGS"},
+			{"node": %MetricsLabel, "key": "METRICS"},
+			{"node": %PredictionsLabel, "key": "PREDICTIONS"},
+			{"node": %ResultVisualSectionLabel, "key": "RESULT_VISUAL_SECTION"},
+			{"node": open_results_button, "key": "OPEN_RESULTS"},
+		]
+	)
+	open_results_button.pressed.connect(_open_results)
+
+
+func _bind_dialogs() -> void:
+	file_dialog = %FileDialog
+	folder_dialog = %FolderDialog
 	file_dialog.file_selected.connect(_on_file_selected)
-	add_child(file_dialog)
-	folder_dialog = FileDialog.new()
-	folder_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
-	folder_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	folder_dialog.use_native_dialog = true
 	folder_dialog.dir_selected.connect(func(path): output_edit.text = path; _refresh_review())
-	add_child(folder_dialog)
 
 
 func _on_language_selected(index: int) -> void:
@@ -520,6 +374,7 @@ func _apply_language() -> void:
 			status_label.text = tr("ERROR") % status_detail
 		else:
 			status_label.text = tr(status_key)
+	_refresh_progress_text()
 	_populate_parameter_editor()
 	_render_warnings()
 	_refresh_review()
@@ -533,6 +388,19 @@ func _update_tree_titles() -> void:
 	metrics_tree.set_column_title(1, tr("VALUE"))
 
 
+func _on_data_path_changed(path: String) -> void:
+	if not previewed_path.is_empty() and path != previewed_path:
+		preview_payload = {}
+		previewed_path = ""
+		variable_tree.clear()
+		sample_tree.clear()
+		feature_list.clear()
+		target_option.clear()
+		group_option.clear()
+		data_summary_label.text = tr("NO_DATA")
+	_refresh_review()
+
+
 func _on_file_selected(path: String) -> void:
 	data_path_edit.text = path
 	_request_preview()
@@ -542,11 +410,21 @@ func _request_preview() -> void:
 	if data_path_edit.text.strip_edges().is_empty():
 		_show_error(tr("SELECT_DATA"))
 		return
+	pending_preview_path = data_path_edit.text
+	is_preview_loading = true
 	data_summary_label.text = tr("PREVIEW_LOADING")
+	_update_action_states(false)
 	bridge.request_preview(data_path_edit.text, true)
 
 
 func _on_preview_ready(payload: Dictionary) -> void:
+	is_preview_loading = false
+	if pending_preview_path != data_path_edit.text:
+		pending_preview_path = ""
+		_update_action_states(false)
+		return
+	previewed_path = pending_preview_path
+	pending_preview_path = ""
 	preview_payload = payload
 	data_summary_label.text = tr("DATA_SUMMARY") % [payload.row_count, payload.column_count]
 	_set_status("PREVIEW_READY")
@@ -591,6 +469,9 @@ func _populate_sample(rows: Array) -> void:
 
 
 func _on_preview_failed(error: Dictionary) -> void:
+	is_preview_loading = false
+	pending_preview_path = ""
+	_update_action_states(false)
 	_show_core_error(error)
 
 
@@ -787,6 +668,9 @@ func _build_config() -> Dictionary:
 	var validations := _selected_validations()
 	if validations.is_empty():
 		return {"error": tr("SELECT_VALIDATION")}
+	var output_path := output_edit.text.strip_edges()
+	if output_path.is_empty() or not output_path.is_absolute_path():
+		return {"error": tr("SELECT_OUTPUT")}
 	var grid_payload := _parameter_grid_payload()
 	if grid_payload.has("error"):
 		return grid_payload
@@ -828,6 +712,74 @@ func _refresh_review() -> void:
 		review_text.text = config.error
 	else:
 		review_text.text = JSON.stringify(config, "  ")
+	_update_action_states(not config.has("error"))
+
+
+func _analysis_inputs() -> Array[Control]:
+	return [
+		data_path_edit,
+		browse_button,
+		preview_button,
+		feature_list,
+		task_option,
+		target_option,
+		group_option,
+		missing_option,
+		scaling_option,
+		validation_list,
+		folds_spin,
+		model_list,
+		tuning_option,
+		selection_metric_option,
+		inner_folds_spin,
+		max_candidates_spin,
+		output_edit,
+		choose_folder_button,
+		refresh_review_button,
+	]
+
+
+func _set_control_interactive(control: Control, enabled: bool) -> void:
+	if control is LineEdit:
+		control.editable = enabled
+	elif control is SpinBox:
+		control.editable = enabled
+	elif control is BaseButton:
+		control.disabled = not enabled
+	elif control is ItemList:
+		control.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+		control.focus_mode = Control.FOCUS_ALL if enabled else Control.FOCUS_NONE
+		control.modulate = Color.WHITE if enabled else Color(1, 1, 1, 0.58)
+
+
+func _set_parameter_inputs_enabled(enabled: bool) -> void:
+	var tuning_mode: String = tuning_option.get_item_metadata(tuning_option.selected)
+	for key in parameter_controls:
+		var controls: Dictionary = parameter_controls[key]
+		controls.enabled.disabled = not enabled or tuning_mode == "tuning_quick"
+		controls.values.editable = enabled and tuning_mode == "tuning_custom"
+
+
+func _set_running_state(running: bool) -> void:
+	is_analysis_running = running
+	for control in _analysis_inputs():
+		_set_control_interactive(control, not running)
+	_set_parameter_inputs_enabled(not running)
+	if not running:
+		_update_validation_availability()
+	var config_valid := not _build_config().has("error") if not running else false
+	_update_action_states(config_valid)
+
+
+func _update_action_states(config_valid: bool) -> void:
+	preview_button.disabled = (
+		is_analysis_running
+		or is_preview_loading
+		or data_path_edit.text.strip_edges().is_empty()
+	)
+	run_button.disabled = is_analysis_running or not config_valid
+	cancel_button.disabled = not is_analysis_running
+	open_results_button.disabled = last_result_dir.is_empty()
 
 
 func _on_run_pressed() -> void:
@@ -846,13 +798,11 @@ func _on_run_pressed() -> void:
 	config_file.store_string(JSON.stringify(config, "  "))
 	config_file.close()
 	_set_status("RUNNING")
-	progress_detail_label.text = tr("PROGRESS_STARTING")
+	_set_progress("PROGRESS_STARTING")
 	progress_bar.value = 0.0
-	run_button.disabled = true
-	cancel_button.disabled = false
+	_set_running_state(true)
 	if not bridge.start_analysis(pending_config_path):
-		run_button.disabled = false
-		cancel_button.disabled = true
+		_set_running_state(false)
 		_cleanup_pending_config()
 		_show_error("PsyML Core is already running")
 
@@ -862,7 +812,7 @@ func _request_cancel() -> void:
 		return
 	_set_status("CANCELLING")
 	cancel_button.disabled = true
-	progress_detail_label.text = tr("PROGRESS_CANCELLING")
+	_set_progress("PROGRESS_CANCELLING")
 	bridge.cancel_analysis()
 
 
@@ -870,6 +820,7 @@ func _on_core_event(event: Dictionary) -> void:
 	progress_bar.value = float(event.get("progress", 0.0))
 	match event.get("event", ""):
 		"started":
+			_set_running_state(true)
 			_set_status("RUNNING")
 		"progress":
 			_set_status("RUNNING")
@@ -877,40 +828,66 @@ func _on_core_event(event: Dictionary) -> void:
 			var total := int(event.get("total_tasks", 0))
 			var remaining := int(event.get("remaining_tasks", 0))
 			var eta_value = event.get("estimated_remaining_seconds", null)
-			var eta := tr("ESTIMATING") if eta_value == null else _format_duration(float(eta_value))
 			var model := str(event.get("current_model", ""))
 			var validation := str(event.get("current_validation", ""))
 			var current_fold := int(event.get("current_fold", 1))
 			if completed == 0:
-				progress_detail_label.text = tr("PROGRESS_PLANNED") % total
+				_set_progress("PROGRESS_PLANNED", {"total": total})
 			else:
-				progress_detail_label.text = tr("PROGRESS_DETAIL") % [
-					completed,
-					total,
-					remaining,
-					eta,
-					_model_display(model),
-					_validation_display(validation),
-					current_fold,
-				]
+				_set_progress(
+					"PROGRESS_DETAIL",
+					{
+						"completed": completed,
+						"total": total,
+						"remaining": remaining,
+						"eta_seconds": eta_value,
+						"model": model,
+						"validation": validation,
+						"fold": current_fold,
+					}
+				)
 		"completed":
 			_cleanup_pending_config()
+			_set_running_state(false)
 			_set_status("COMPLETED")
-			run_button.disabled = false
-			cancel_button.disabled = true
-			progress_detail_label.text = tr("PROGRESS_COMPLETED")
+			_set_progress("PROGRESS_COMPLETED")
 			_load_results(event.result_path)
 		"cancelled":
 			_cleanup_pending_config()
+			_set_running_state(false)
 			_set_status("CANCELLED")
-			run_button.disabled = false
-			cancel_button.disabled = true
-			progress_detail_label.text = tr("PROGRESS_CANCELLED")
+			_set_progress("PROGRESS_CANCELLED")
 		"failed":
 			_cleanup_pending_config()
-			run_button.disabled = false
-			cancel_button.disabled = true
+			_set_running_state(false)
 			_show_core_error(event.get("error", {}))
+
+
+func _set_progress(key: String, values: Dictionary = {}) -> void:
+	progress_key = key
+	progress_values = values.duplicate(true)
+	_refresh_progress_text()
+
+
+func _refresh_progress_text() -> void:
+	if progress_detail_label == null:
+		return
+	if progress_key == "PROGRESS_PLANNED":
+		progress_detail_label.text = tr(progress_key) % int(progress_values.get("total", 0))
+	elif progress_key == "PROGRESS_DETAIL":
+		var eta_value = progress_values.get("eta_seconds", null)
+		var eta := tr("ESTIMATING") if eta_value == null else _format_duration(float(eta_value))
+		progress_detail_label.text = tr(progress_key) % [
+			int(progress_values.get("completed", 0)),
+			int(progress_values.get("total", 0)),
+			int(progress_values.get("remaining", 0)),
+			eta,
+			_model_display(str(progress_values.get("model", ""))),
+			_validation_display(str(progress_values.get("validation", ""))),
+			int(progress_values.get("fold", 1)),
+		]
+	else:
+		progress_detail_label.text = tr(progress_key)
 
 
 func _format_duration(seconds: float) -> String:
@@ -939,6 +916,7 @@ func _load_results(result_path: String) -> void:
 		_show_error("Invalid result.json")
 		return
 	last_result_dir = result_path.get_base_dir()
+	open_results_button.disabled = false
 	no_results_label.visible = false
 	last_warnings = parsed.get("warnings", [])
 	best_result_label.text = tr("BEST_RESULT") % [
@@ -951,7 +929,7 @@ func _load_results(result_path: String) -> void:
 	var root := metrics_tree.create_item()
 	for metric in parsed.metrics:
 		var item := metrics_tree.create_item(root)
-		item.set_text(0, metric)
+		item.set_text(0, _metric_display(metric))
 		item.set_text(1, "%.6f" % parsed.metrics[metric])
 	var artifacts: Dictionary = parsed.artifacts
 	_load_csv_preview(last_result_dir.path_join(artifacts.model_comparison), comparison_tree, 30)
@@ -975,7 +953,10 @@ func _load_csv_preview(path: String, tree: Tree, maximum_rows: int) -> void:
 	tree.columns = headers.size()
 	tree.column_titles_visible = true
 	for index in range(headers.size()):
-		tree.set_column_title(index, headers[index])
+		var header := str(headers[index])
+		tree.set_column_title(index, _column_display(header))
+		tree.set_column_custom_minimum_width(index, _column_minimum_width(header))
+		tree.set_column_expand(index, false)
 	var root := tree.create_item()
 	var shown := 0
 	while not file.eof_reached() and shown < maximum_rows:
@@ -984,13 +965,16 @@ func _load_csv_preview(path: String, tree: Tree, maximum_rows: int) -> void:
 			continue
 		var item := tree.create_item(root)
 		for index in range(min(headers.size(), values.size())):
+			var header := str(headers[index])
 			var value := str(values[index])
-			if headers[index] == "model":
+			if header == "model":
 				value = _model_display(value)
-			elif headers[index] == "validation":
+			elif header == "validation":
 				value = _validation_display(value)
-			elif headers[index] == "selection_metric":
+			elif header == "selection_metric":
 				value = _metric_display(value)
+			elif header == "status":
+				value = _status_display(value)
 			item.set_text(index, value)
 		shown += 1
 
@@ -1011,6 +995,35 @@ func _metric_display(value: String) -> String:
 	if value.is_empty():
 		return value
 	var key := "METRIC_" + value.to_upper()
+	var localized := tr(key)
+	return value if localized == key else localized
+
+
+func _column_display(value: String) -> String:
+	var key := "COLUMN_" + value.to_upper()
+	var localized := tr(key)
+	return value if localized == key else localized
+
+
+func _column_minimum_width(value: String) -> int:
+	var widths := {
+		"rank": 64,
+		"model": 150,
+		"validation": 160,
+		"selection_metric": 150,
+		"selection_score": 130,
+		"status": 100,
+		"error": 180,
+		"row_index": 100,
+		"fold": 90,
+		"observed": 110,
+		"predicted": 110,
+	}
+	return int(widths.get(value, 120))
+
+
+func _status_display(value: String) -> String:
+	var key := "STATUS_" + value.to_upper()
 	var localized := tr(key)
 	return value if localized == key else localized
 

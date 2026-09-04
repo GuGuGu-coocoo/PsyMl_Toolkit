@@ -29,5 +29,6 @@ gui/tests/fixtures/*.translation
 gui/tests/fixtures/*.csv.import
 examples/public/data/
 
-# Local working plan requested by the repository owner
+# Local internal documentation
 docs/PSYML_TOOLKIT_DEVELOPMENT_PLAN.md
+/docs/internal/
