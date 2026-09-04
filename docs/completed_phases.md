@@ -1,6 +1,6 @@
 # PsyML Toolkit Completed Phases
 
-本文件归档开发计划中已完成的阶段，避免当前计划混入已经结束的工作。今后每完成一个阶段，必须先补充其完成证据与验证记录，再在本文件增加对应条目，并从 `PSYML_TOOLKIT_DEVELOPMENT_PLAN.md` 移除该阶段的详细待办。
+本文件归档开发计划中已完成的阶段，避免当前计划混入已经结束的工作。今后每完成一个阶段，必须先补充其完成证据与验证记录，再在本文件增加对应条目，并从 `docs/PSYML_TOOLKIT_DEVELOPMENT_PLAN.md` 移除该阶段的详细待办。
 
 ## Phase 0 — Legacy Asset Inventory
 
