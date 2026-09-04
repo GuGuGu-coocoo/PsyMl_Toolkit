@@ -30,6 +30,10 @@
 
 已建立 `docs/current_state.md`，记录遗留资产可运行、失效和待确认状态，以及输入、输出和人工配置情况。
 
+## Phase 7 — Legacy Read-Only Review
+
+已完成对 `legacy/original/program/` 的只读统计、机器学习与工程审查；72 个 Python 文件均能解析。发现的 P0/P1/P2 风险、迁移建议与 Core Candidate / Specialized / Archive Only 分类见 `docs/legacy_code_review.md`。Legacy 源文件未被修改。
+
 ## Phase 8 — First Round Fixes
 
 已在新的 PsyML Core 中完成，不修改 legacy 代码。训练集内预处理、防硬编码路径、统一随机种子、验证、评价、输出、输入校验和未弃用的 SVM 评分路径均已落实。完成证据与自动化验证见 `docs/phase_8_9_completion.md`。
