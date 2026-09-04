@@ -51,4 +51,4 @@ Before any legacy workflow can be run, its entry script requires manual review a
 - Saved Joblib and PyTorch model files.
 - Decision-tree Graphviz output and optional matplotlib plots.
 
-Original/derived result directories, trained-model artifacts, and archives have been removed locally and remain excluded from Git until ownership and publication permissions are confirmed.
+Original/derived result directories, trained-model artifacts, and archives have been removed locally and remain excluded from Git to prevent privacy leaks and accidental publication of generated artifacts.

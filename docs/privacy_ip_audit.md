@@ -34,4 +34,4 @@ The following may contain raw records, derived research results, or model state 
 - No API keys, passwords, database connection strings, telephone-number patterns, or Chinese national-ID patterns were found in searchable source text.
 - A legacy contact email address found in 27 Python files was replaced with `maintainer@example.invalid`; the original is retained only in the user's cloud backup.
 - Historical scripts contain hard-coded local Windows paths. They are not credentials, but will require portability fixes in a later engineering phase.
-- Research-data ownership, client ownership, and publication permissions have not been independently verified. The repository should therefore remain private until that review is complete.
+- On 2026-09-04, the repository owner confirmed that they authored the legacy code and that there is no source-code ownership issue. Original research data and derived private artifacts remain deleted regardless of code ownership.

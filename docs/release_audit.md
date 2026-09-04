@@ -4,7 +4,7 @@ Audit date: 2026-09-04
 
 ## Decision
 
-The repository is technically ready for controlled researcher trials from a cloned checkout. It is **not yet cleared for an open-source or standalone binary release** because the repository owner has not selected a project license and ownership/publication permission for legacy source files has not been independently established. No license was invented or applied during this audit.
+The repository is technically ready for researcher trials from a cloned checkout. On 2026-09-04, the repository owner confirmed that they authored the legacy code and that there is no source-code ownership issue. No project license was invented or applied during this audit; until the owner selects one, public visibility alone does not grant reuse or redistribution rights.
 
 ## Platform acceptance
 
@@ -42,6 +42,6 @@ The original local backup and original research data remain deleted as requested
 
 The build configuration was corrected so the source distribution no longer contains legacy assets. Current local artifact sizes are approximately 29 KiB for the wheel and 21 KiB for the source archive. The twelve README screenshots total approximately 1.18 MB; the Git object pack is approximately 13.56 MiB.
 
-## Remaining owner decision
+## Remaining license decision
 
-Before describing the repository as open source, publishing it to a package index, or distributing a bundled desktop binary, the owner must confirm ownership of the modern and legacy code and choose an explicit project license. Until then, public visibility does not grant reuse permission. This legal/product decision does not block local researcher testing of the completed Phase 14 workflow.
+Legacy ownership is confirmed and no longer blocks publication. If the owner wants others to be allowed to copy, modify or redistribute the project, they should choose and add an explicit project license before describing it as open source or publishing distributable packages. Keeping no license is also possible for a publicly visible repository, but reserves the default copyright rights.

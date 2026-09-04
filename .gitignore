@@ -1,7 +1,7 @@
 # Private legacy backup and audit artefacts
 psyml_legacy_backup/
 
-# Original or derived research data that must not be published before ownership review
+# Original or derived research data excluded to prevent privacy leaks
 **/results/
 **/subdimensions-data-result/
 **/saved_models/

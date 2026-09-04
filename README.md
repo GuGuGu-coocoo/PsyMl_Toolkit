@@ -45,7 +45,7 @@ uv run python tools/launch_gui.py
 
 ### 项目状态与文档
 
-Phase 0–14 已全部完成，现暂停扩展功能并进入研究者试用。Legacy 代码只作历史参考，不用于新分析；原始研究数据已经删除，仓库内数据均为随机合成数据。公开示例数据仅在本地按固定哈希下载，不提交进仓库。项目尚未选择许可证且 legacy 权属仍待确认，因此目前可从源码受控试用，但不应宣称已获准开源或分发独立二进制。
+Phase 0–14 已全部完成，现暂停扩展功能并进入研究者试用。Legacy 代码由仓库所有者编写，权属已经确认；它只作历史参考，不用于新分析。原始研究数据已经删除，仓库内数据均为随机合成数据；公开示例数据仅在本地按固定哈希下载，不提交进仓库。项目尚未选择许可证，因此公开可见并不自动授予他人复制、修改或分发代码的权利。
 
 - [已完成阶段](docs/completed_phases.md)
 - [隐私与知识产权审计](docs/privacy_ip_audit.md)
@@ -54,6 +54,7 @@ Phase 0–14 已全部完成，现暂停扩展功能并进入研究者试用。L
 - [Phase 13 完成记录](docs/phase_13_completion.md)
 - [Phase 14 完成记录](docs/phase_14_completion.md)
 - [发布审计](docs/release_audit.md)
+- [人工验收流程](docs/manual_acceptance_test.md)
 
 <a id="english"></a>
 
@@ -94,7 +95,7 @@ For command-line use, run `uv run psyml --help`. If Godot is not on `PATH`, set 
 
 The screenshots use random synthetic data and contain no participant information. Auditable public examples use UCI’s CC BY 4.0 [Iris classification dataset](https://doi.org/10.24432/C56C76) and [Concrete Compressive Strength regression dataset](https://doi.org/10.24432/C5PK67); see the [public example instructions](examples/public/README.md).
 
-Phases 0–14 are complete, feature expansion is paused, and the project is ready for researcher trials. Legacy code is historical reference only; original research data have been removed. Repository datasets are randomly generated, while public examples are downloaded locally with pinned hashes and are not committed. No project license has been selected and legacy ownership remains unverified, so the current clearance is for controlled source-based trials—not an open-source or standalone binary release.
+Phases 0–14 are complete, feature expansion is paused, and the project is ready for researcher trials. The repository owner authored the legacy code and has confirmed its ownership; it remains historical reference only. Original research data have been removed. Repository datasets are randomly generated, while public examples are downloaded locally with pinned hashes and are not committed. No project license has been selected, so public visibility does not automatically grant permission to copy, modify or redistribute the code.
 
 <a id="french"></a>
 
@@ -135,4 +136,4 @@ Pour la ligne de commande : `uv run psyml --help`. Si Godot n’est pas dans le 
 
 Les captures utilisent des données synthétiques aléatoires sans information de participant. Les exemples publics vérifiables emploient les jeux UCI sous CC BY 4.0 [Iris pour la classification](https://doi.org/10.24432/C56C76) et [Concrete Compressive Strength pour la régression](https://doi.org/10.24432/C5PK67) ; voir les [instructions des exemples publics](examples/public/README.md).
 
-Les phases 0–14 sont terminées, l’ajout de fonctionnalités est suspendu et le projet est prêt pour des essais par des chercheurs. Le code historique sert uniquement de référence ; les données de recherche originales ont été supprimées. Les données du dépôt sont générées aléatoirement, tandis que les exemples publics sont téléchargés localement avec des empreintes figées et ne sont pas commités. Aucune licence de projet n’a été choisie et la propriété du code historique reste à confirmer : l’autorisation actuelle couvre donc les essais contrôlés depuis les sources, pas une publication open source ni une distribution binaire autonome.
+Les phases 0–14 sont terminées, l’ajout de fonctionnalités est suspendu et le projet est prêt pour des essais par des chercheurs. Le propriétaire du dépôt a écrit le code historique et en a confirmé la propriété ; ce code sert uniquement de référence. Les données de recherche originales ont été supprimées. Les données du dépôt sont générées aléatoirement, tandis que les exemples publics sont téléchargés localement avec des empreintes figées et ne sont pas commités. Aucune licence de projet n’a encore été choisie : la visibilité publique n’accorde donc pas automatiquement le droit de copier, modifier ou redistribuer le code.
