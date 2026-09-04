@@ -18,42 +18,7 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-CLASSIFICATION_MODELS = {
-    "knn",
-    "random_forest",
-    "svm",
-    "mlp",
-    "decision_tree",
-    "stacking",
-    "dummy",
-    "logistic_regression",
-    "gaussian_nb",
-    "lda",
-    "qda",
-    "gradient_boosting",
-}
-REGRESSION_MODELS = {
-    "knn",
-    "lasso",
-    "mlp",
-    "random_forest",
-    "svr",
-    "dummy",
-    "linear_regression",
-    "ridge",
-    "elastic_net",
-    "decision_tree",
-    "gradient_boosting",
-}
-
-
-def supported_models(task: str) -> tuple[str, ...]:
-    """Return supported model names for a task."""
-    if task == "classification":
-        return tuple(sorted(CLASSIFICATION_MODELS))
-    if task == "regression":
-        return tuple(sorted(REGRESSION_MODELS))
-    raise ValueError(f"Unsupported task: {task}")
+from psyml.models.catalog import supported_models
 
 
 def build_model(task: str, model_name: str, random_seed: int, params: dict[str, Any]):

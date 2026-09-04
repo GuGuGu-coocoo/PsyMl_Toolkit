@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://psyml.dev/schemas/result-1.0.json",
+  "title": "PsyML result summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "task", "metrics", "warnings", "artifacts"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "status": {"const": "completed"},
+    "task": {"enum": ["classification", "regression"]},
+    "metrics": {"type": "object", "additionalProperties": {"type": "number"}},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "artifacts": {"type": "object", "additionalProperties": {"type": "string"}}
+  }
+}

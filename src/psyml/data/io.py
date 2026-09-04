@@ -5,17 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pyreadstat
 
-SUPPORTED_SUFFIXES = {
-    ".csv",
-    ".tsv",
-    ".xlsx",
-    ".xls",
-    ".sav",
-    ".dta",
-    ".sas7bdat",
-    ".xpt",
-    ".parquet",
-}
+from psyml.data.formats import SUPPORTED_SUFFIXES
 
 
 def load_dataframe(path: Path | str) -> pd.DataFrame:

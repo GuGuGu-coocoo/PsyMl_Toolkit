@@ -11,13 +11,9 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
-import matplotlib
 import pandas as pd
 
 from psyml.config import ExperimentConfig
-
-matplotlib.use("Agg")
-from matplotlib import pyplot as plt
 
 
 def _package_version(distribution: str) -> str:
@@ -234,6 +230,11 @@ def _write_figure(
     predictions: pd.DataFrame,
     confusion: pd.DataFrame | None,
 ) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from matplotlib import pyplot as plt
+
     figures_dir.mkdir(parents=True, exist_ok=True)
     if config.task == "regression":
         figure, axis = plt.subplots(figsize=(6.4, 5.2))

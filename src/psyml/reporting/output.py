@@ -1,13 +1,12 @@
 """Write consistent, explicit experiment outputs."""
 
 import json
-from dataclasses import asdict
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 
 from psyml.config import ExperimentConfig
+from psyml.protocol import config_to_dict, result_payload
 
 
 def write_results(
@@ -34,10 +33,30 @@ def write_results(
         json.dumps(warnings or [], indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    serialized: dict[str, Any] = asdict(config)
-    serialized["input_path"] = str(config.input_path) if config.input_path else None
-    serialized["output_dir"] = str(config.output_dir)
-    (output_dir / "config.json").write_text(
-        json.dumps(serialized, indent=2, ensure_ascii=False, default=str) + "\n",
+    serialized = (
+        json.dumps(
+            config_to_dict(config), indent=2, ensure_ascii=False, sort_keys=True, default=str
+        )
+        + "\n"
+    )
+    (output_dir / "analysis_config.json").write_text(serialized, encoding="utf-8")
+    (output_dir / "config.json").write_text(serialized, encoding="utf-8")
+
+
+def write_result_summary(
+    output_dir: Path,
+    config: ExperimentConfig,
+    metrics: dict[str, float],
+    warnings: list[str],
+) -> None:
+    """Write the stable result summary after every other artefact succeeds."""
+    (output_dir / "result.json").write_text(
+        json.dumps(
+            result_payload(config, metrics, warnings),
+            indent=2,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        + "\n",
         encoding="utf-8",
     )

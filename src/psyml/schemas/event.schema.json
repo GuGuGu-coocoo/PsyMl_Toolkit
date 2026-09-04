@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://psyml.dev/schemas/event-1.0.json",
+  "title": "PsyML subprocess event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event", "progress"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "event": {"enum": ["started", "completed", "failed", "cancelled"]},
+    "progress": {"type": "number", "minimum": 0, "maximum": 1},
+    "result_path": {"type": "string"},
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "type", "message"],
+      "properties": {
+        "code": {"type": "string"},
+        "type": {"type": "string"},
+        "message": {"type": "string"}
+      }
+    }
+  }
+}

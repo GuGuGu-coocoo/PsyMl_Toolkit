@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://psyml.dev/schemas/analysis-config-1.0.json",
+  "title": "PsyML analysis configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task", "target_column", "model_name", "input_path", "output_dir"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "task": {"enum": ["classification", "regression"]},
+    "target_column": {"type": "string", "minLength": 1},
+    "model_name": {"type": "string", "minLength": 1},
+    "input_path": {"type": ["string", "null"]},
+    "output_dir": {"type": "string", "minLength": 1},
+    "group_column": {"type": ["string", "null"]},
+    "test_size": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+    "random_seed": {"type": "integer"},
+    "validation_strategy": {"enum": ["holdout", "k_fold", "stratified_k_fold", "group_k_fold", "leave_one_group_out"]},
+    "n_splits": {"type": "integer", "minimum": 2},
+    "missing_strategy": {"enum": ["drop", "mean", "median", "mode"]},
+    "scaling": {"enum": ["none", "standard", "minmax"]},
+    "include_data_hash": {"type": "boolean"},
+    "model_params": {"type": "object"}
+  }
+}

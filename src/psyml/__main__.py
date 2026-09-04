@@ -1,4 +1,4 @@
-from psyml.cli import main
+from psyml.cli import entrypoint
 
 if __name__ == "__main__":
-    main()
+    entrypoint()

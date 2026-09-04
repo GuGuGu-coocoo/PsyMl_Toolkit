@@ -22,3 +22,8 @@ __pycache__/
 *.sanitizing
 *.sanitizing.inspect.ndjson
 tools/node_modules/
+dist/
+build/
+
+# Local working plan requested by the repository owner
+docs/PSYML_TOOLKIT_DEVELOPMENT_PLAN.md

@@ -15,7 +15,7 @@ from psyml.evaluation.metrics import (
 )
 from psyml.models.factory import build_model
 from psyml.preprocessing.pipeline import build_preprocessor
-from psyml.reporting.output import write_results
+from psyml.reporting.output import write_result_summary, write_results
 from psyml.reporting.research import write_research_outputs
 from psyml.validation.split import make_validation_splits
 
@@ -192,6 +192,7 @@ def run_experiment(config: ExperimentConfig, frame: pd.DataFrame | None = None) 
         warnings=warnings,
         confusion=confusion,
     )
+    write_result_summary(Path(config.output_dir), config, metrics, warnings)
     return ExperimentResult(
         metrics=metrics,
         predictions=predictions,
