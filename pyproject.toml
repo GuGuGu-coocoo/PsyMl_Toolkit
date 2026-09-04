@@ -36,6 +36,22 @@ package = true
 [tool.hatch.build.targets.wheel]
 packages = ["src/psyml"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/psyml",
+  "README.md",
+  "pyproject.toml",
+]
+exclude = [
+  "/.github",
+  "/docs",
+  "/examples",
+  "/gui",
+  "/legacy",
+  "/tests",
+  "/tools",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

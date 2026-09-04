@@ -45,13 +45,15 @@ uv run python tools/launch_gui.py
 
 ### 项目状态与文档
 
-Phase 0–13 已完成，Phase 14 正在完成跨平台验收和发布审计。Legacy 代码只作历史参考，不用于新分析；原始研究数据已经删除，仓库内数据均为随机合成数据。公开示例数据仅在本地按固定哈希下载，不提交进仓库。
+Phase 0–14 已全部完成，现暂停扩展功能并进入研究者试用。Legacy 代码只作历史参考，不用于新分析；原始研究数据已经删除，仓库内数据均为随机合成数据。公开示例数据仅在本地按固定哈希下载，不提交进仓库。项目尚未选择许可证且 legacy 权属仍待确认，因此目前可从源码受控试用，但不应宣称已获准开源或分发独立二进制。
 
 - [已完成阶段](docs/completed_phases.md)
 - [隐私与知识产权审计](docs/privacy_ip_audit.md)
 - [合成数据验证](docs/data_sanitization_verification.md)
 - [Core JSON 接口](docs/core_interface.md)
 - [Phase 13 完成记录](docs/phase_13_completion.md)
+- [Phase 14 完成记录](docs/phase_14_completion.md)
+- [发布审计](docs/release_audit.md)
 
 <a id="english"></a>
 
@@ -92,7 +94,7 @@ For command-line use, run `uv run psyml --help`. If Godot is not on `PATH`, set 
 
 The screenshots use random synthetic data and contain no participant information. Auditable public examples use UCI’s CC BY 4.0 [Iris classification dataset](https://doi.org/10.24432/C56C76) and [Concrete Compressive Strength regression dataset](https://doi.org/10.24432/C5PK67); see the [public example instructions](examples/public/README.md).
 
-Phases 0–13 are complete. Phase 14 is completing cross-platform acceptance and the release audit. Legacy code is historical reference only; original research data have been removed. Repository datasets are randomly generated, while public examples are downloaded locally with pinned hashes and are not committed.
+Phases 0–14 are complete, feature expansion is paused, and the project is ready for researcher trials. Legacy code is historical reference only; original research data have been removed. Repository datasets are randomly generated, while public examples are downloaded locally with pinned hashes and are not committed. No project license has been selected and legacy ownership remains unverified, so the current clearance is for controlled source-based trials—not an open-source or standalone binary release.
 
 <a id="french"></a>
 
@@ -133,4 +135,4 @@ Pour la ligne de commande : `uv run psyml --help`. Si Godot n’est pas dans le 
 
 Les captures utilisent des données synthétiques aléatoires sans information de participant. Les exemples publics vérifiables emploient les jeux UCI sous CC BY 4.0 [Iris pour la classification](https://doi.org/10.24432/C56C76) et [Concrete Compressive Strength pour la régression](https://doi.org/10.24432/C5PK67) ; voir les [instructions des exemples publics](examples/public/README.md).
 
-Les phases 0–13 sont terminées. La phase 14 finalise la validation multiplateforme et l’audit de publication. Le code historique sert uniquement de référence ; les données de recherche originales ont été supprimées. Les données du dépôt sont générées aléatoirement, tandis que les exemples publics sont téléchargés localement avec des empreintes figées et ne sont pas commités.
+Les phases 0–14 sont terminées, l’ajout de fonctionnalités est suspendu et le projet est prêt pour des essais par des chercheurs. Le code historique sert uniquement de référence ; les données de recherche originales ont été supprimées. Les données du dépôt sont générées aléatoirement, tandis que les exemples publics sont téléchargés localement avec des empreintes figées et ne sont pas commités. Aucune licence de projet n’a été choisie et la propriété du code historique reste à confirmer : l’autorisation actuelle couvre donc les essais contrôlés depuis les sources, pas une publication open source ni une distribution binaire autonome.

@@ -57,3 +57,7 @@
 ## Phase 13 — Trilingual Godot GUI
 
 已建立默认中文并支持英文、法文的 Godot 4 图形界面，通过稳定 JSON/JSONL 接口完成数据预览、配置、运行/取消、warning、指标、预测、图形和结果目录流程。真实 GUI 自动化测试已完成分类与回归分析；完整证据见 `docs/phase_13_completion.md`。
+
+## Phase 14 — Cross-Platform Acceptance and Researcher Documentation
+
+Windows、macOS、Linux 均通过 Python 与 Godot GUI 分类/回归全流程；README 以中文、英文、法文提供真实截图操作说明；两个 CC BY 4.0 UCI 示例完成固定哈希验证和结果复查；隐私、秘密、依赖、许可与产物体积审计完成。技术计划至此结束，证据见 `docs/phase_14_completion.md` 与 `docs/release_audit.md`。未选择项目许可证和 legacy 权属未确认仍阻止正式开源或独立二进制分发，但不阻止从源码开展受控研究者试用。

@@ -8,7 +8,7 @@ from psyml import ExperimentConfig, run_experiment
 
 
 def test_regression_research_outputs_match_executed_file_run(tmp_path):
-    private_directory = tmp_path / "Researcher Alice 13800138000"
+    private_directory = tmp_path / "Sensitive Participant Folder"
     private_directory.mkdir()
     input_path = private_directory / "input.csv"
     values = np.linspace(0, 8, 32)
@@ -51,8 +51,7 @@ def test_regression_research_outputs_match_executed_file_run(tmp_path):
     assert '"alpha": 0.25' in methods
     assert "metrics_summary.csv" not in methods
     assert expected_hash in report
-    assert "Researcher Alice" not in report
-    assert "13800138000" not in report
+    assert "Sensitive Participant Folder" not in report
     figure = output_dir / "figures" / "observed_vs_predicted.png"
     assert figure.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
 
