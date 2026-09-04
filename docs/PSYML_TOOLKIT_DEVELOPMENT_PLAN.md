@@ -4,52 +4,49 @@
 
 PsyML Toolkit 将本科研究与应用项目遗留的 Python 机器学习脚本，逐步整理为可运行、可复现、可维护、能避免常见数据泄漏，且对非程序研究者友好的研究工具。
 
-已完成的 Phase 0–9 已移至 [completed_phases.md](completed_phases.md)。遗留代码继续原样保存在 `legacy/original/program/`；新的实现只放在 `src/psyml/`。
+已完成的 Phase 0–10 已移至 [completed_phases.md](completed_phases.md)。遗留代码继续原样保存在 `legacy/original/program/`；新的实现只放在 `src/psyml/`。
 
 完成规则：每个阶段完成时，先在 `docs/` 写入可核验的完成记录，再追加到 `docs/completed_phases.md`，并从本计划移除该阶段的详细待办。
 
 当前不在范围内：AutoML、Transformer、LLM、云服务、数据库、SHAP、高级模型搜索、大规模深度学习、Web SaaS 与商业化。
 
-## Phase 10 — Basic Model Completion
-
-在现有基础模型上补齐科研常用 baseline 和常用机器学习方法；不引入 XGBoost、LightGBM 或 Transformer。增加科研常用的数据格式支持。
-
-- Regression：Linear Regression、Ridge Regression、Dummy Regressor；可选 Decision Tree Regression。
-- Classification：Logistic Regression、Dummy Classifier。
-
 ## Phase 11 — Research Methods & Reproducibility Output
 
-每次分析在真实配置基础上生成下列文件，且不得写入被试姓名、学号、手机号等直接身份信息：
+每次分析根据真实执行配置生成下列文件，不得写入姓名、学号、手机号等直接身份信息：
 
-- `analysis_manifest.json`：PsyML/Python/OS 与实际使用库版本；按需记录 PyTorch、TensorFlow、CUDA 和 GPU。
-- `methods_summary.md`：根据真实模型、预处理、验证、分组和指标生成可供论文 Methods 参考的说明。
-- `reproducibility_report.md`：环境、数据维度与可选 hash、预处理、验证、模型超参数、指标、警告与已发现的泄漏风险。
+- `analysis_manifest.json`：PsyML/Python/OS 与实际使用库版本、数据尺寸、可选数据 hash。
+- `methods_summary.md`：真实模型、预处理、验证、分组与指标的论文 Methods 参考说明。
+- `reproducibility_report.md`：环境、数据溯源、配置、fold 结果、warning 与泄漏风险。
+- `figures/`：回归预测图或分类混淆矩阵等由 Python Core 计算并生成的图。
 
-标准结果目录：
+报告内容必须能从保存的配置重新执行；不声称未实际执行的步骤。
 
-```text
-results/run_xxx/
-├── metrics.csv
-├── predictions.csv
-├── config.json
-├── analysis_manifest.json
-├── methods_summary.md
-├── reproducibility_report.md
-└── figures/
-```
+## Phase 12 — Stable Core Interface and Packaging
 
-## Phase 12 — Godot GUI
+在 GUI 前冻结 Python Core 接口：
 
-Godot 只负责选择数据、变量和配置，启动 Python Core，显示状态、警告、结果与导出选项；不得重复训练、预处理、验证或指标计算。GUI 界面须支持中文、英文和法文，默认语言为中文。
+- 定义版本化 `analysis_config.json` schema、结果 schema、状态事件和错误结构。
+- CLI 支持配置文件运行、数据预览与能力查询。
+- 提供本地子进程接口；Godot 只传递 JSON 和读取结果，不嵌入或复制科学计算逻辑。
+- 验证中文路径、含空格路径、取消运行、错误返回与确定性重跑。
+- 建立 Windows 与 macOS 的自动化测试和可安装包构建。
 
-v0.1 流程：支持的格式导入 → 任务与变量选择 → 预处理与验证选择 → 模型选择 → 配置确认 → 执行 → 回归或分类结果展示 → 导出。
+## Phase 13 — Trilingual Godot GUI
 
-优先使用本地进程或本地 API 传递 `analysis_config.json` 和结果文件；不使用复杂 Python embedding。第一阶段支持 Windows 与 macOS，Linux 后续测试；Web 不在当前范围。
+GUI 默认中文，同时支持英文和法文，并调用 Phase 12 的稳定接口。
 
-核心必须先验证：回归和分类 Pipeline、交叉验证、group-aware validation、无泄漏预处理、指标、结果导出、中文和含空格路径，以及 Godot 与 Python 的配置和错误传递。
+流程：导入数据 → 预览变量与缺失值 → 选择任务/特征/目标/分组 → 设置预处理与验证 → 选择模型 → 检查配置 → 运行及取消 → 查看 warning、指标、预测与图 → 导出完整结果。
 
-完成后更新 README，以图片和文字说明的方式向使用者演示操作流程并介绍功能；三种语言应分别使用对应语言界面的截图。使用标准公开数据进行测试，便于研究者审查程序是否存在问题。
+Godot 不训练模型、不拟合预处理、不计算指标。三种语言必须覆盖界面、状态、验证提示和错误信息。
+
+## Phase 14 — Cross-Platform Acceptance and Researcher Documentation
+
+- 在 Windows 与 macOS 分别完成回归和分类端到端验证；Linux 作为次级支持。
+- 使用有清晰来源与许可的标准公开数据完成可复查示例，并同时保留随机合成数据用于结构测试。
+- README 以中文、英文、法文提供图文操作流程；每种语言使用对应语言界面的真实截图。
+- 验证安装、中文/空格路径、配置重跑、结果导出、Methods 与 reproducibility 报告。
+- 发布前再次执行隐私、许可证、依赖、安全与产物大小审查。
 
 ## Current development finish line
 
-当前阶段完成标准：Legacy review 完成；P0 问题修复；Core、基础模型、统一预处理与验证、group-aware 支持、泄漏保护、指标、结果导出与分析配置完成；Godot 能完成一次回归和一次分类分析，并在 Windows 与 macOS 基础流程可用；分析清单、Methods Summary 和 reproducibility report 自动生成。达到该点后暂停扩展功能，邀请真实研究者试用，再依据反馈决定后续工作。
+Phase 10–14 的每项完成标准均有代码、自动化测试、报告或平台运行证据；Windows 与 macOS 用户可通过三语 GUI 完成规范的回归和分类分析并导出可复现结果。达到该点后暂停扩展功能，邀请真实研究者试用，再依据反馈决定后续工作。

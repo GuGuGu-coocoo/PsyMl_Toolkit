@@ -2,12 +2,21 @@
 
 from typing import Any
 
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, StackingClassifier
-from sklearn.linear_model import Lasso, LogisticRegression
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.dummy import DummyClassifier, DummyRegressor
+from sklearn.ensemble import (
+    GradientBoostingClassifier,
+    GradientBoostingRegressor,
+    RandomForestClassifier,
+    RandomForestRegressor,
+    StackingClassifier,
+)
+from sklearn.linear_model import ElasticNet, Lasso, LinearRegression, LogisticRegression, Ridge
+from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.svm import SVC, SVR
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 CLASSIFICATION_MODELS = {
     "knn",
@@ -16,8 +25,26 @@ CLASSIFICATION_MODELS = {
     "mlp",
     "decision_tree",
     "stacking",
+    "dummy",
+    "logistic_regression",
+    "gaussian_nb",
+    "lda",
+    "qda",
+    "gradient_boosting",
 }
-REGRESSION_MODELS = {"knn", "lasso", "mlp", "random_forest", "svr"}
+REGRESSION_MODELS = {
+    "knn",
+    "lasso",
+    "mlp",
+    "random_forest",
+    "svr",
+    "dummy",
+    "linear_regression",
+    "ridge",
+    "elastic_net",
+    "decision_tree",
+    "gradient_boosting",
+}
 
 
 def supported_models(task: str) -> tuple[str, ...]:
@@ -51,6 +78,18 @@ def _build_classifier(name: str, random_seed: int, params: dict[str, Any]):
         return MLPClassifier(random_state=random_seed, max_iter=500, **params)
     if name == "decision_tree":
         return DecisionTreeClassifier(random_state=random_seed, **params)
+    if name == "dummy":
+        return DummyClassifier(**params)
+    if name == "logistic_regression":
+        return LogisticRegression(max_iter=1000, random_state=random_seed, **params)
+    if name == "gaussian_nb":
+        return GaussianNB(**params)
+    if name == "lda":
+        return LinearDiscriminantAnalysis(**params)
+    if name == "qda":
+        return QuadraticDiscriminantAnalysis(**params)
+    if name == "gradient_boosting":
+        return GradientBoostingClassifier(random_state=random_seed, **params)
     estimators = [
         ("knn", KNeighborsClassifier()),
         ("random_forest", RandomForestClassifier(random_state=random_seed)),
@@ -72,4 +111,16 @@ def _build_regressor(name: str, random_seed: int, params: dict[str, Any]):
         return MLPRegressor(random_state=random_seed, max_iter=500, **params)
     if name == "random_forest":
         return RandomForestRegressor(random_state=random_seed, **params)
-    return SVR(**params)
+    if name == "svr":
+        return SVR(**params)
+    if name == "dummy":
+        return DummyRegressor(**params)
+    if name == "linear_regression":
+        return LinearRegression(**params)
+    if name == "ridge":
+        return Ridge(random_state=random_seed, **params)
+    if name == "elastic_net":
+        return ElasticNet(random_state=random_seed, **params)
+    if name == "decision_tree":
+        return DecisionTreeRegressor(random_state=random_seed, **params)
+    return GradientBoostingRegressor(random_state=random_seed, **params)

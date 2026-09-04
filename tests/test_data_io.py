@@ -22,3 +22,13 @@ def test_rejects_unknown_format_and_missing_target(tmp_path):
         load_dataframe(path)
     with pytest.raises(KeyError, match="Target column"):
         validate_dataset(pd.DataFrame({"feature": [1]}), "target")
+
+
+def test_rejects_empty_data_duplicate_columns_and_missing_group():
+    with pytest.raises(ValueError, match="no rows"):
+        validate_dataset(pd.DataFrame(columns=["feature", "target"]), "target")
+    duplicate_columns = pd.DataFrame([[1, 0]], columns=["feature", "feature"])
+    with pytest.raises(ValueError, match="duplicate column"):
+        validate_dataset(duplicate_columns, "feature")
+    with pytest.raises(KeyError, match="Group column"):
+        validate_dataset(pd.DataFrame({"feature": [1], "target": [0]}), "target", "group")

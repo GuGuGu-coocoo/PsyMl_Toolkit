@@ -2,6 +2,7 @@ import json
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from psyml import ExperimentConfig, run_experiment
 from psyml.validation import split_train_test
@@ -37,7 +38,9 @@ def test_classification_pipeline_fits_scaler_to_training_partition_only(tmp_path
         config.test_size,
         config.random_seed,
     )
-    scaler = result.model.named_steps["preprocess"].named_transformers_["numeric"].named_steps["scale"]
+    scaler = (
+        result.model.named_steps["preprocess"].named_transformers_["numeric"].named_steps["scale"]
+    )
     assert scaler.mean_[0] == train_x["continuous"].mean()
     assert scaler.mean_[0] != frame["continuous"].mean()
     assert {"accuracy", "balanced_accuracy", "f1_weighted", "roc_auc"} <= result.metrics.keys()
@@ -64,3 +67,130 @@ def test_regression_outputs_holdout_metrics(tmp_path):
     assert {"r2", "mae", "rmse"} == result.metrics.keys()
     assert result.metrics["r2"] > 0.99
     assert len(result.predictions) > 0
+
+
+def test_cross_validation_exports_fold_metrics_and_confusion_matrix(tmp_path):
+    frame = _classification_frame()
+    config = ExperimentConfig(
+        task="classification",
+        target_column="target",
+        model_name="logistic_regression",
+        output_dir=tmp_path / "cross validation 中文",
+        validation_strategy="stratified_k_fold",
+        n_splits=4,
+        scaling="minmax",
+    )
+
+    result = run_experiment(config, frame)
+
+    assert len(result.fold_metrics) == 4
+    assert set(result.metric_summary.columns) == {
+        "metric",
+        "mean",
+        "std",
+        "min",
+        "max",
+        "n_folds",
+    }
+    assert set(result.metric_summary["n_folds"]) == {4}
+    assert set(result.predictions["fold"]) == {1, 2, 3, 4}
+    assert (config.output_dir / "fold_metrics.csv").is_file()
+    assert (config.output_dir / "metrics_summary.csv").is_file()
+    assert (config.output_dir / "confusion_matrix.csv").is_file()
+    assert (config.output_dir / "warnings.json").is_file()
+
+
+def test_drop_missing_strategy_reports_removed_rows(tmp_path):
+    frame = _classification_frame()
+    frame.loc[0, "continuous"] = np.nan
+    config = ExperimentConfig(
+        task="classification",
+        target_column="target",
+        model_name="dummy",
+        output_dir=tmp_path / "drop",
+        missing_strategy="drop",
+        scaling="none",
+    )
+
+    result = run_experiment(config, frame)
+
+    assert result.warnings == ["Dropped 1 rows because missing_strategy='drop'."]
+
+
+@pytest.mark.parametrize("missing_strategy", ["mean", "median", "mode"])
+@pytest.mark.parametrize("scaling", ["none", "standard", "minmax"])
+def test_preprocessing_options_handle_mixed_missing_data(missing_strategy, scaling, tmp_path):
+    frame = _classification_frame()
+    frame.loc[0, "continuous"] = np.nan
+    frame.loc[1, "category"] = None
+    config = ExperimentConfig(
+        task="classification",
+        target_column="target",
+        model_name="dummy",
+        output_dir=tmp_path / f"{missing_strategy}-{scaling}",
+        missing_strategy=missing_strategy,
+        scaling=scaling,
+    )
+
+    result = run_experiment(config, frame)
+
+    assert len(result.predictions) > 0
+
+
+def test_regression_k_fold_evaluates_every_row_once(tmp_path):
+    features = np.linspace(0, 10, 30)
+    frame = pd.DataFrame({"feature": features, "target": 2 * features + 1})
+    config = ExperimentConfig(
+        task="regression",
+        target_column="target",
+        model_name="linear_regression",
+        output_dir=tmp_path / "k-fold",
+        validation_strategy="k_fold",
+        n_splits=3,
+    )
+
+    result = run_experiment(config, frame)
+
+    assert len(result.fold_metrics) == 3
+    assert sorted(result.predictions["row_index"]) == list(range(len(frame)))
+
+
+def test_target_and_group_columns_never_enter_model_features(tmp_path):
+    frame = _classification_frame().assign(
+        participant=[f"participant-{index // 2}" for index in range(40)]
+    )
+    config = ExperimentConfig(
+        task="classification",
+        target_column="target",
+        group_column="participant",
+        model_name="dummy",
+        output_dir=tmp_path / "group isolation",
+        validation_strategy="group_k_fold",
+        n_splits=4,
+    )
+
+    result = run_experiment(config, frame)
+
+    feature_names = set(result.model.named_steps["preprocess"].feature_names_in_)
+    assert feature_names == {"continuous", "category"}
+
+
+def test_non_group_validation_warns_when_group_column_is_supplied(tmp_path):
+    frame = _classification_frame().assign(
+        participant=[f"participant-{index // 2}" for index in range(40)]
+    )
+    config = ExperimentConfig(
+        task="classification",
+        target_column="target",
+        group_column="participant",
+        model_name="dummy",
+        output_dir=tmp_path / "group warning",
+        validation_strategy="stratified_k_fold",
+        n_splits=4,
+    )
+
+    result = run_experiment(config, frame)
+
+    assert result.warnings == [
+        "A group column was supplied but the selected validation strategy does not isolate groups."
+    ]

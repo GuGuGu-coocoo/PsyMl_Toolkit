@@ -22,7 +22,7 @@ def _parameter(value: str) -> tuple[str, object]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run a leakage-safe PsyML experiment.")
-    parser.add_argument("--input", required=True, type=Path, help="CSV or Excel dataset path")
+    parser.add_argument("--input", required=True, type=Path, help="Supported research dataset path")
     parser.add_argument("--task", required=True, choices=["classification", "regression"])
     parser.add_argument("--target", required=True, help="Target-column name")
     parser.add_argument("--model", required=True, help="Model name")
@@ -30,7 +30,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--group", help="Optional grouping column for group-aware splitting")
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--param", action="append", default=[], type=_parameter, metavar="KEY=VALUE")
+    parser.add_argument(
+        "--validation",
+        default="holdout",
+        choices=["holdout", "k_fold", "stratified_k_fold", "group_k_fold", "leave_one_group_out"],
+    )
+    parser.add_argument("--folds", type=int, default=5)
+    parser.add_argument("--missing", default="median", choices=["drop", "mean", "median", "mode"])
+    parser.add_argument("--scaling", default="standard", choices=["none", "standard", "minmax"])
+    parser.add_argument(
+        "--param", action="append", default=[], type=_parameter, metavar="KEY=VALUE"
+    )
     return parser
 
 
@@ -45,6 +55,10 @@ def main() -> None:
         group_column=args.group,
         test_size=args.test_size,
         random_seed=args.seed,
+        validation_strategy=args.validation,
+        n_splits=args.folds,
+        missing_strategy=args.missing,
+        scaling=args.scaling,
         model_params=dict(args.param),
     )
     result = run_experiment(config)

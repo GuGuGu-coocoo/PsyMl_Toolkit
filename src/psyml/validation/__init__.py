@@ -1,5 +1,5 @@
-"""Leakage-safe holdout validation."""
+"""Leakage-safe holdout and cross-validation strategies."""
 
-from psyml.validation.split import split_train_test
+from psyml.validation.split import make_validation_splits, split_train_test
 
-__all__ = ["split_train_test"]
+__all__ = ["make_validation_splits", "split_train_test"]

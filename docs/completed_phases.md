@@ -41,3 +41,7 @@
 ## Phase 9 — Create Modern PsyML Core
 
 已建立 `src/psyml/`、命令行入口、统一的分类/回归流程、group-aware 切分、留出集评价和结果导出。完成证据与自动化验证见 `docs/phase_8_9_completion.md`。
+
+## Phase 10 — Scientific Core Completion
+
+已完成九种表格格式、23 个回归/分类模型、四种缺失值策略、三种缩放策略、五种验证策略、完整评价指标、逐 fold 与汇总结果导出，以及目标/分组变量隔离。57 项自动化测试通过；完成范围、限制和验证证据见 `docs/phase_10_completion.md`。

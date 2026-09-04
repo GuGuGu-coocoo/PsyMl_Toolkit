@@ -12,14 +12,14 @@ PsyML Toolkit 将本科科研与应用项目中积累的 Python 机器学习脚�
 
 ### 当前能力
 
-- 表格回归：KNN、Lasso、MLP、随机森林与 SVR。
-- 表格分类：KNN、随机森林、SVM、MLP、决策树与 Stacking。
-- 支持 CSV、XLSX、XLS 读取，训练集内预处理，可选分组切分，留出集评价，以及 CSV/JSON 结果导出。
+- 表格回归：Dummy、Linear、Ridge、Lasso、Elastic Net、KNN、SVR、决策树、随机森林、Gradient Boosting 与 MLP。
+- 表格分类：Dummy、Logistic Regression、Gaussian Naive Bayes、LDA、QDA、KNN、SVM、决策树、随机森林、Gradient Boosting、MLP 与 Stacking。
+- 支持 CSV、TSV、XLSX、XLS、SAV、DTA、SAS7BDAT、XPT 与 Parquet；训练集内预处理、五种验证策略、完整评价指标，以及 CSV/JSON 结果导出。
 - 命令行入口：`psyml` 或 `python -m psyml`。
 
 ### 当前状态
 
-Phase 0–9 已完成。下一阶段是补齐基础模型和常用科研数据格式，之后生成可复现性报告并开发 Godot GUI。Legacy 审查已确认旧脚本存在数据泄漏、可移植性与可复现性风险，不应用于新的分析。
+Phase 0–10 已完成，当前进入 Phase 11：生成分析清单、Methods 说明、可复现性报告与结果图。Legacy 审查已确认旧脚本存在数据泄漏、可移植性与可复现性风险，不应用于新的分析。
 
 ### 文档
 
@@ -31,9 +31,10 @@ Phase 0–9 已完成。下一阶段是补齐基础模型和常用科研数据�
 - [隐私与知识产权审计](docs/privacy_ip_audit.md)
 - [合成数据验证](docs/data_sanitization_verification.md)
 - [Phase 8/9 完成记录](docs/phase_8_9_completion.md)
+- [Phase 10 完成记录](docs/phase_10_completion.md)
 - [Legacy 代码审查](docs/legacy_code_review.md)
 
-Legacy 目录中的原始数据已经删除。仓库仅保留保持原文件格式与结构的随机合成数据，用于后续开发与测试。在数据归属和公开权限完成独立核验前，仓库应保持私有。
+Legacy 目录中的原始数据已经删除。仓库仅保留保持原文件格式与结构的随机合成数据，用于开发与测试；数据隐私复查未发现原始个人数据。正式发布前仍需在 Phase 14 完成许可证与发布审计。
 
 <a id="english"></a>
 
@@ -43,16 +44,16 @@ PsyML Toolkit turns Python machine-learning scripts accumulated during undergrad
 
 ### Current capabilities
 
-- Tabular regression: KNN, Lasso, MLP, Random Forest and SVR.
-- Tabular classification: KNN, Random Forest, SVM, MLP, Decision Tree and Stacking.
-- CSV, XLSX and XLS loading, training-only preprocessing, optional group-aware splitting, held-out evaluation, and CSV/JSON result export.
+- Tabular regression: Dummy, Linear, Ridge, Lasso, Elastic Net, KNN, SVR, Decision Tree, Random Forest, Gradient Boosting and MLP.
+- Tabular classification: Dummy, Logistic Regression, Gaussian Naive Bayes, LDA, QDA, KNN, SVM, Decision Tree, Random Forest, Gradient Boosting, MLP and Stacking.
+- CSV, TSV, XLSX, XLS, SAV, DTA, SAS7BDAT, XPT and Parquet loading; training-only preprocessing, five validation strategies, comprehensive metrics, and CSV/JSON result export.
 - Command-line entry point: `psyml` or `python -m psyml`.
 
 ### Status
 
-Phases 0–9 are complete. The next phase adds baseline models and common research data formats, followed by reproducibility reporting and the Godot GUI. The legacy review found leakage, portability and reproducibility risks, so old scripts must not be used for new analyses.
+Phases 0–10 are complete. Phase 11 is now producing an analysis manifest, Methods summary, reproducibility report and result figures. The legacy review found leakage, portability and reproducibility risks, so old scripts must not be used for new analyses.
 
-Original data has been removed from the legacy tree. The repository retains only random synthetic datasets with the original file formats and structures for future development and testing. It should remain private until data ownership and publication permissions are independently verified.
+Original data has been removed from the legacy tree. The repository retains only random synthetic datasets with the original file formats and structures for development and testing; the privacy recheck found no original personal data. License and release auditing remains scheduled for Phase 14.
 
 <a id="french"></a>
 
@@ -62,13 +63,13 @@ PsyML Toolkit transforme les scripts Python d'apprentissage automatique issus de
 
 ### Fonctionnalités actuelles
 
-- Régression tabulaire : KNN, Lasso, MLP, forêt aléatoire et SVR.
-- Classification tabulaire : KNN, forêt aléatoire, SVM, MLP, arbre de décision et Stacking.
-- Lecture CSV, XLSX et XLS, prétraitement ajusté uniquement sur l'ensemble d'entraînement, séparation optionnelle par groupes, évaluation sur jeu de test et export CSV/JSON.
+- Régression tabulaire : Dummy, régression linéaire, Ridge, Lasso, Elastic Net, KNN, SVR, arbre de décision, forêt aléatoire, Gradient Boosting et MLP.
+- Classification tabulaire : Dummy, régression logistique, Gaussian Naive Bayes, LDA, QDA, KNN, SVM, arbre de décision, forêt aléatoire, Gradient Boosting, MLP et Stacking.
+- Lecture CSV, TSV, XLSX, XLS, SAV, DTA, SAS7BDAT, XPT et Parquet ; prétraitement ajusté uniquement sur l'ensemble d'entraînement, cinq stratégies de validation, métriques complètes et export CSV/JSON.
 - Point d'entrée en ligne de commande : `psyml` ou `python -m psyml`.
 
 ### État du projet
 
-Les phases 0–9 sont terminées. La prochaine phase ajoute des modèles de référence et des formats de données courants en recherche, avant les rapports de reproductibilité et l'interface Godot. La revue du code historique a identifié des risques de fuite, de portabilité et de reproductibilité; les anciens scripts ne doivent donc pas servir aux nouvelles analyses.
+Les phases 0–10 sont terminées. La phase 11 produit maintenant un manifeste d'analyse, un résumé Methods, un rapport de reproductibilité et des figures de résultats. La revue du code historique a identifié des risques de fuite, de portabilité et de reproductibilité ; les anciens scripts ne doivent donc pas servir aux nouvelles analyses.
 
-Les données originales ont été supprimées de l'arborescence historique. Le dépôt ne conserve que des jeux de données synthétiques aléatoires ayant les mêmes formats et structures, destinés au développement et aux tests futurs. Il doit rester privé jusqu'à la vérification indépendante des droits sur les données et des autorisations de publication.
+Les données originales ont été supprimées de l'arborescence historique. Le dépôt ne conserve que des jeux de données synthétiques aléatoires ayant les mêmes formats et structures pour le développement et les tests ; la nouvelle vérification de confidentialité n'a trouvé aucune donnée personnelle originale. L'audit des licences et de la publication reste prévu pour la phase 14.
