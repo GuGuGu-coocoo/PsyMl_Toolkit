@@ -210,3 +210,68 @@ def test_non_group_validation_warns_when_group_column_is_supplied(tmp_path):
     assert result.warnings == [
         "A group column was supplied but the selected validation strategy does not isolate groups."
     ]
+
+
+def test_multi_model_multi_validation_nested_search_and_progress(tmp_path):
+    rng = np.random.default_rng(91)
+    signal = rng.normal(size=60)
+    frame = pd.DataFrame(
+        {
+            "signal": signal,
+            "noise": rng.normal(size=60),
+            "target": (signal > 0).astype(int),
+        }
+    )
+    progress = []
+    config = ExperimentConfig(
+        task="classification",
+        target_column="target",
+        model_name="decision_tree",
+        model_names=["decision_tree", "dummy"],
+        output_dir=tmp_path / "comparative study",
+        validation_strategy="stratified_k_fold",
+        validation_strategies=["stratified_k_fold", "holdout"],
+        n_splits=3,
+        tuning_mode="custom",
+        parameter_grids={
+            "decision_tree": {"max_depth": [1, None]},
+            "dummy": {"strategy": ["prior", "stratified"]},
+        },
+        inner_splits=2,
+        max_candidates=4,
+        selection_metric="balanced_accuracy",
+    )
+
+    result = run_experiment(config, frame, progress_callback=progress.append)
+
+    assert result.best_model_name == "decision_tree"
+    assert result.best_validation_strategy == "stratified_k_fold"
+    assert len(result.leaderboard) == 4
+    assert set(result.leaderboard["validation"]) == {"stratified_k_fold", "holdout"}
+    assert set(result.leaderboard.groupby("validation")["rank"].min()) == {1}
+    assert not result.tuning_results.empty
+    assert set(result.tuning_results["status"]) == {"completed"}
+    assert set(result.tuning_results["selection_scope"]) == {
+        "outer_training_fold",
+        "final_full_data",
+    }
+    assert set(result.tuning_results.loc[result.tuning_results["outer_fold"] == 0, "model"]) == {
+        result.best_model_name
+    }
+    assert json.loads(
+        (config.output_dir / "best_parameters.json").read_text(encoding="utf-8")
+    ) == result.best_params
+    assert progress[0]["progress"] == 0.0
+    assert progress[0]["estimated_remaining_seconds"] is None
+    assert progress[-1]["progress"] == 1.0
+    assert progress[-1]["remaining_tasks"] == 0
+    assert [item["progress"] for item in progress] == sorted(
+        item["progress"] for item in progress
+    )
+    for artifact in [
+        "model_comparison.csv",
+        "parameter_search.csv",
+        "best_parameters.json",
+        "study_config.json",
+    ]:
+        assert (config.output_dir / artifact).is_file()

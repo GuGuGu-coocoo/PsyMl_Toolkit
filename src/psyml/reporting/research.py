@@ -111,6 +111,7 @@ def _validation_description(config: ExperimentConfig) -> str:
         "k_fold": "cross-validation",
         "stratified_k_fold": "stratified cross-validation",
         "group_k_fold": "group cross-validation",
+        "stratified_group_k_fold": "stratified group cross-validation",
     }
     return f"{config.n_splits}-fold {labels[config.validation_strategy]}"
 
@@ -129,6 +130,25 @@ def _methods_summary(
     )
     parameters = json.dumps(config.model_params, ensure_ascii=False, sort_keys=True)
     metrics = ", ".join(metric_names)
+    selected_models = ", ".join(f"`{name}`" for name in config.selected_models())
+    selected_validations = ", ".join(
+        f"`{name}`" for name in config.selected_validations()
+    )
+    selection_text = (
+        f"Candidate models ({selected_models}) and validation strategies "
+        f"({selected_validations}) were compared using `{config.resolved_selection_metric()}`. "
+        f"Parameter mode was `{config.tuning_mode}` with at most {config.max_candidates} "
+        f"candidates per model. When multiple parameter candidates were present, selection used "
+        f"{config.inner_splits}-fold cross-validation restricted to each outer training partition. "
+        "The final reported performance therefore comes from outer partitions not used to select "
+        "the parameters. After model comparison, parameters for the final fitted model were "
+        "selected by inner cross-validation across all analyzed rows; this did not change the "
+        "outer performance estimate."
+        if len(config.selected_models()) > 1
+        or len(config.selected_validations()) > 1
+        or config.tuning_mode != "none"
+        else "No model or hyperparameter search was performed."
+    )
     return f"""# Methods Summary
 
 PsyML analyzed {analyzed_rows} rows with {feature_columns} predictor columns for a {config.task} task. The outcome column was `{_display(config.target_column)}`. {group_sentence}
@@ -136,6 +156,8 @@ PsyML analyzed {analyzed_rows} rows with {feature_columns} predictor columns for
 Missing predictor values used the `{config.missing_strategy}` strategy. Numeric scaling was `{config.scaling}`, and categorical predictors were one-hot encoded. All learned preprocessing steps were fitted within each training partition only.
 
 The `{config.model_name}` model was evaluated using {_validation_description(config)} with random seed {config.random_seed}. Explicit model parameters were `{parameters}`. Performance was calculated only from held-out predictions using: {metrics}.
+
+{selection_text}
 
 This text describes the executed configuration and is intended as a starting point for a manuscript Methods section; researchers remain responsible for study-specific justification and reporting.
 """
@@ -291,7 +313,11 @@ def write_research_outputs(
         json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    metric_names = [column for column in fold_metrics.columns if column != "fold"]
+    metric_names = [
+        column
+        for column in fold_metrics.columns
+        if column not in {"fold", "model", "validation"}
+    ]
     (output_dir / "methods_summary.md").write_text(
         _methods_summary(config, analyzed_rows, feature_columns, metric_names),
         encoding="utf-8",

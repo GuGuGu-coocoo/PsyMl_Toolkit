@@ -47,6 +47,29 @@ def test_analysis_config_round_trip_and_schema(tmp_path):
         config_from_dict({**payload, "surprise": True})
 
 
+def test_comparative_config_round_trip_and_schema(tmp_path):
+    config = _file_config(tmp_path)
+    config = ExperimentConfig(
+        **{
+            **config.__dict__,
+            "model_names": ["logistic_regression", "dummy"],
+            "validation_strategies": ["stratified_k_fold", "holdout"],
+            "tuning_mode": "custom",
+            "parameter_grids": {
+                "logistic_regression": {"C": [0.1, 1.0]},
+                "dummy": {"strategy": ["prior"]},
+            },
+            "selection_metric": "balanced_accuracy",
+            "inner_splits": 2,
+            "max_candidates": 4,
+        }
+    )
+
+    payload = config_to_dict(config)
+    jsonschema.validate(payload, _schema("analysis_config"))
+    assert config_from_dict(payload) == config
+
+
 def test_capabilities_and_privacy_first_preview(tmp_path, capsys):
     config = _file_config(tmp_path)
 
@@ -54,6 +77,8 @@ def test_capabilities_and_privacy_first_preview(tmp_path, capsys):
     capabilities = json.loads(capsys.readouterr().out)
     assert capabilities["schema_version"] == "1.0"
     assert "logistic_regression" in capabilities["models"]["classification"]
+    assert capabilities["parameter_grids"]["classification"]["logistic_regression"]["C"]
+    assert capabilities["selection_metrics"]["regression"] == ["rmse", "mae", "r2"]
 
     assert main(["preview", "--input", str(config.input_path)]) == 0
     preview = json.loads(capsys.readouterr().out)
@@ -85,13 +110,26 @@ def test_capabilities_work_through_real_subprocess():
 
 def test_versioned_cli_run_emits_events_and_valid_outputs(tmp_path, capsys):
     config = _file_config(tmp_path)
+    config = ExperimentConfig(
+        **{
+            **config.__dict__,
+            "tuning_mode": "custom",
+            "parameter_grids": {"logistic_regression": {"C": [0.1, 1.0]}},
+            "inner_splits": 2,
+        }
+    )
     config_path = tmp_path / "配置 analysis.json"
     config_path.write_text(json.dumps(config_to_dict(config), ensure_ascii=False), encoding="utf-8")
 
     assert main(["run", "--config", str(config_path), "--events"]) == 0
 
     events = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
-    assert [event["event"] for event in events] == ["started", "completed"]
+    assert events[0]["event"] == "started"
+    assert events[-1]["event"] == "completed"
+    progress_events = [event for event in events if event["event"] == "progress"]
+    assert progress_events
+    assert progress_events[-1]["progress"] == 1.0
+    assert progress_events[-1]["remaining_tasks"] == 0
     for event in events:
         jsonschema.validate(event, _schema("event"))
     result_path = config.output_dir / "result.json"
@@ -131,7 +169,8 @@ def test_versioned_cli_emits_cancelled_event(tmp_path, capsys, monkeypatch):
     config_path = tmp_path / "cancel.json"
     config_path.write_text(json.dumps(config_to_dict(config)), encoding="utf-8")
 
-    def cancel_run(_config):
+    def cancel_run(_config, progress_callback=None):
+        del progress_callback
         signal.raise_signal(signal.SIGTERM)
 
     monkeypatch.setattr("psyml.cli._execute", cancel_run)

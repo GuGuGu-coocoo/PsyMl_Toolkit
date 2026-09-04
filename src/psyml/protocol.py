@@ -9,7 +9,7 @@ from typing import Any
 
 from psyml.config import ExperimentConfig
 from psyml.data.formats import SUPPORTED_SUFFIXES
-from psyml.models.catalog import supported_models
+from psyml.models.catalog import quick_parameter_grid, supported_models
 
 SCHEMA_VERSION = "1.0"
 SCHEMA_NAMES = {"analysis_config", "event", "result"}
@@ -71,6 +71,8 @@ def result_payload(
     config: ExperimentConfig,
     metrics: dict[str, float],
     warnings: list[str],
+    *,
+    study_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a stable machine-readable result summary."""
     artifacts = {
@@ -84,13 +86,17 @@ def result_payload(
         "reproducibility_report": "reproducibility_report.md",
         "result": "result.json",
         "warnings": "warnings.json",
+        "model_comparison": "model_comparison.csv",
+        "parameter_search": "parameter_search.csv",
+        "best_parameters": "best_parameters.json",
+        "study_config": "study_config.json",
     }
     if config.task == "classification":
         artifacts["confusion_matrix"] = "confusion_matrix.csv"
         artifacts["figure"] = "figures/confusion_matrix.png"
     else:
         artifacts["figure"] = "figures/observed_vs_predicted.png"
-    return {
+    payload = {
         "schema_version": SCHEMA_VERSION,
         "status": "completed",
         "task": config.task,
@@ -98,6 +104,9 @@ def result_payload(
         "warnings": warnings,
         "artifacts": artifacts,
     }
+    if study_summary:
+        payload.update(study_summary)
+    return payload
 
 
 def event_payload(
@@ -106,9 +115,10 @@ def event_payload(
     *,
     result_path: str | None = None,
     error: dict[str, str] | None = None,
+    details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build one versioned subprocess status event."""
-    if event not in {"started", "completed", "failed", "cancelled"}:
+    if event not in {"started", "progress", "completed", "failed", "cancelled"}:
         raise ValueError(f"Unsupported event: {event}")
     payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -119,6 +129,8 @@ def event_payload(
         payload["result_path"] = result_path
     if error is not None:
         payload["error"] = error
+    if details:
+        payload.update(details)
     return payload
 
 
@@ -144,12 +156,21 @@ def capabilities_payload() -> dict[str, Any]:
             "classification": list(supported_models("classification")),
             "regression": list(supported_models("regression")),
         },
+        "parameter_grids": {
+            task: {model: quick_parameter_grid(task, model) for model in supported_models(task)}
+            for task in ["classification", "regression"]
+        },
+        "selection_metrics": {
+            "classification": ["balanced_accuracy", "f1_macro", "accuracy"],
+            "regression": ["rmse", "mae", "r2"],
+        },
         "input_formats": sorted(SUPPORTED_SUFFIXES),
         "validation_strategies": [
             "holdout",
             "k_fold",
             "stratified_k_fold",
             "group_k_fold",
+            "stratified_group_k_fold",
             "leave_one_group_out",
         ],
         "missing_strategies": ["drop", "mean", "median", "mode"],

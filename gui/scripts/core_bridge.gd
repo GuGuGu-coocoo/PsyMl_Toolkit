@@ -99,7 +99,11 @@ func cancel_analysis() -> void:
 			"schema_version": "1.0",
 			"event": "cancelled",
 			"progress": 0.0,
-			"error": {"code": "cancelled", "message": "Analysis cancelled by the user."},
+			"error": {
+				"code": "cancelled",
+				"type": "CancellationRequested",
+				"message": "Analysis cancelled by the user."
+			},
 		}
 	)
 

@@ -1,9 +1,25 @@
-"""Reproducible classification and regression experiment runner."""
+"""Reproducible, leakage-safe single-model and comparative study runner."""
 
-from dataclasses import dataclass
+from __future__ import annotations
+
+import json
+import math
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score,
+)
+from sklearn.model_selection import ParameterGrid, ParameterSampler
 from sklearn.pipeline import Pipeline
 
 from psyml.config import ExperimentConfig
@@ -13,11 +29,14 @@ from psyml.evaluation.metrics import (
     classification_metrics,
     regression_metrics,
 )
+from psyml.models.catalog import quick_parameter_grid, supported_models
 from psyml.models.factory import build_model
 from psyml.preprocessing.pipeline import build_preprocessor
-from psyml.reporting.output import write_result_summary, write_results
+from psyml.reporting.output import write_result_summary, write_results, write_study_outputs
 from psyml.reporting.research import write_research_outputs
 from psyml.validation.split import make_validation_splits
+
+ProgressCallback = Callable[[dict[str, Any]], None]
 
 
 @dataclass
@@ -31,9 +50,78 @@ class ExperimentResult:
     metric_summary: pd.DataFrame
     warnings: list[str]
     confusion_matrix: pd.DataFrame | None = None
+    leaderboard: pd.DataFrame = field(default_factory=pd.DataFrame)
+    tuning_results: pd.DataFrame = field(default_factory=pd.DataFrame)
+    best_model_name: str = ""
+    best_validation_strategy: str = ""
+    best_params: dict[str, Any] = field(default_factory=dict)
 
 
-def _build_pipeline(config: ExperimentConfig, training_features: pd.DataFrame) -> Pipeline:
+@dataclass
+class _WorkItem:
+    validation: str
+    model_name: str
+    fold_number: int
+    train_index: list[int]
+    test_index: list[int]
+    inner_splits: list[tuple[list[int], list[int]]]
+    candidates: list[dict[str, Any]]
+
+
+class _ProgressTracker:
+    def __init__(self, total_tasks: int, callback: ProgressCallback | None) -> None:
+        self.total_tasks = max(total_tasks, 1)
+        self.completed_tasks = 0
+        self.callback = callback
+        self.started = time.monotonic()
+
+    def announce(self) -> None:
+        if self.callback is not None:
+            self.callback(
+                {
+                    "progress": 0.0,
+                    "completed_tasks": 0,
+                    "total_tasks": self.total_tasks,
+                    "remaining_tasks": self.total_tasks,
+                    "elapsed_seconds": 0.0,
+                    "estimated_remaining_seconds": None,
+                    "phase": "planning",
+                    "message": "Execution plan ready",
+                    "current_model": "",
+                    "current_validation": "",
+                    "current_fold": 1,
+                }
+            )
+
+    def advance(self, **details: Any) -> None:
+        self.completed_tasks += 1
+        elapsed = time.monotonic() - self.started
+        remaining = max(self.total_tasks - self.completed_tasks, 0)
+        eta = elapsed / self.completed_tasks * remaining if remaining else 0.0
+        if self.callback is not None:
+            self.callback(
+                {
+                    "progress": self.completed_tasks / self.total_tasks,
+                    "completed_tasks": self.completed_tasks,
+                    "total_tasks": self.total_tasks,
+                    "remaining_tasks": remaining,
+                    "elapsed_seconds": elapsed,
+                    "estimated_remaining_seconds": eta,
+                    **details,
+                }
+            )
+
+    def skip(self, tasks: int) -> None:
+        """Account for planned upper-bound work that the winning model did not need."""
+        self.completed_tasks += max(tasks, 0)
+
+
+def _build_pipeline(
+    config: ExperimentConfig,
+    training_features: pd.DataFrame,
+    model_name: str,
+    model_params: dict[str, Any],
+) -> Pipeline:
     return Pipeline(
         [
             (
@@ -44,15 +132,7 @@ def _build_pipeline(config: ExperimentConfig, training_features: pd.DataFrame) -
                     scaling=config.scaling,
                 ),
             ),
-            (
-                "model",
-                build_model(
-                    config.task,
-                    config.model_name,
-                    config.random_seed,
-                    config.model_params,
-                ),
-            ),
+            ("model", build_model(config.task, model_name, config.random_seed, model_params)),
         ]
     )
 
@@ -63,29 +143,35 @@ def _risk_warnings(
     warnings = []
     if dropped_rows:
         warnings.append(f"Dropped {dropped_rows} rows because missing_strategy='drop'.")
-    if groups is not None and config.validation_strategy in {"k_fold", "stratified_k_fold"}:
-        warnings.append(
-            "A group column was supplied but the selected validation strategy does not isolate groups."
-        )
+    if groups is not None and any(
+        strategy in {"k_fold", "stratified_k_fold"}
+        for strategy in config.selected_validations()
+    ):
+        if len(config.selected_validations()) == 1:
+            warnings.append(
+                "A group column was supplied but the selected validation strategy does not "
+                "isolate groups."
+            )
+        else:
+            warnings.append(
+                "A group column was supplied but at least one selected validation strategy does "
+                "not isolate groups."
+            )
     if config.task == "classification":
         counts = target.value_counts()
         if counts.max() >= 4 * counts.min():
             warnings.append(
                 "The target classes are imbalanced; inspect balanced and macro metrics."
             )
-        if config.validation_strategy == "stratified_k_fold" and counts.min() < config.n_splits:
+        if "stratified_k_fold" in config.selected_validations() and counts.min() < config.n_splits:
             raise ValueError("Each class needs at least n_splits rows for stratified_k_fold")
     return warnings
 
 
-def run_experiment(config: ExperimentConfig, frame: pd.DataFrame | None = None) -> ExperimentResult:
-    """Run leakage-safe holdout or cross-validated evaluation."""
-    if frame is None:
-        if config.input_path is None:
-            raise ValueError("input_path is required when frame is not supplied")
-        frame = load_dataframe(config.input_path)
+def _prepare_data(
+    config: ExperimentConfig, frame: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.Series, pd.Series | None, int]:
     validate_dataset(frame, config.target_column, config.group_column)
-
     working = frame.dropna(subset=[config.target_column]).copy()
     before_missing_drop = len(working)
     if config.missing_strategy == "drop":
@@ -93,7 +179,6 @@ def run_experiment(config: ExperimentConfig, frame: pd.DataFrame | None = None) 
     dropped_rows = before_missing_drop - len(working)
     if working.empty:
         raise ValueError("No rows remain after missing-data handling")
-
     target = working.pop(config.target_column)
     groups = working.pop(config.group_column) if config.group_column else None
     if config.feature_columns is not None:
@@ -106,51 +191,108 @@ def run_experiment(config: ExperimentConfig, frame: pd.DataFrame | None = None) 
         raise ValueError("No feature columns remain after selecting target and group columns")
     if config.task == "classification" and target.nunique() < 2:
         raise ValueError("Classification requires at least two target classes")
+    return working, target, groups, dropped_rows
 
-    warnings = _risk_warnings(config, target, groups, dropped_rows)
-    splits = make_validation_splits(
-        working,
+
+def _parameter_candidates(config: ExperimentConfig, model_name: str) -> list[dict[str, Any]]:
+    base = dict(config.model_params) if len(config.selected_models()) == 1 else {}
+    if config.tuning_mode == "none":
+        return [base]
+    grid = (
+        quick_parameter_grid(config.task, model_name)
+        if config.tuning_mode == "quick"
+        else config.parameter_grids.get(model_name, {})
+    )
+    if not grid:
+        return [base]
+    allowed = set(build_model(config.task, model_name, config.random_seed, {}).get_params())
+    unknown = set(grid) - allowed
+    if unknown:
+        names = ", ".join(sorted(unknown))
+        raise ValueError(f"Unknown parameters for {model_name}: {names}")
+    parameter_grid = ParameterGrid(grid)
+    if len(parameter_grid) > config.max_candidates:
+        combinations = list(
+            ParameterSampler(
+                grid,
+                n_iter=config.max_candidates,
+                random_state=config.random_seed,
+            )
+        )
+    else:
+        combinations = list(parameter_grid)
+    return [{**base, **candidate} for candidate in combinations]
+
+
+def _inner_splits(
+    config: ExperimentConfig,
+    features: pd.DataFrame,
+    target: pd.Series,
+    groups: pd.Series | None,
+    fold_number: int,
+) -> list[tuple[list[int], list[int]]]:
+    if groups is not None:
+        n_splits = min(config.inner_splits, int(groups.nunique()))
+        strategy = "stratified_group_k_fold" if config.task == "classification" else "group_k_fold"
+    elif config.task == "classification":
+        n_splits = min(config.inner_splits, int(target.value_counts().min()))
+        strategy = "stratified_k_fold"
+    else:
+        n_splits = min(config.inner_splits, len(features))
+        strategy = "k_fold"
+    if n_splits < 2:
+        return []
+    return make_validation_splits(
+        features,
         target,
         config.task,
-        config.validation_strategy,
-        config.n_splits,
+        strategy,
+        n_splits,
         config.test_size,
-        config.random_seed,
+        config.random_seed + fold_number,
         groups,
     )
 
-    fold_rows: list[dict[str, float | int]] = []
-    prediction_frames = []
-    last_model: Pipeline | None = None
-    for fold_number, (train_index, test_index) in enumerate(splits, start=1):
-        train_x = working.iloc[train_index]
-        test_x = working.iloc[test_index]
-        train_y = target.iloc[train_index]
-        test_y = target.iloc[test_index]
-        model = _build_pipeline(config, train_x)
-        model.fit(train_x, train_y)
-        predicted = model.predict(test_x)
-        if config.task == "classification":
-            fold_result = classification_metrics(model, test_x, test_y, predicted)
-        else:
-            fold_result = regression_metrics(test_y, predicted)
-        fold_rows.append({"fold": fold_number, **fold_result})
-        prediction_frames.append(
-            pd.DataFrame(
-                {
-                    "row_index": test_y.index,
-                    "fold": fold_number,
-                    "observed": test_y.to_numpy(),
-                    "predicted": predicted,
-                }
-            )
-        )
-        last_model = model
 
-    fold_metrics = pd.DataFrame(fold_rows)
-    metric_columns = [column for column in fold_metrics.columns if column != "fold"]
-    metrics = {column: float(fold_metrics[column].mean()) for column in metric_columns}
-    metric_summary = pd.DataFrame(
+def _selection_score(metric: str, observed: pd.Series, predicted: Any) -> float:
+    if metric == "balanced_accuracy":
+        return float(balanced_accuracy_score(observed, predicted))
+    if metric == "f1_macro":
+        return float(f1_score(observed, predicted, average="macro", zero_division=0))
+    if metric == "accuracy":
+        return float(accuracy_score(observed, predicted))
+    if metric == "r2":
+        return float(r2_score(observed, predicted))
+    if metric == "mae":
+        return float(mean_absolute_error(observed, predicted))
+    return float(math.sqrt(mean_squared_error(observed, predicted)))
+
+
+def _objective(metric: str, score: float) -> float:
+    return -score if metric in {"rmse", "mae"} else score
+
+
+def _fold_result(
+    config: ExperimentConfig,
+    model: Pipeline,
+    features: pd.DataFrame,
+    observed: pd.Series,
+    predicted: Any,
+) -> dict[str, float]:
+    if config.task == "classification":
+        return classification_metrics(model, features, observed, predicted)
+    return regression_metrics(observed, predicted)
+
+
+def _summaries(fold_metrics: pd.DataFrame) -> tuple[dict[str, float], pd.DataFrame]:
+    excluded = {"fold", "model", "validation"}
+    metric_columns = [column for column in fold_metrics.columns if column not in excluded]
+    metrics = {
+        column: float(fold_metrics[column].mean())
+        for column in metric_columns
+        if not fold_metrics[column].isna().all()
+    }
+    summary = pd.DataFrame(
         [
             {
                 "metric": column,
@@ -158,28 +300,318 @@ def run_experiment(config: ExperimentConfig, frame: pd.DataFrame | None = None) 
                 "std": float(fold_metrics[column].std(ddof=0)),
                 "min": float(fold_metrics[column].min()),
                 "max": float(fold_metrics[column].max()),
-                "n_folds": len(fold_metrics),
+                "n_folds": int(fold_metrics[column].count()),
             }
             for column in metric_columns
+            if not fold_metrics[column].isna().all()
         ]
     )
-    predictions = pd.concat(prediction_frames, ignore_index=True)
+    return metrics, summary
+
+
+def _make_work_items(
+    config: ExperimentConfig,
+    features: pd.DataFrame,
+    target: pd.Series,
+    groups: pd.Series | None,
+) -> tuple[list[_WorkItem], int]:
+    work_items: list[_WorkItem] = []
+    total_tasks = 1
+    final_inner = _inner_splits(config, features, target, groups, 0)
+    final_tuning_budget = 0
+    for validation in config.selected_validations():
+        outer_splits = make_validation_splits(
+            features,
+            target,
+            config.task,
+            validation,
+            config.n_splits,
+            config.test_size,
+            config.random_seed,
+            groups,
+        )
+        for model_name in config.selected_models():
+            if model_name not in supported_models(config.task):
+                raise ValueError(f"Unsupported {config.task} model: {model_name}")
+            candidates = _parameter_candidates(config, model_name)
+            if len(candidates) > 1:
+                final_tuning_budget = max(
+                    final_tuning_budget, len(candidates) * len(final_inner)
+                )
+            for fold_number, (train_index, test_index) in enumerate(outer_splits, start=1):
+                train_groups = groups.iloc[train_index] if groups is not None else None
+                inner = (
+                    _inner_splits(
+                        config,
+                        features.iloc[train_index],
+                        target.iloc[train_index],
+                        train_groups,
+                        fold_number,
+                    )
+                    if len(candidates) > 1
+                    else []
+                )
+                work_items.append(
+                    _WorkItem(
+                        validation=validation,
+                        model_name=model_name,
+                        fold_number=fold_number,
+                        train_index=train_index,
+                        test_index=test_index,
+                        inner_splits=inner,
+                        candidates=candidates,
+                    )
+                )
+                total_tasks += 1 + len(candidates) * len(inner)
+    return work_items, total_tasks + final_tuning_budget
+
+
+def _choose_parameters(
+    config: ExperimentConfig,
+    work: _WorkItem,
+    train_x: pd.DataFrame,
+    train_y: pd.Series,
+    tracker: _ProgressTracker,
+    tuning_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    metric = config.resolved_selection_metric()
+    if len(work.candidates) == 1 or not work.inner_splits:
+        return work.candidates[0]
+    best_params: dict[str, Any] | None = None
+    best_objective = -math.inf
+    for candidate_index, candidate in enumerate(work.candidates, start=1):
+        scores: list[float] = []
+        error_text = ""
+        for inner_fold, (inner_train, inner_test) in enumerate(work.inner_splits, start=1):
+            try:
+                model = _build_pipeline(
+                    config,
+                    train_x.iloc[inner_train],
+                    work.model_name,
+                    candidate,
+                )
+                model.fit(train_x.iloc[inner_train], train_y.iloc[inner_train])
+                predicted = model.predict(train_x.iloc[inner_test])
+                scores.append(_selection_score(metric, train_y.iloc[inner_test], predicted))
+            except Exception as error:  # noqa: BLE001
+                error_text = f"{type(error).__name__}: {error}"
+            tracker.advance(
+                phase="tuning",
+                message=f"Candidate {candidate_index}/{len(work.candidates)}, inner fold {inner_fold}",
+                current_model=work.model_name,
+                current_validation=work.validation,
+                current_fold=max(work.fold_number, 1),
+            )
+        score = float(pd.Series(scores).mean()) if scores and not error_text else math.nan
+        tuning_rows.append(
+            {
+                "model": work.model_name,
+                "validation": work.validation,
+                "outer_fold": work.fold_number,
+                "selection_scope": (
+                    "final_full_data" if work.fold_number == 0 else "outer_training_fold"
+                ),
+                "candidate": candidate_index,
+                "selection_metric": metric,
+                "score": score,
+                "parameters": json.dumps(candidate, ensure_ascii=False, sort_keys=True),
+                "status": "failed" if error_text else "completed",
+                "error": error_text,
+            }
+        )
+        if not math.isnan(score) and _objective(metric, score) > best_objective:
+            best_objective = _objective(metric, score)
+            best_params = candidate
+    if best_params is None:
+        raise ValueError(
+            f"All parameter candidates failed for {work.model_name} in {work.validation} "
+            f"outer fold {work.fold_number}"
+        )
+    return best_params
+
+
+def run_experiment(
+    config: ExperimentConfig,
+    frame: pd.DataFrame | None = None,
+    progress_callback: ProgressCallback | None = None,
+) -> ExperimentResult:
+    """Run one or more models and validations with optional nested parameter search."""
+    if frame is None:
+        if config.input_path is None:
+            raise ValueError("input_path is required when frame is not supplied")
+        frame = load_dataframe(config.input_path)
+    source_frame = frame
+    features, target, groups, dropped_rows = _prepare_data(config, frame)
+    warnings = _risk_warnings(config, target, groups, dropped_rows)
+    work_items, total_tasks = _make_work_items(config, features, target, groups)
+    tracker = _ProgressTracker(total_tasks, progress_callback)
+    tracker.announce()
+    tuning_rows: list[dict[str, Any]] = []
+    combo_folds: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    combo_predictions: dict[tuple[str, str], list[pd.DataFrame]] = {}
+    combo_models: dict[tuple[str, str], list[Pipeline]] = {}
+    combo_errors: dict[tuple[str, str], list[str]] = {}
+
+    for work in work_items:
+        key = (work.validation, work.model_name)
+        train_x = features.iloc[work.train_index]
+        test_x = features.iloc[work.test_index]
+        train_y = target.iloc[work.train_index]
+        test_y = target.iloc[work.test_index]
+        try:
+            selected_params = _choose_parameters(
+                config, work, train_x, train_y, tracker, tuning_rows
+            )
+            model = _build_pipeline(config, train_x, work.model_name, selected_params)
+            model.fit(train_x, train_y)
+            predicted = model.predict(test_x)
+            metrics = _fold_result(config, model, test_x, test_y, predicted)
+            combo_folds.setdefault(key, []).append(
+                {
+                    "fold": work.fold_number,
+                    "model": work.model_name,
+                    "validation": work.validation,
+                    **metrics,
+                }
+            )
+            combo_predictions.setdefault(key, []).append(
+                pd.DataFrame(
+                    {
+                        "row_index": test_y.index,
+                        "fold": work.fold_number,
+                        "observed": test_y.to_numpy(),
+                        "predicted": predicted,
+                    }
+                )
+            )
+            combo_models.setdefault(key, []).append(model)
+        except Exception as error:  # noqa: BLE001
+            combo_errors.setdefault(key, []).append(f"{type(error).__name__}: {error}")
+        tracker.advance(
+            phase="evaluating",
+            message="Outer evaluation fold completed",
+            current_model=work.model_name,
+            current_validation=work.validation,
+            current_fold=work.fold_number,
+        )
+
+    leaderboard_rows: list[dict[str, Any]] = []
+    combo_results: dict[tuple[str, str], tuple[dict[str, float], pd.DataFrame, pd.DataFrame]] = {}
+    for validation in config.selected_validations():
+        for model_name in config.selected_models():
+            key = (validation, model_name)
+            fold_rows = combo_folds.get(key, [])
+            if not fold_rows or key in combo_errors:
+                leaderboard_rows.append(
+                    {
+                        "rank": None,
+                        "model": model_name,
+                        "validation": validation,
+                        "selection_metric": config.resolved_selection_metric(),
+                        "selection_score": math.nan,
+                        "status": "failed",
+                        "error": " | ".join(combo_errors.get(key, ["No completed folds"])),
+                    }
+                )
+                continue
+            fold_frame = pd.DataFrame(fold_rows)
+            metrics, _ = _summaries(fold_frame)
+            predictions = pd.concat(combo_predictions[key], ignore_index=True)
+            selection_score = metrics[config.resolved_selection_metric()]
+            leaderboard_rows.append(
+                {
+                    "rank": None,
+                    "model": model_name,
+                    "validation": validation,
+                    "selection_metric": config.resolved_selection_metric(),
+                    "selection_score": selection_score,
+                    "status": "completed",
+                    "error": "",
+                    **metrics,
+                }
+            )
+            combo_results[key] = (metrics, fold_frame, predictions)
+
+    completed_rows = [row for row in leaderboard_rows if row["status"] == "completed"]
+    if not completed_rows:
+        details = " | ".join(row["error"] for row in leaderboard_rows)
+        raise ValueError(f"Every selected model/validation run failed: {details}")
+    metric = config.resolved_selection_metric()
+    ranked_rows: list[dict[str, Any]] = []
+    for validation in config.selected_validations():
+        validation_rows = [row for row in completed_rows if row["validation"] == validation]
+        validation_rows.sort(
+            key=lambda row: _objective(metric, row["selection_score"]), reverse=True
+        )
+        for rank, row in enumerate(validation_rows, start=1):
+            row["rank"] = rank
+        ranked_rows.extend(validation_rows)
+    leaderboard_rows = ranked_rows + [
+        row for row in leaderboard_rows if row["status"] != "completed"
+    ]
+    leaderboard = pd.DataFrame(leaderboard_rows)
+    primary_validation = config.selected_validations()[0]
+    primary_rows = [row for row in ranked_rows if row["validation"] == primary_validation]
+    if not primary_rows:
+        raise ValueError(f"Every model failed for the primary validation: {primary_validation}")
+    best = primary_rows[0]
+    best_key = (best["validation"], best["model"])
+    metrics, fold_metrics, predictions = combo_results[best_key]
+    _, metric_summary = _summaries(fold_metrics)
+    final_inner = _inner_splits(config, features, target, groups, 0)
+    final_candidates = _parameter_candidates(config, best["model"])
+    final_candidate_counts = [
+        len(_parameter_candidates(config, model_name))
+        for model_name in config.selected_models()
+    ]
+    final_tuning_budget = max(
+        (count * len(final_inner) for count in final_candidate_counts if count > 1),
+        default=0,
+    )
+    final_work = _WorkItem(
+        validation=best["validation"],
+        model_name=best["model"],
+        fold_number=0,
+        train_index=list(range(len(features))),
+        test_index=[],
+        inner_splits=final_inner,
+        candidates=final_candidates,
+    )
+    best_params = _choose_parameters(
+        config, final_work, features, target, tracker, tuning_rows
+    )
+    used_final_tuning_tasks = (
+        len(final_candidates) * len(final_inner) if len(final_candidates) > 1 else 0
+    )
+    tracker.skip(final_tuning_budget - used_final_tuning_tasks)
+    if best["validation"] == "holdout" and used_final_tuning_tasks == 0:
+        final_model = combo_models[best_key][-1]
+    else:
+        final_model = _build_pipeline(config, features, best["model"], best_params)
+        final_model.fit(features, target)
+    tracker.advance(
+        phase="finalizing",
+        message="Best model fitted on all analyzed rows",
+        current_model=best["model"],
+        current_validation=best["validation"],
+        current_fold=1,
+    )
     confusion = None
     if config.task == "classification":
         confusion = classification_confusion_matrix(
             predictions["observed"], predictions["predicted"]
         )
 
-    if config.validation_strategy == "holdout":
-        assert last_model is not None
-        final_model = last_model
-    else:
-        final_model = _build_pipeline(config, working)
-        final_model.fit(working, target)
-
-    write_results(
-        Path(config.output_dir),
+    executed_config = replace(
         config,
+        model_name=best["model"],
+        validation_strategy=best["validation"],
+        model_params=best_params,
+    )
+    output_dir = Path(config.output_dir)
+    write_results(
+        output_dir,
+        executed_config,
         metrics,
         predictions,
         fold_metrics=fold_metrics,
@@ -187,18 +619,46 @@ def run_experiment(config: ExperimentConfig, frame: pd.DataFrame | None = None) 
         warnings=warnings,
         confusion=confusion,
     )
+    tuning_results = pd.DataFrame(
+        tuning_rows,
+        columns=[
+            "model",
+            "validation",
+            "outer_fold",
+            "selection_scope",
+            "candidate",
+            "selection_metric",
+            "score",
+            "parameters",
+            "status",
+            "error",
+        ],
+    )
+    write_study_outputs(output_dir, executed_config, leaderboard, tuning_results, best_params)
     write_research_outputs(
-        Path(config.output_dir),
-        config,
-        frame,
-        analyzed_rows=len(working),
-        feature_columns=len(working.columns),
+        output_dir,
+        executed_config,
+        source_frame,
+        analyzed_rows=len(features),
+        feature_columns=len(features.columns),
         fold_metrics=fold_metrics,
         predictions=predictions,
         warnings=warnings,
         confusion=confusion,
     )
-    write_result_summary(Path(config.output_dir), config, metrics, warnings)
+    write_result_summary(
+        output_dir,
+        executed_config,
+        metrics,
+        warnings,
+        study_summary={
+            "best_model": best["model"],
+            "best_validation": best["validation"],
+            "selection_metric": metric,
+            "best_parameters": best_params,
+            "evaluated_combinations": len(ranked_rows),
+        },
+    )
     return ExperimentResult(
         metrics=metrics,
         predictions=predictions,
@@ -207,4 +667,9 @@ def run_experiment(config: ExperimentConfig, frame: pd.DataFrame | None = None) 
         metric_summary=metric_summary,
         warnings=warnings,
         confusion_matrix=confusion,
+        leaderboard=leaderboard,
+        tuning_results=tuning_results,
+        best_model_name=best["model"],
+        best_validation_strategy=best["validation"],
+        best_params=best_params,
     )

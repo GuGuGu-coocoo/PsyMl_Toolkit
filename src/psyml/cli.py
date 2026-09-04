@@ -60,6 +60,7 @@ def build_legacy_parser() -> argparse.ArgumentParser:
             "k_fold",
             "stratified_k_fold",
             "group_k_fold",
+            "stratified_group_k_fold",
             "leave_one_group_out",
         ],
     )
@@ -150,8 +151,12 @@ def _run_versioned(args: argparse.Namespace) -> int:
         config = load_config(args.config)
         if args.events:
             _print_json(event_payload("started", 0.0))
+        def report_progress(details: dict) -> None:
+            progress = float(details.pop("progress"))
+            _print_json(event_payload("progress", progress, details=details))
+
         with _cancellation_handler():
-            _execute(config)
+            _execute(config, progress_callback=report_progress if args.events else None)
         result_path = Path(config.output_dir) / "result.json"
         if args.events:
             _print_json(event_payload("completed", 1.0, result_path=str(result_path)))
@@ -209,8 +214,8 @@ def entrypoint() -> None:
     raise SystemExit(main())
 
 
-def _execute(config: ExperimentConfig):
+def _execute(config: ExperimentConfig, progress_callback=None):
     """Import the scientific runtime only for an actual analysis."""
     from psyml.runner import run_experiment
 
-    return run_experiment(config)
+    return run_experiment(config, progress_callback=progress_callback)

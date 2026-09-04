@@ -6,7 +6,7 @@ func _initialize() -> void:
 	for locale in PsyMLI18n.LOCALES:
 		TranslationServer.set_locale(locale)
 		assert(TranslationServer.translate("RUN") != "RUN")
-		assert(not TranslationServer.translate("APP_SUBTITLE").is_empty())
+		assert(TranslationServer.translate("LANGUAGE") != "LANGUAGE")
 	var bridge := CoreBridge.new()
 	root.add_child(bridge)
 	var capabilities := bridge.execute_json_sync(PackedStringArray(["capabilities"]))

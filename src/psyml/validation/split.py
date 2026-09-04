@@ -6,6 +6,7 @@ from sklearn.model_selection import (
     GroupShuffleSplit,
     KFold,
     LeaveOneGroupOut,
+    StratifiedGroupKFold,
     StratifiedKFold,
     train_test_split,
 )
@@ -78,7 +79,15 @@ def make_validation_splits(
             raise ValueError("group_k_fold requires groups")
         if groups.nunique() < n_splits:
             raise ValueError("group_k_fold requires at least n_splits unique groups")
-        split_iterator = GroupKFold(
+        split_iterator = GroupKFold(n_splits=n_splits).split(features, target, groups)
+    elif strategy == "stratified_group_k_fold":
+        if groups is None:
+            raise ValueError("stratified_group_k_fold requires groups")
+        if groups.nunique() < n_splits:
+            raise ValueError("stratified_group_k_fold requires at least n_splits unique groups")
+        if task != "classification":
+            raise ValueError("stratified_group_k_fold is only valid for classification")
+        split_iterator = StratifiedGroupKFold(
             n_splits=n_splits, shuffle=True, random_state=random_seed
         ).split(features, target, groups)
     elif strategy == "leave_one_group_out":

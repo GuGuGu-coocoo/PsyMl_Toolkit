@@ -48,14 +48,38 @@ def write_result_summary(
     config: ExperimentConfig,
     metrics: dict[str, float],
     warnings: list[str],
+    study_summary: dict | None = None,
 ) -> None:
     """Write the stable result summary after every other artefact succeeds."""
     (output_dir / "result.json").write_text(
         json.dumps(
-            result_payload(config, metrics, warnings),
+            result_payload(config, metrics, warnings, study_summary=study_summary),
             indent=2,
             ensure_ascii=False,
             sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def write_study_outputs(
+    output_dir: Path,
+    config: ExperimentConfig,
+    leaderboard: pd.DataFrame,
+    tuning_results: pd.DataFrame,
+    best_parameters: dict,
+) -> None:
+    """Persist the complete comparison and parameter-selection evidence."""
+    leaderboard.to_csv(output_dir / "model_comparison.csv", index=False)
+    tuning_results.to_csv(output_dir / "parameter_search.csv", index=False)
+    (output_dir / "best_parameters.json").write_text(
+        json.dumps(best_parameters, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "study_config.json").write_text(
+        json.dumps(
+            config_to_dict(config), indent=2, ensure_ascii=False, sort_keys=True, default=str
         )
         + "\n",
         encoding="utf-8",

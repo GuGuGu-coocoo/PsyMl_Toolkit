@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.model_selection import ParameterGrid
 
 from psyml import ExperimentConfig, run_experiment
-from psyml.models import supported_models
+from psyml.models import build_model, supported_models
+from psyml.models.catalog import quick_parameter_grid
 
 
 @pytest.mark.parametrize(
@@ -60,3 +62,13 @@ def test_supported_model_catalog_contains_phase_10_models():
     assert {"logistic_regression", "gaussian_nb", "lda", "qda", "dummy"} <= set(
         supported_models("classification")
     )
+
+
+@pytest.mark.parametrize("task", ["classification", "regression"])
+def test_recommended_parameter_grids_only_use_supported_estimator_parameters(task):
+    for model_name in supported_models(task):
+        grid = quick_parameter_grid(task, model_name)
+        candidates = list(ParameterGrid(grid)) if grid else [{}]
+        for parameters in candidates:
+            model = build_model(task, model_name, 42, parameters)
+            assert parameters.items() <= model.get_params().items()

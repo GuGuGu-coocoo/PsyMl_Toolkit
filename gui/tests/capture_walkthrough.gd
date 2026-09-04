@@ -41,11 +41,27 @@ func _capture_walkthrough() -> void:
 		if main.group_option.get_item_metadata(index) == "participant":
 			main.group_option.select(index)
 			break
-	for index in range(main.validation_option.item_count):
-		if main.validation_option.get_item_metadata(index) == "group_k_fold":
-			main.validation_option.select(index)
-			break
 	main._on_column_role_changed()
+	for index in range(main.validation_list.item_count):
+		main.validation_list.deselect(index)
+	for index in range(main.validation_list.item_count):
+		if main.validation_list.get_item_metadata(index) in [
+			"group_k_fold", "stratified_group_k_fold"
+		]:
+			main.validation_list.select(index, false)
+	main.validation_list.ensure_current_is_visible()
+	for index in range(main.model_list.item_count):
+		main.model_list.deselect(index)
+		if main.model_list.get_item_metadata(index) in ["decision_tree", "dummy"]:
+			main.model_list.select(index, false)
+	main.model_list.ensure_current_is_visible()
+	for index in range(main.tuning_option.item_count):
+		if main.tuning_option.get_item_metadata(index) == "tuning_quick":
+			main.tuning_option.select(index)
+			break
+	main.inner_folds_spin.value = 2
+	main.max_candidates_spin.value = 2
+	main._populate_parameter_editor()
 	for index in range(main.feature_list.item_count):
 		if main.feature_list.get_item_metadata(index) in ["score", "category"]:
 			main.feature_list.select(index, false)

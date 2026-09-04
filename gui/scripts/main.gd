@@ -10,7 +10,6 @@ var preview_payload: Dictionary = {}
 var translated_controls: Array[Dictionary] = []
 var localized_value_options: Array[OptionButton] = []
 var tabs: TabContainer
-var subtitle_label: Label
 var language_label: Label
 var language_option: OptionButton
 var data_path_edit: LineEdit
@@ -23,16 +22,26 @@ var target_option: OptionButton
 var group_option: OptionButton
 var missing_option: OptionButton
 var scaling_option: OptionButton
-var validation_option: OptionButton
+var validation_list: ItemList
 var folds_spin: SpinBox
-var model_option: OptionButton
+var model_list: ItemList
+var tuning_option: OptionButton
+var selection_metric_option: OptionButton
+var inner_folds_spin: SpinBox
+var max_candidates_spin: SpinBox
+var parameter_editor: VBoxContainer
+var parameter_controls: Dictionary = {}
+var saved_parameter_values: Dictionary = {}
 var output_edit: LineEdit
 var review_text: TextEdit
 var status_label: Label
+var progress_detail_label: Label
 var progress_bar: ProgressBar
 var run_button: Button
 var cancel_button: Button
 var warnings_text: RichTextLabel
+var best_result_label: Label
+var comparison_tree: Tree
 var metrics_tree: Tree
 var predictions_tree: Tree
 var figure_view: TextureRect
@@ -139,12 +148,10 @@ func _build_interface() -> void:
 	var title := Label.new()
 	title.name = "TitleLabel"
 	title.text = "PsyML Toolkit"
+	title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	title.add_theme_font_size_override("font_size", 30)
 	title.add_theme_color_override("font_color", ACCENT)
 	brand.add_child(title)
-	subtitle_label = _translated_label("APP_SUBTITLE")
-	subtitle_label.add_theme_color_override("font_color", Color("59657a"))
-	brand.add_child(subtitle_label)
 	language_label = _translated_label("LANGUAGE")
 	header.add_child(language_label)
 	language_option = OptionButton.new()
@@ -277,29 +284,57 @@ func _build_config_tab() -> void:
 	scaling_option = _value_option(["none", "standard", "minmax"])
 	scaling_option.select(1)
 	_add_field(grid, "SCALING", scaling_option)
-	validation_option = _value_option(
-		["holdout", "k_fold", "stratified_k_fold", "group_k_fold", "leave_one_group_out"]
-	)
-	_add_field(grid, "VALIDATION", validation_option)
+	validation_list = ItemList.new()
+	validation_list.select_mode = ItemList.SELECT_MULTI
+	validation_list.custom_minimum_size.y = 125
+	_add_field(grid, "VALIDATION", validation_list)
 	folds_spin = SpinBox.new()
 	folds_spin.min_value = 2
 	folds_spin.max_value = 20
 	folds_spin.value = 5
 	_add_field(grid, "FOLDS", folds_spin)
-	model_option = OptionButton.new()
-	_add_field(grid, "MODEL", model_option)
+	model_list = ItemList.new()
+	model_list.select_mode = ItemList.SELECT_MULTI
+	model_list.custom_minimum_size.y = 145
+	_add_field(grid, "MODEL", model_list)
+	tuning_option = _value_option(["tuning_none", "tuning_quick", "tuning_custom"])
+	_add_field(grid, "TUNING", tuning_option)
+	selection_metric_option = OptionButton.new()
+	_add_field(grid, "SELECTION_METRIC", selection_metric_option)
+	inner_folds_spin = SpinBox.new()
+	inner_folds_spin.min_value = 2
+	inner_folds_spin.max_value = 10
+	inner_folds_spin.value = 3
+	_add_field(grid, "INNER_FOLDS", inner_folds_spin)
+	max_candidates_spin = SpinBox.new()
+	max_candidates_spin.min_value = 1
+	max_candidates_spin.max_value = 200
+	max_candidates_spin.value = 20
+	_add_field(grid, "MAX_CANDIDATES", max_candidates_spin)
+	content.add_child(_translated_label("PARAMETER_HELP"))
+	parameter_editor = VBoxContainer.new()
+	parameter_editor.add_theme_constant_override("separation", 10)
+	content.add_child(parameter_editor)
 	_populate_task_options()
 	task_option.item_selected.connect(func(_index): _on_task_changed())
 	target_option.item_selected.connect(func(_index): _on_column_role_changed())
 	group_option.item_selected.connect(func(_index): _on_column_role_changed())
-	for control in [missing_option, scaling_option, validation_option, model_option]:
+	for control in [missing_option, scaling_option, tuning_option, selection_metric_option]:
 		control.item_selected.connect(func(_index): _refresh_review())
+	tuning_option.item_selected.connect(func(_index): _populate_parameter_editor())
+	model_list.multi_selected.connect(func(_index, _selected): _populate_parameter_editor())
+	validation_list.multi_selected.connect(func(_index, _selected): _refresh_review())
 	folds_spin.value_changed.connect(func(_value): _refresh_review())
+	inner_folds_spin.value_changed.connect(func(_value): _refresh_review())
+	max_candidates_spin.value_changed.connect(func(_value): _refresh_review())
 
 
 func _add_field(grid: GridContainer, key: String, control: Control) -> void:
 	grid.add_child(_translated_label(key))
-	control.custom_minimum_size = Vector2(420, 42)
+	control.custom_minimum_size = Vector2(
+		maxf(control.custom_minimum_size.x, 420.0),
+		maxf(control.custom_minimum_size.y, 42.0)
+	)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_child(control)
 
@@ -346,6 +381,10 @@ func _build_review_tab() -> void:
 	review_text.custom_minimum_size.y = 390
 	review_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_child(review_text)
+	progress_detail_label = Label.new()
+	progress_detail_label.text = tr("PROGRESS_WAITING")
+	progress_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(progress_detail_label)
 	var run_row := HBoxContainer.new()
 	run_row.alignment = BoxContainer.ALIGNMENT_END
 	content.add_child(run_row)
@@ -360,7 +399,7 @@ func _build_review_tab() -> void:
 	run_row.add_child(progress_bar)
 	cancel_button = _translated_button("CANCEL")
 	cancel_button.disabled = true
-	cancel_button.pressed.connect(func(): bridge.cancel_analysis())
+	cancel_button.pressed.connect(_request_cancel)
 	run_row.add_child(cancel_button)
 	run_button = _translated_button("RUN")
 	run_button.name = "RunButton"
@@ -382,6 +421,13 @@ func _build_results_tab() -> void:
 	details.custom_minimum_size.x = 520
 	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(details)
+	best_result_label = Label.new()
+	best_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	details.add_child(best_result_label)
+	details.add_child(_translated_label("COMPARISONS"))
+	comparison_tree = Tree.new()
+	comparison_tree.custom_minimum_size.y = 170
+	details.add_child(comparison_tree)
 	details.add_child(_translated_label("WARNINGS"))
 	warnings_text = RichTextLabel.new()
 	warnings_text.fit_content = true
@@ -450,6 +496,14 @@ func _apply_language() -> void:
 			option.set_item_text(
 				index, tr("OPTION_" + str(option.get_item_metadata(index)).to_upper())
 			)
+	for index in range(validation_list.item_count):
+		validation_list.set_item_text(
+			index, tr("OPTION_" + str(validation_list.get_item_metadata(index)).to_upper())
+		)
+	for index in range(selection_metric_option.item_count):
+		selection_metric_option.set_item_text(
+			index, tr("METRIC_" + str(selection_metric_option.get_item_metadata(index)).to_upper())
+		)
 	tabs.set_tab_title(0, tr("TAB_DATA"))
 	tabs.set_tab_title(1, tr("TAB_CONFIGURE"))
 	tabs.set_tab_title(2, tr("TAB_REVIEW"))
@@ -466,6 +520,7 @@ func _apply_language() -> void:
 			status_label.text = tr("ERROR") % status_detail
 		else:
 			status_label.text = tr(status_key)
+	_populate_parameter_editor()
 	_render_warnings()
 	_refresh_review()
 
@@ -541,17 +596,141 @@ func _on_preview_failed(error: Dictionary) -> void:
 
 func _on_task_changed() -> void:
 	_populate_models()
+	_populate_parameter_editor()
 	_refresh_review()
 
 
 func _populate_models() -> void:
-	if capabilities.is_empty() or capabilities.has("error") or model_option == null:
+	if capabilities.is_empty() or capabilities.has("error") or model_list == null:
 		return
-	model_option.clear()
+	model_list.clear()
 	var task: String = task_option.get_item_metadata(task_option.selected)
 	for model in capabilities.models[task]:
-		model_option.add_item(str(model).replace("_", " ").capitalize())
-		model_option.set_item_metadata(model_option.item_count - 1, model)
+		model_list.add_item(str(model).replace("_", " ").capitalize())
+		model_list.set_item_metadata(model_list.item_count - 1, model)
+	if model_list.item_count > 0:
+		model_list.select(0, false)
+	validation_list.clear()
+	var validations: Array = ["holdout", "k_fold"]
+	if task == "classification":
+		validations.append("stratified_k_fold")
+	validations.append("group_k_fold")
+	if task == "classification":
+		validations.append("stratified_group_k_fold")
+	validations.append("leave_one_group_out")
+	for validation in validations:
+		validation_list.add_item(tr("OPTION_" + str(validation).to_upper()))
+		validation_list.set_item_metadata(validation_list.item_count - 1, validation)
+	var preferred := "stratified_k_fold" if task == "classification" else "k_fold"
+	for index in range(validation_list.item_count):
+		if validation_list.get_item_metadata(index) == preferred:
+			validation_list.select(index, false)
+	selection_metric_option.clear()
+	for metric in capabilities.selection_metrics[task]:
+		selection_metric_option.add_item(tr("METRIC_" + str(metric).to_upper()))
+		selection_metric_option.set_item_metadata(selection_metric_option.item_count - 1, metric)
+	selection_metric_option.select(0)
+	_update_validation_availability()
+
+
+func _capture_parameter_values() -> void:
+	for key in parameter_controls:
+		var controls: Dictionary = parameter_controls[key]
+		saved_parameter_values[key] = {
+			"enabled": controls.enabled.button_pressed,
+			"values": controls.values.text,
+		}
+
+
+func _populate_parameter_editor() -> void:
+	if parameter_editor == null or capabilities.is_empty() or capabilities.has("error"):
+		return
+	_capture_parameter_values()
+	for child in parameter_editor.get_children():
+		parameter_editor.remove_child(child)
+		child.queue_free()
+	parameter_controls.clear()
+	var tuning_mode: String = tuning_option.get_item_metadata(tuning_option.selected)
+	if tuning_mode == "tuning_none":
+		var no_search := Label.new()
+		no_search.text = tr("NO_PARAMETER_SEARCH")
+		parameter_editor.add_child(no_search)
+		return
+	var task: String = task_option.get_item_metadata(task_option.selected)
+	for model_name in _selected_models():
+		var heading := Label.new()
+		heading.text = str(model_name).replace("_", " ").capitalize()
+		heading.add_theme_font_size_override("font_size", 19)
+		parameter_editor.add_child(heading)
+		var parameter_grid := GridContainer.new()
+		parameter_grid.columns = 2
+		parameter_grid.add_theme_constant_override("h_separation", 14)
+		parameter_grid.add_theme_constant_override("v_separation", 8)
+		parameter_editor.add_child(parameter_grid)
+		var model_grid: Dictionary = capabilities.parameter_grids[task].get(model_name, {})
+		if model_grid.is_empty():
+			var empty_label := Label.new()
+			empty_label.text = tr("NO_TUNABLE_PARAMETERS")
+			parameter_grid.add_child(empty_label)
+			continue
+		for parameter in model_grid:
+			var enabled := CheckBox.new()
+			enabled.text = str(parameter)
+			enabled.button_pressed = true
+			enabled.disabled = tuning_mode == "tuning_quick"
+			parameter_grid.add_child(enabled)
+			var values := LineEdit.new()
+			values.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			values.text = JSON.stringify(model_grid[parameter])
+			values.editable = tuning_mode == "tuning_custom"
+			var key := "%s::%s" % [model_name, parameter]
+			if tuning_mode == "tuning_custom" and saved_parameter_values.has(key):
+				enabled.button_pressed = saved_parameter_values[key].enabled
+				values.text = saved_parameter_values[key].values
+			values.text_changed.connect(func(_text): _refresh_review())
+			enabled.toggled.connect(func(_pressed): _refresh_review())
+			parameter_grid.add_child(values)
+			parameter_controls[key] = {"enabled": enabled, "values": values}
+	_refresh_review()
+
+
+func _selected_values(list_control: ItemList) -> Array[String]:
+	var values: Array[String] = []
+	for index in list_control.get_selected_items():
+		values.append(list_control.get_item_metadata(index))
+	return values
+
+
+func _selected_models() -> Array[String]:
+	return _selected_values(model_list)
+
+
+func _selected_validations() -> Array[String]:
+	return _selected_values(validation_list)
+
+
+func _update_validation_availability() -> void:
+	if validation_list == null:
+		return
+	var has_group := (
+		group_option != null
+		and group_option.item_count > 0
+		and group_option.get_item_metadata(group_option.selected) != null
+	)
+	for index in range(validation_list.item_count):
+		var strategy: String = validation_list.get_item_metadata(index)
+		var unavailable := (
+			strategy in ["group_k_fold", "stratified_group_k_fold", "leave_one_group_out"]
+			and not has_group
+		)
+		validation_list.set_item_disabled(index, unavailable)
+		if unavailable:
+			validation_list.deselect(index)
+	if validation_list.get_selected_items().is_empty():
+		for index in range(validation_list.item_count):
+			if not validation_list.is_item_disabled(index):
+				validation_list.select(index, false)
+				break
 
 
 func _on_column_role_changed() -> void:
@@ -564,6 +743,7 @@ func _on_column_role_changed() -> void:
 		feature_list.set_item_disabled(index, column == target or column == group)
 		if column == target or column == group:
 			feature_list.deselect(index)
+	_update_validation_availability()
 	_refresh_review()
 
 
@@ -574,6 +754,25 @@ func _selected_features() -> Array[String]:
 	return result
 
 
+func _parameter_grid_payload() -> Dictionary:
+	var tuning_mode: String = tuning_option.get_item_metadata(tuning_option.selected)
+	if tuning_mode != "tuning_custom":
+		return {"grids": {}}
+	var grids: Dictionary = {}
+	for key in parameter_controls:
+		var controls: Dictionary = parameter_controls[key]
+		if not controls.enabled.button_pressed:
+			continue
+		var parsed = JSON.parse_string(controls.values.text)
+		if not parsed is Array or parsed.is_empty():
+			return {"error": tr("INVALID_PARAMETER_VALUES") % key}
+		var parts := str(key).split("::", false, 1)
+		if not grids.has(parts[0]):
+			grids[parts[0]] = {}
+		grids[parts[0]][parts[1]] = parsed
+	return {"grids": grids}
+
+
 func _build_config() -> Dictionary:
 	if preview_payload.is_empty():
 		return {"error": tr("SELECT_DATA")}
@@ -582,23 +781,42 @@ func _build_config() -> Dictionary:
 	var features := _selected_features()
 	if features.is_empty():
 		return {"error": tr("SELECT_FEATURE")}
+	var models := _selected_models()
+	if models.is_empty():
+		return {"error": tr("SELECT_MODEL")}
+	var validations := _selected_validations()
+	if validations.is_empty():
+		return {"error": tr("SELECT_VALIDATION")}
+	var grid_payload := _parameter_grid_payload()
+	if grid_payload.has("error"):
+		return grid_payload
+	var tuning_mode: String = tuning_option.get_item_metadata(tuning_option.selected)
 	return {
 		"schema_version": "1.0",
 		"task": task_option.get_item_metadata(task_option.selected),
 		"target_column": target_option.get_item_metadata(target_option.selected),
-		"model_name": model_option.get_item_metadata(model_option.selected),
+		"model_name": models[0],
+		"model_names": models,
 		"input_path": data_path_edit.text,
 		"output_dir": output_edit.text,
 		"group_column": group_option.get_item_metadata(group_option.selected),
 		"feature_columns": features,
 		"test_size": 0.2,
 		"random_seed": 42,
-		"validation_strategy": validation_option.get_item_metadata(validation_option.selected),
+		"validation_strategy": validations[0],
+		"validation_strategies": validations,
 		"n_splits": int(folds_spin.value),
 		"missing_strategy": missing_option.get_item_metadata(missing_option.selected),
 		"scaling": scaling_option.get_item_metadata(scaling_option.selected),
 		"include_data_hash": true,
 		"model_params": {},
+		"tuning_mode": tuning_mode.trim_prefix("tuning_"),
+		"parameter_grids": grid_payload.grids,
+		"selection_metric": selection_metric_option.get_item_metadata(
+			selection_metric_option.selected
+		),
+		"inner_splits": int(inner_folds_spin.value),
+		"max_candidates": int(max_candidates_spin.value),
 	}
 
 
@@ -628,6 +846,7 @@ func _on_run_pressed() -> void:
 	config_file.store_string(JSON.stringify(config, "  "))
 	config_file.close()
 	_set_status("RUNNING")
+	progress_detail_label.text = tr("PROGRESS_STARTING")
 	progress_bar.value = 0.0
 	run_button.disabled = true
 	cancel_button.disabled = false
@@ -638,27 +857,72 @@ func _on_run_pressed() -> void:
 		_show_error("PsyML Core is already running")
 
 
+func _request_cancel() -> void:
+	if not bridge.is_running():
+		return
+	_set_status("CANCELLING")
+	cancel_button.disabled = true
+	progress_detail_label.text = tr("PROGRESS_CANCELLING")
+	bridge.cancel_analysis()
+
+
 func _on_core_event(event: Dictionary) -> void:
 	progress_bar.value = float(event.get("progress", 0.0))
 	match event.get("event", ""):
 		"started":
 			_set_status("RUNNING")
+		"progress":
+			_set_status("RUNNING")
+			var completed := int(event.get("completed_tasks", 0))
+			var total := int(event.get("total_tasks", 0))
+			var remaining := int(event.get("remaining_tasks", 0))
+			var eta_value = event.get("estimated_remaining_seconds", null)
+			var eta := tr("ESTIMATING") if eta_value == null else _format_duration(float(eta_value))
+			var model := str(event.get("current_model", ""))
+			var validation := str(event.get("current_validation", ""))
+			var current_fold := int(event.get("current_fold", 1))
+			if completed == 0:
+				progress_detail_label.text = tr("PROGRESS_PLANNED") % total
+			else:
+				progress_detail_label.text = tr("PROGRESS_DETAIL") % [
+					completed,
+					total,
+					remaining,
+					eta,
+					_model_display(model),
+					_validation_display(validation),
+					current_fold,
+				]
 		"completed":
 			_cleanup_pending_config()
 			_set_status("COMPLETED")
 			run_button.disabled = false
 			cancel_button.disabled = true
+			progress_detail_label.text = tr("PROGRESS_COMPLETED")
 			_load_results(event.result_path)
 		"cancelled":
 			_cleanup_pending_config()
 			_set_status("CANCELLED")
 			run_button.disabled = false
 			cancel_button.disabled = true
+			progress_detail_label.text = tr("PROGRESS_CANCELLED")
 		"failed":
 			_cleanup_pending_config()
 			run_button.disabled = false
 			cancel_button.disabled = true
 			_show_core_error(event.get("error", {}))
+
+
+func _format_duration(seconds: float) -> String:
+	var rounded := maxi(int(round(seconds)), 0)
+	if rounded < 60:
+		return tr("SECONDS") % rounded
+	var minutes := rounded / 60
+	if minutes < 60:
+		return tr("MINUTES") % minutes
+	var hours := minutes / 60
+	var leftover := minutes % 60
+	return tr("HOURS_MINUTES") % [hours, leftover]
 
 
 func _cleanup_pending_config() -> void:
@@ -677,6 +941,11 @@ func _load_results(result_path: String) -> void:
 	last_result_dir = result_path.get_base_dir()
 	no_results_label.visible = false
 	last_warnings = parsed.get("warnings", [])
+	best_result_label.text = tr("BEST_RESULT") % [
+		_model_display(str(parsed.get("best_model", ""))),
+		_validation_display(str(parsed.get("best_validation", ""))),
+		_metric_display(str(parsed.get("selection_metric", ""))),
+	]
 	_render_warnings()
 	metrics_tree.clear()
 	var root := metrics_tree.create_item()
@@ -685,6 +954,7 @@ func _load_results(result_path: String) -> void:
 		item.set_text(0, metric)
 		item.set_text(1, "%.6f" % parsed.metrics[metric])
 	var artifacts: Dictionary = parsed.artifacts
+	_load_csv_preview(last_result_dir.path_join(artifacts.model_comparison), comparison_tree, 30)
 	_load_predictions(last_result_dir.path_join(artifacts.predictions))
 	var image := Image.load_from_file(last_result_dir.path_join(artifacts.figure))
 	if image != null and not image.is_empty():
@@ -693,25 +963,56 @@ func _load_results(result_path: String) -> void:
 
 
 func _load_predictions(path: String) -> void:
-	predictions_tree.clear()
+	_load_csv_preview(path, predictions_tree, 20)
+
+
+func _load_csv_preview(path: String, tree: Tree, maximum_rows: int) -> void:
+	tree.clear()
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		return
 	var headers := file.get_csv_line()
-	predictions_tree.columns = headers.size()
-	predictions_tree.column_titles_visible = true
+	tree.columns = headers.size()
+	tree.column_titles_visible = true
 	for index in range(headers.size()):
-		predictions_tree.set_column_title(index, headers[index])
-	var root := predictions_tree.create_item()
+		tree.set_column_title(index, headers[index])
+	var root := tree.create_item()
 	var shown := 0
-	while not file.eof_reached() and shown < 20:
+	while not file.eof_reached() and shown < maximum_rows:
 		var values := file.get_csv_line()
 		if values.size() == 1 and values[0].is_empty():
 			continue
-		var item := predictions_tree.create_item(root)
+		var item := tree.create_item(root)
 		for index in range(min(headers.size(), values.size())):
-			item.set_text(index, values[index])
+			var value := str(values[index])
+			if headers[index] == "model":
+				value = _model_display(value)
+			elif headers[index] == "validation":
+				value = _validation_display(value)
+			elif headers[index] == "selection_metric":
+				value = _metric_display(value)
+			item.set_text(index, value)
 		shown += 1
+
+
+func _model_display(value: String) -> String:
+	return value.replace("_", " ").capitalize()
+
+
+func _validation_display(value: String) -> String:
+	if value.is_empty():
+		return value
+	var key := "OPTION_" + value.to_upper()
+	var localized := tr(key)
+	return value if localized == key else localized
+
+
+func _metric_display(value: String) -> String:
+	if value.is_empty():
+		return value
+	var key := "METRIC_" + value.to_upper()
+	var localized := tr(key)
+	return value if localized == key else localized
 
 
 func _open_results() -> void:

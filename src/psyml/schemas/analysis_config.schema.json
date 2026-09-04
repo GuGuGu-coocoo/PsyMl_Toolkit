@@ -21,11 +21,34 @@
     },
     "test_size": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
     "random_seed": {"type": "integer"},
-    "validation_strategy": {"enum": ["holdout", "k_fold", "stratified_k_fold", "group_k_fold", "leave_one_group_out"]},
+    "validation_strategy": {"enum": ["holdout", "k_fold", "stratified_k_fold", "group_k_fold", "stratified_group_k_fold", "leave_one_group_out"]},
     "n_splits": {"type": "integer", "minimum": 2},
     "missing_strategy": {"enum": ["drop", "mean", "median", "mode"]},
     "scaling": {"enum": ["none", "standard", "minmax"]},
     "include_data_hash": {"type": "boolean"},
-    "model_params": {"type": "object"}
+    "model_params": {"type": "object"},
+    "model_names": {
+      "type": ["array", "null"],
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "validation_strategies": {
+      "type": ["array", "null"],
+      "items": {"enum": ["holdout", "k_fold", "stratified_k_fold", "group_k_fold", "stratified_group_k_fold", "leave_one_group_out"]},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "tuning_mode": {"enum": ["none", "quick", "custom"]},
+    "parameter_grids": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {"type": "array", "minItems": 1}
+      }
+    },
+    "selection_metric": {"type": ["string", "null"]},
+    "inner_splits": {"type": "integer", "minimum": 2},
+    "max_candidates": {"type": "integer", "minimum": 1, "maximum": 200}
   }
 }

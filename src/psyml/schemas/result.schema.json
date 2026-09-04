@@ -11,6 +11,11 @@
     "task": {"enum": ["classification", "regression"]},
     "metrics": {"type": "object", "additionalProperties": {"type": "number"}},
     "warnings": {"type": "array", "items": {"type": "string"}},
-    "artifacts": {"type": "object", "additionalProperties": {"type": "string"}}
+    "artifacts": {"type": "object", "additionalProperties": {"type": "string"}},
+    "best_model": {"type": "string"},
+    "best_validation": {"type": "string"},
+    "selection_metric": {"type": "string"},
+    "best_parameters": {"type": "object"},
+    "evaluated_combinations": {"type": "integer", "minimum": 1}
   }
 }
