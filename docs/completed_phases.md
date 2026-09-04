@@ -1,0 +1,31 @@
+# PsyML Toolkit Completed Phases
+
+本文件归档开发计划中已完成的阶段，避免当前计划混入已经结束的工作。
+
+## Phase 0 — Legacy Asset Inventory
+
+目标是盘点遗留的机器学习、数据分析和辅助脚本，并记录模型、预处理、验证、评价与输出能力。完成记录见 `docs/legacy_inventory.md`。
+
+## Phase 1 — Legacy Version Archaeology
+
+目标是保留原始目录名称、比较历史版本差异，并标注 Latest Candidate、Superseded、Experimental Branch、Unique Component 或 Unknown。完成记录见 `docs/legacy_versions.md`。
+
+## Phase 2 — Backup and Privacy / IP Audit
+
+目标是先保留历史代码，再移除或替换真实被试数据、身份信息、机密配置、绝对路径和未经确认可公开的内容；同时记录源码归属与保密风险。审计记录见 `docs/privacy_ip_audit.md`，数据处理记录见 `docs/data_sanitization_manifest.json` 与 `docs/csv_sanitization_manifest.json`。
+
+## Phase 3 — Git Repository Initialization
+
+仓库已初始化；遗留代码保存在 `legacy/original/program/`，并建立了 `legacy-v0.1` 标签。此后不再用复制目录的方式管理版本，而使用 Git commit、branch 和 tag。
+
+## Phase 4 — Initial README
+
+已建立根目录 `README.md`，说明项目背景、现有回归与分类模型、实验性 RNN NLP 代码，以及当前现代化状态。
+
+## Phase 5 — uv Migration
+
+已建立 `pyproject.toml` 与 `uv.lock`，并可用 `uv sync` 创建可复现的开发环境。
+
+## Phase 6 — Current State Baseline
+
+已建立 `docs/current_state.md`，记录遗留资产可运行、失效和待确认状态，以及输入、输出和人工配置情况。
