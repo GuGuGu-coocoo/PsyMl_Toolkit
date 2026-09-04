@@ -13,6 +13,12 @@
     "input_path": {"type": ["string", "null"]},
     "output_dir": {"type": "string", "minLength": 1},
     "group_column": {"type": ["string", "null"]},
+    "feature_columns": {
+      "type": ["array", "null"],
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
     "test_size": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
     "random_seed": {"type": "integer"},
     "validation_strategy": {"enum": ["holdout", "k_fold", "stratified_k_fold", "group_k_fold", "leave_one_group_out"]},

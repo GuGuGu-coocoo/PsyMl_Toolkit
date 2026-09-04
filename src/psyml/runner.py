@@ -96,6 +96,12 @@ def run_experiment(config: ExperimentConfig, frame: pd.DataFrame | None = None) 
 
     target = working.pop(config.target_column)
     groups = working.pop(config.group_column) if config.group_column else None
+    if config.feature_columns is not None:
+        missing_features = set(config.feature_columns) - set(working.columns)
+        if missing_features:
+            missing = ", ".join(sorted(missing_features))
+            raise KeyError(f"Feature columns were not found: {missing}")
+        working = working.loc[:, config.feature_columns]
     if working.empty:
         raise ValueError("No feature columns remain after selecting target and group columns")
     if config.task == "classification" and target.nunique() < 2:

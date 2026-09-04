@@ -175,6 +175,22 @@ def test_target_and_group_columns_never_enter_model_features(tmp_path):
     assert feature_names == {"continuous", "category"}
 
 
+def test_explicit_feature_selection_excludes_unselected_columns(tmp_path):
+    frame = _classification_frame().assign(unselected=np.arange(40) * 100)
+    config = ExperimentConfig(
+        task="classification",
+        target_column="target",
+        feature_columns=["continuous"],
+        model_name="dummy",
+        output_dir=tmp_path / "feature selection",
+    )
+
+    result = run_experiment(config, frame)
+
+    feature_names = list(result.model.named_steps["preprocess"].feature_names_in_)
+    assert feature_names == ["continuous"]
+
+
 def test_non_group_validation_warns_when_group_column_is_supplied(tmp_path):
     frame = _classification_frame().assign(
         participant=[f"participant-{index // 2}" for index in range(40)]

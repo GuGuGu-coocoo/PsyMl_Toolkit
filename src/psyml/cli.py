@@ -47,6 +47,9 @@ def build_legacy_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", required=True, help="Model name")
     parser.add_argument("--output", required=True, type=Path, help="Directory for result files")
     parser.add_argument("--group", help="Optional grouping column for group-aware splitting")
+    parser.add_argument(
+        "--feature", action="append", dest="feature_columns", help="Feature column (repeatable)"
+    )
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
@@ -103,6 +106,7 @@ def _legacy_config(args: argparse.Namespace) -> ExperimentConfig:
         input_path=args.input,
         output_dir=args.output,
         group_column=args.group,
+        feature_columns=args.feature_columns,
         test_size=args.test_size,
         random_seed=args.seed,
         validation_strategy=args.validation,

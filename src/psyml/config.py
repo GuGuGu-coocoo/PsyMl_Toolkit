@@ -26,6 +26,7 @@ class ExperimentConfig:
     input_path: Path | None = None
     output_dir: Path = Path("results/run")
     group_column: str | None = None
+    feature_columns: list[str] | None = None
     test_size: float = 0.2
     random_seed: int = 42
     validation_strategy: ValidationKind = "holdout"
@@ -48,6 +49,14 @@ class ExperimentConfig:
             raise ValueError("n_splits must be at least 2")
         if self.group_column == self.target_column:
             raise ValueError("group_column cannot be the target_column")
+        if self.feature_columns is not None:
+            if not self.feature_columns:
+                raise ValueError("feature_columns cannot be empty")
+            if len(self.feature_columns) != len(set(self.feature_columns)):
+                raise ValueError("feature_columns cannot contain duplicates")
+            excluded = {self.target_column, self.group_column} & set(self.feature_columns)
+            if excluded:
+                raise ValueError("feature_columns cannot include the target or group column")
         if self.validation_strategy not in {
             "holdout",
             "k_fold",

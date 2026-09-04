@@ -17,6 +17,8 @@ psyml run --config ANALYSIS_CONFIG_PATH [--events]
 
 `analysis_config.json` 必须声明 `schema_version: "1.0"`。完整约束见随 Python 包发布的 `psyml/schemas/analysis_config.schema.json`，也可用 `psyml schema analysis_config` 读取。
 
+`feature_columns` 为明确的预测变量列表；目标列和分组列不能出现在其中。若设为 `null`，核心使用目标/分组以外的全部列。GUI 必须写入用户实际选择的列表，不能用 `null` 代替选择结果。
+
 每次成功运行会把实际配置写入结果目录的 `analysis_config.json`；`config.json` 是当前兼容副本。重新运行前可以修改 `output_dir`，其余分析字段保持不变即可验证确定性。
 
 ## 状态事件与取消
