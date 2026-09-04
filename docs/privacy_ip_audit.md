@@ -4,9 +4,8 @@ Audit date: 2026-09-04
 
 ## Backup
 
-- `psyml_legacy_backup/` is an untouched local snapshot created before sanitization.
-- `psyml_legacy_backup/SHA256SUMS` records SHA-256 checksums for the copied files.
-- The backup is excluded from Git and must remain local/private.
+- An untouched local snapshot was created before sanitization and checksum-verified.
+- On 2026-09-04, the user confirmed an independent cloud backup and requested deletion of the local original-data snapshot. The local backup and its checksum file were removed.
 
 ## Data sanitization
 
@@ -15,11 +14,11 @@ Audit date: 2026-09-04
 - The generated file-level record is `docs/data_sanitization_manifest.json`.
 - The accompanying CSV files are also replaced with synthetic values while their header row, delimiter, row count, and column count are retained. The SPSS file retains its 94-row, 16-column schema and column labels.
 
-## Files deliberately excluded from Git
+## Local deletion and Git exclusions
 
-The following may contain raw records, derived research results, or model state learned from those records. They remain available only in the local backup until their ownership and publication status is confirmed:
+The following may contain raw records, derived research results, or model state learned from those records. They were removed from the local workspace on 2026-09-04; ignore rules remain as a defence against accidental reintroduction:
 
-- `psyml_legacy_backup/`
+- the complete pre-sanitization legacy snapshot (370 files)
 - `**/results/`
 - `**/subdimensions-data-result/`
 - `**/saved_models/`
@@ -32,6 +31,6 @@ The following may contain raw records, derived research results, or model state 
 ## Text scan findings
 
 - No API keys, passwords, database connection strings, telephone-number patterns, or Chinese national-ID patterns were found in searchable source text.
-- A legacy contact email address found in 27 Python files was replaced with `maintainer@example.invalid`; the original remains only in the private backup.
+- A legacy contact email address found in 27 Python files was replaced with `maintainer@example.invalid`; the original is retained only in the user's cloud backup.
 - Historical scripts contain hard-coded local Windows paths. They are not credentials, but will require portability fixes in a later engineering phase.
 - Research-data ownership, client ownership, and publication permissions have not been independently verified. The repository should therefore remain private until that review is complete.

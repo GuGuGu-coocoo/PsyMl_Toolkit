@@ -19,7 +19,7 @@ Baseline date: 2026-09-04
 
 - 19 Python files contain hard-coded `E:\\...` Windows paths. The configured paths do not exist in the repository's current layout, so the associated training and prediction entry points are not runnable without manual changes.
 - Classification v1.1.0 and v1.1.1 refer to a non-present `Classiffication_Models-v1.2.1` directory.
-- Root-level `pytest` collection fails while the private backup is present because the backup duplicates the legacy test module names. This is a discovery/configuration issue, not a test assertion failure.
+- Root-level `pytest` has no discoverable test functions. `autohluon_test.py` is empty; `pooling_test.py` is a runnable demonstration rather than a test function.
 - The scoped legacy test directory contains no pytest tests. `autohluon_test.py` is empty; `pooling_test.py` is a runnable demonstration rather than a test function.
 
 ## Unknown
@@ -42,7 +42,7 @@ Before any legacy workflow can be run, its entry script requires manual review a
 
 - Excel workbooks (`.xlsx`) are the primary dataset format used by the training and prediction scripts.
 - CSV is used by the simulation experiment.
-- One SPSS `.sav` source is retained with a synthetic 94-row, 16-column dataset; no legacy Python reader for this format was identified. The original is retained only in the private backup.
+- One SPSS `.sav` source is retained with a synthetic 94-row, 16-column dataset; no legacy Python reader for this format was identified. The original is retained only in the user's cloud backup.
 
 ## Outputs
 
@@ -51,4 +51,4 @@ Before any legacy workflow can be run, its entry script requires manual review a
 - Saved Joblib and PyTorch model files.
 - Decision-tree Graphviz output and optional matplotlib plots.
 
-All original/derived result directories and trained-model artifacts remain excluded from Git until ownership and publication permissions are confirmed.
+Original/derived result directories, trained-model artifacts, and archives have been removed locally and remain excluded from Git until ownership and publication permissions are confirmed.
