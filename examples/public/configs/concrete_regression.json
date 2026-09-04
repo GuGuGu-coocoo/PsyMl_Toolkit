@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "task": "regression",
+  "target_column": "compressive_strength_mpa",
+  "model_name": "ridge",
+  "input_path": "examples/public/data/concrete.csv",
+  "output_dir": "examples/public/results/concrete_regression",
+  "group_column": null,
+  "feature_columns": [
+    "cement_kg_m3",
+    "blast_furnace_slag_kg_m3",
+    "fly_ash_kg_m3",
+    "water_kg_m3",
+    "superplasticizer_kg_m3",
+    "coarse_aggregate_kg_m3",
+    "fine_aggregate_kg_m3",
+    "age_days"
+  ],
+  "test_size": 0.2,
+  "random_seed": 42,
+  "validation_strategy": "k_fold",
+  "n_splits": 5,
+  "missing_strategy": "median",
+  "scaling": "standard",
+  "include_data_hash": true,
+  "model_params": {}
+}

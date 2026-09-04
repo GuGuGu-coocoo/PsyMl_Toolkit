@@ -88,8 +88,8 @@ const MESSAGES := {
 	},
 	"fr": {
 		"APP_SUBTITLE": "Analyse d’apprentissage automatique reproductible pour la recherche",
-		"LANGUAGE": "Langue", "TAB_DATA": "1  Données et variables",
-		"TAB_CONFIGURE": "2  Paramètres d’analyse", "TAB_REVIEW": "3  Vérifier et exécuter",
+		"LANGUAGE": "Langue", "TAB_DATA": "1  Données",
+		"TAB_CONFIGURE": "2  Configuration", "TAB_REVIEW": "3  Vérification",
 		"TAB_RESULTS": "4  Résultats", "DATA_HEADING": "Importer les données de recherche",
 		"DATA_PATH": "Fichier de données", "BROWSE": "Parcourir…",
 		"PREVIEW": "Charger l’aperçu",

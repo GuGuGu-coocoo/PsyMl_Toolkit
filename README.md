@@ -8,81 +8,129 @@
 
 ## 中文
 
-PsyML Toolkit 将本科科研与应用项目中积累的 Python 机器学习脚本，逐步整理为可复现、可维护、能避免常见数据泄漏的科研工具。新的分析仅使用现代化的 `src/psyml/` 核心；`legacy/original/program/` 只作为历史参考保留。
+PsyML Toolkit 是面向研究者的本地机器学习工具。新的分析只使用现代化的 `src/psyml/` 核心；Godot 图形界面负责配置和展示，训练、预处理、验证与指标始终由同一 Python 核心完成。数据不会上传。
 
-### 当前能力
+支持回归与分类、23 种模型、9 种表格格式、训练集内预处理、5 种验证策略、完整评价指标，以及预测、图形、Methods 说明和可复现性报告导出。界面默认中文，也可切换英文和法文。
 
-- 表格回归：Dummy、Linear、Ridge、Lasso、Elastic Net、KNN、SVR、决策树、随机森林、Gradient Boosting 与 MLP。
-- 表格分类：Dummy、Logistic Regression、Gaussian Naive Bayes、LDA、QDA、KNN、SVM、决策树、随机森林、Gradient Boosting、MLP 与 Stacking。
-- 支持 CSV、TSV、XLSX、XLS、SAV、DTA、SAS7BDAT、XPT 与 Parquet；训练集内预处理、五种验证策略、完整评价指标，以及 CSV/JSON 结果导出。
-- 自动生成分析清单、Methods 参考说明、可复现性报告，以及回归预测图或分类混淆矩阵图。
-- 提供版本化 JSON 配置/结果/状态接口、数据预览与能力查询；Windows、macOS、Linux 持续集成通过。
-- 提供默认中文、支持英文和法文的 Godot 图形界面，涵盖从导入数据到查看结果的完整流程。
-- 命令行入口：`psyml` 或 `python -m psyml`。
+### 快速开始
 
-### 当前状态
+需要 Python 3.10–3.12、[uv](https://docs.astral.sh/uv/) 和 [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/)。在仓库根目录运行：
 
-Phase 0–13 已完成，当前进入 Phase 14：跨平台验收、三语图文操作说明与发布审计。Legacy 审查已确认旧脚本存在数据泄漏、可移植性与可复现性风险，不应用于新的分析。
+```bash
+uv sync --locked --group dev
+uv run python tools/launch_gui.py
+```
 
-### 文档
+也可以只使用命令行：`uv run psyml --help`。若 Godot 不在系统路径中，请把 `PSYML_GODOT` 设为 Godot 可执行文件的完整路径。
 
-- [开发计划](docs/PSYML_TOOLKIT_DEVELOPMENT_PLAN.md)
+### 图文操作流程
+
+1. 选择数据文件并点击“读取预览”。核对行列数、变量类型和缺失值；预览只在本机处理。再选择预测变量，目标和分组变量会自动从预测变量中排除。
+
+![中文数据与变量界面](docs/images/zh/01-data.png)
+
+2. 选择分类或回归、目标变量、可选分组变量、缺失值与缩放策略、验证方法和模型。重复测量或同一参与者多行数据应选择分组变量与分组验证。
+
+![中文分析设置界面](docs/images/zh/02-configure.png)
+
+3. 选择结果目录，检查完整 JSON 配置后运行。固定的随机种子和保存的 `analysis_config.json` 可用于重跑。
+
+![中文检查与运行界面](docs/images/zh/03-review.png)
+
+4. 查看风险提示、指标、预测和图形。“打开完整结果文件夹”可访问 CSV、JSON、PNG、Methods 与 reproducibility 文件。
+
+![中文结果界面](docs/images/zh/04-results.png)
+
+截图使用随机合成数据，不包含真实参与者信息。公开可复查示例采用 UCI 的 [Iris（分类）](https://doi.org/10.24432/C56C76)与[混凝土抗压强度（回归）](https://doi.org/10.24432/C5PK67)，两者均为 CC BY 4.0；运行方法见 [公开示例说明](examples/public/README.md)。
+
+### 项目状态与文档
+
+Phase 0–13 已完成，Phase 14 正在完成跨平台验收和发布审计。Legacy 代码只作历史参考，不用于新分析；原始研究数据已经删除，仓库内数据均为随机合成数据。公开示例数据仅在本地按固定哈希下载，不提交进仓库。
+
 - [已完成阶段](docs/completed_phases.md)
-- [Legacy 资产清单](docs/legacy_inventory.md)
-- [Legacy 版本关系](docs/legacy_versions.md)
-- [当前状态基线](docs/current_state.md)
 - [隐私与知识产权审计](docs/privacy_ip_audit.md)
 - [合成数据验证](docs/data_sanitization_verification.md)
-- [Phase 8/9 完成记录](docs/phase_8_9_completion.md)
-- [Phase 10 完成记录](docs/phase_10_completion.md)
-- [Phase 11 完成记录](docs/phase_11_completion.md)
-- [Phase 12 完成记录](docs/phase_12_completion.md)
-- [Phase 13 完成记录](docs/phase_13_completion.md)
 - [Core JSON 接口](docs/core_interface.md)
-- [Legacy 代码审查](docs/legacy_code_review.md)
-
-Legacy 目录中的原始数据已经删除。仓库仅保留保持原文件格式与结构的随机合成数据，用于开发与测试；数据隐私复查未发现原始个人数据。正式发布前仍需在 Phase 14 完成许可证与发布审计。
+- [Phase 13 完成记录](docs/phase_13_completion.md)
 
 <a id="english"></a>
 
 ## English
 
-PsyML Toolkit turns Python machine-learning scripts accumulated during undergraduate research and applied projects into a reproducible, maintainable research toolkit with protection against common data leakage. New analyses use only the modern `src/psyml/` core; `legacy/original/program/` is retained as historical reference.
+PsyML Toolkit is a local machine-learning tool for researchers. New analyses use only the modern `src/psyml/` core. The Godot interface handles configuration and presentation, while the same Python core performs training, preprocessing, validation and metric calculation. Data are never uploaded.
 
-### Current capabilities
+It supports regression and classification, 23 models, 9 tabular formats, training-only preprocessing, 5 validation strategies, comprehensive metrics, predictions, figures, a Methods summary and a reproducibility report. The interface is available in Chinese, English and French.
 
-- Tabular regression: Dummy, Linear, Ridge, Lasso, Elastic Net, KNN, SVR, Decision Tree, Random Forest, Gradient Boosting and MLP.
-- Tabular classification: Dummy, Logistic Regression, Gaussian Naive Bayes, LDA, QDA, KNN, SVM, Decision Tree, Random Forest, Gradient Boosting, MLP and Stacking.
-- CSV, TSV, XLSX, XLS, SAV, DTA, SAS7BDAT, XPT and Parquet loading; training-only preprocessing, five validation strategies, comprehensive metrics, and CSV/JSON result export.
-- Automatic analysis manifests, Methods summaries, reproducibility reports, and regression-prediction or classification-confusion figures.
-- Versioned JSON configuration/result/event interfaces, private-by-default data preview and capability discovery; CI passes on Windows, macOS and Linux.
-- A Godot GUI that defaults to Chinese and covers the complete workflow in Chinese, English and French.
-- Command-line entry point: `psyml` or `python -m psyml`.
+### Quick start
 
-### Status
+Install Python 3.10–3.12, [uv](https://docs.astral.sh/uv/) and [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/), then run from the repository root:
 
-Phases 0–13 are complete. Phase 14 is now completing cross-platform acceptance, illustrated trilingual guidance and the release audit. The legacy review found leakage, portability and reproducibility risks, so old scripts must not be used for new analyses.
+```bash
+uv sync --locked --group dev
+uv run python tools/launch_gui.py
+```
 
-Original data has been removed from the legacy tree. The repository retains only random synthetic datasets with the original file formats and structures for development and testing; the privacy recheck found no original personal data. License and release auditing remains scheduled for Phase 14.
+For command-line use, run `uv run psyml --help`. If Godot is not on `PATH`, set `PSYML_GODOT` to the complete path of the Godot executable.
+
+### Illustrated workflow
+
+1. Choose a data file and select “Load preview”. Check its dimensions, variable types and missing values, then select predictors. The outcome and group columns are automatically excluded from predictors.
+
+![English data and variables screen](docs/images/en/01-data.png)
+
+2. Select classification or regression, the outcome, an optional group column, preprocessing, validation and model. For repeated observations, use a group column and group-aware validation.
+
+![English analysis setup screen](docs/images/en/02-configure.png)
+
+3. Choose the result folder, review the complete JSON configuration and run. The fixed seed and saved `analysis_config.json` support exact reruns.
+
+![English review and run screen](docs/images/en/03-review.png)
+
+4. Inspect warnings, metrics, predictions and the figure. Open the complete result folder for CSV, JSON, PNG, Methods and reproducibility files.
+
+![English results screen](docs/images/en/04-results.png)
+
+The screenshots use random synthetic data and contain no participant information. Auditable public examples use UCI’s CC BY 4.0 [Iris classification dataset](https://doi.org/10.24432/C56C76) and [Concrete Compressive Strength regression dataset](https://doi.org/10.24432/C5PK67); see the [public example instructions](examples/public/README.md).
+
+Phases 0–13 are complete. Phase 14 is completing cross-platform acceptance and the release audit. Legacy code is historical reference only; original research data have been removed. Repository datasets are randomly generated, while public examples are downloaded locally with pinned hashes and are not committed.
 
 <a id="french"></a>
 
 ## Français
 
-PsyML Toolkit transforme les scripts Python d'apprentissage automatique issus de projets de recherche et d'application de premier cycle en une boîte à outils reproductible et maintenable, protégée contre les fuites de données courantes. Les nouvelles analyses utilisent uniquement le noyau moderne `src/psyml`; `legacy/original/program/` est conservé comme référence historique.
+PsyML Toolkit est un outil local d’apprentissage automatique pour la recherche. Les nouvelles analyses utilisent uniquement le noyau moderne `src/psyml/`. L’interface Godot gère la configuration et l’affichage ; le même noyau Python réalise l’entraînement, le prétraitement, la validation et le calcul des métriques. Aucune donnée n’est téléversée.
 
-### Fonctionnalités actuelles
+L’outil prend en charge la régression et la classification, 23 modèles, 9 formats tabulaires, le prétraitement ajusté uniquement sur l’entraînement, 5 stratégies de validation, des métriques complètes, les prédictions, les figures, un résumé Methods et un rapport de reproductibilité. L’interface est disponible en chinois, anglais et français.
 
-- Régression tabulaire : Dummy, régression linéaire, Ridge, Lasso, Elastic Net, KNN, SVR, arbre de décision, forêt aléatoire, Gradient Boosting et MLP.
-- Classification tabulaire : Dummy, régression logistique, Gaussian Naive Bayes, LDA, QDA, KNN, SVM, arbre de décision, forêt aléatoire, Gradient Boosting, MLP et Stacking.
-- Lecture CSV, TSV, XLSX, XLS, SAV, DTA, SAS7BDAT, XPT et Parquet ; prétraitement ajusté uniquement sur l'ensemble d'entraînement, cinq stratégies de validation, métriques complètes et export CSV/JSON.
-- Génération automatique d'un manifeste d'analyse, d'un résumé Methods, d'un rapport de reproductibilité et d'une figure de prédiction ou de matrice de confusion.
-- Interfaces JSON versionnées pour la configuration, les résultats et les événements, aperçu privé par défaut et découverte des capacités ; l’intégration continue passe sous Windows, macOS et Linux.
-- Une interface Godot, en chinois par défaut, qui couvre le flux complet en chinois, anglais et français.
-- Point d'entrée en ligne de commande : `psyml` ou `python -m psyml`.
+### Démarrage rapide
 
-### État du projet
+Installez Python 3.10–3.12, [uv](https://docs.astral.sh/uv/) et [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/), puis exécutez depuis la racine du dépôt :
 
-Les phases 0–13 sont terminées. La phase 14 finalise maintenant la validation multiplateforme, le guide illustré trilingue et l’audit de publication. La revue du code historique a identifié des risques de fuite, de portabilité et de reproductibilité ; les anciens scripts ne doivent donc pas servir aux nouvelles analyses.
+```bash
+uv sync --locked --group dev
+uv run python tools/launch_gui.py
+```
 
-Les données originales ont été supprimées de l'arborescence historique. Le dépôt ne conserve que des jeux de données synthétiques aléatoires ayant les mêmes formats et structures pour le développement et les tests ; la nouvelle vérification de confidentialité n'a trouvé aucune donnée personnelle originale. L'audit des licences et de la publication reste prévu pour la phase 14.
+Pour la ligne de commande : `uv run psyml --help`. Si Godot n’est pas dans le `PATH`, définissez `PSYML_GODOT` avec le chemin complet de l’exécutable Godot.
+
+### Parcours illustré
+
+1. Choisissez un fichier puis « Charger l’aperçu ». Vérifiez les dimensions, les types et les valeurs manquantes, puis sélectionnez les prédicteurs. La cible et le groupe sont automatiquement exclus.
+
+![Écran français des données et variables](docs/images/fr/01-data.png)
+
+2. Choisissez la classification ou la régression, la cible, un groupe éventuel, le prétraitement, la validation et le modèle. Pour des observations répétées, utilisez une variable de groupe et une validation par groupes.
+
+![Écran français de configuration](docs/images/fr/02-configure.png)
+
+3. Choisissez le dossier de résultats, vérifiez la configuration JSON complète, puis lancez l’analyse. La graine fixe et le fichier `analysis_config.json` permettent de la reproduire.
+
+![Écran français de vérification](docs/images/fr/03-review.png)
+
+4. Consultez les alertes, les métriques, les prédictions et la figure. Ouvrez le dossier complet pour accéder aux fichiers CSV, JSON, PNG, Methods et de reproductibilité.
+
+![Écran français des résultats](docs/images/fr/04-results.png)
+
+Les captures utilisent des données synthétiques aléatoires sans information de participant. Les exemples publics vérifiables emploient les jeux UCI sous CC BY 4.0 [Iris pour la classification](https://doi.org/10.24432/C56C76) et [Concrete Compressive Strength pour la régression](https://doi.org/10.24432/C5PK67) ; voir les [instructions des exemples publics](examples/public/README.md).
+
+Les phases 0–13 sont terminées. La phase 14 finalise la validation multiplateforme et l’audit de publication. Le code historique sert uniquement de référence ; les données de recherche originales ont été supprimées. Les données du dépôt sont générées aléatoirement, tandis que les exemples publics sont téléchargés localement avec des empreintes figées et ne sont pas commités.

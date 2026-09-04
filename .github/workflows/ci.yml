@@ -33,7 +33,7 @@ jobs:
         run: uv sync --locked --group dev
 
       - name: Lint
-        run: uv run ruff check src tests
+        run: uv run ruff check src tests tools/fetch_public_examples.py tools/launch_gui.py
 
       - name: Test
         run: uv run pytest -q
@@ -44,3 +44,22 @@ jobs:
       - name: Smoke-test wheel
         shell: bash
         run: uv run --isolated --no-project --with dist/*.whl tests/smoke_test.py
+
+      - name: Install Godot
+        uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789 # v2.4.1
+        with:
+          version: 4.7.2
+          use-dotnet: false
+
+      - name: Expose the locked Python environment to Godot
+        shell: bash
+        run: uv run python -c "import os, sys; open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8').write('PSYML_PYTHON=' + sys.executable + '\n')"
+
+      - name: Validate Godot project
+        run: godot --headless --editor --path gui --quit
+
+      - name: Test Godot/Core bridge
+        run: godot --headless --path gui --script res://tests/test_bridge.gd
+
+      - name: Test complete Godot workflow
+        run: godot --headless --path gui --script res://tests/test_ui_flow.gd

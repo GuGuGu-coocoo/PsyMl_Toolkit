@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "task": "classification",
+  "target_column": "species",
+  "model_name": "logistic_regression",
+  "input_path": "examples/public/data/iris.csv",
+  "output_dir": "examples/public/results/iris_classification",
+  "group_column": null,
+  "feature_columns": [
+    "sepal_length_cm",
+    "sepal_width_cm",
+    "petal_length_cm",
+    "petal_width_cm"
+  ],
+  "test_size": 0.2,
+  "random_seed": 42,
+  "validation_strategy": "stratified_k_fold",
+  "n_splits": 5,
+  "missing_strategy": "median",
+  "scaling": "standard",
+  "include_data_hash": true,
+  "model_params": {}
+}
