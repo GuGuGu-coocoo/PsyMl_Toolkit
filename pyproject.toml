@@ -1,7 +1,7 @@
 [project]
 name = "psyml-toolkit"
 version = "0.1.0"
-description = "Legacy Python machine-learning research scripts preserved for modernization."
+description = "Reproducible machine-learning workflows for research data."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = [
@@ -17,6 +17,9 @@ dependencies = [
   "torch>=2.5,<3",
 ]
 
+[project.scripts]
+psyml = "psyml.cli:main"
+
 [dependency-groups]
 dev = [
   "pytest>=8,<10",
@@ -28,4 +31,14 @@ requires = ["hatchling>=1.25,<2"]
 build-backend = "hatchling.build"
 
 [tool.uv]
-package = false
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/psyml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
