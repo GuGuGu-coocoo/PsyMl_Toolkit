@@ -1,0 +1,23 @@
+# Private legacy backup and audit artefacts
+psyml_legacy_backup/
+
+# Original or derived research data that must not be published before ownership review
+**/results/
+**/subdimensions-data-result/
+**/saved_models/
+*.rar
+*.sav
+*.joblib
+*.pth
+
+# Local development artefacts
+.DS_Store
+.accelerate/
+.venv/
+.idea/
+.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+*.sanitizing
+*.sanitizing.inspect.ndjson
+tools/node_modules/

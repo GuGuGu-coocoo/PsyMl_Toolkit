@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-09-04",
+  "files": [
+    {
+      "path": "legacy/original/program/Classiffication_Models/simulate_0/simulated_data.CSV",
+      "rows": 5001,
+      "columns": 27
+    },
+    {
+      "path": "legacy/original/program/Classiffication_Models/simulate_0/test_data.CSV",
+      "rows": 16,
+      "columns": 27
+    }
+  ]
+}

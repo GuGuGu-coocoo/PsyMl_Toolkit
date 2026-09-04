@@ -1,0 +1,189 @@
+# -*- coding: utf-8 -*-
+'''
+@File    :   main.py
+@Author  :   GuGuGu?coocoo! 
+@Time    :   2023/05/03 18:04:15 UTC+08:00
+'''
+import threading
+import time
+
+from loop_models import *
+from predict import *
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+
+
+from MLP_Classiffication_Sklearn import save_mlp
+from SVM_Classfication_Sklearn import save_svm
+from RandomForest_Classiffication_Sklearn import save_rf
+from KNN_Classiffication_Sklearn import save_knn
+from Stack_Classiffication_Sklearn import save_stack
+
+start_time = time.time()
+running = True
+file = 'E:\\Classiffication_Models\\Classiffication_Models-v1.2.1\\data\\subdimension-data.xlsx'                 # path of the file
+
+predict_file = 'E:\\Classiffication_Models\\Classiffication_Models-v1.2.1\\data\\test.xlsx'
+
+mlp_model = 'E:\\Classiffication_Models\\Classiffication_Models-v1.2.1\\saved_models\\mlp_model.joblib'
+svm_model = 'E:\\Classiffication_Models\\Classiffication_Models-v1.2.1\\saved_models\\svm_model.joblib' 
+rf_model = 'E:\\Classiffication_Models\\Classiffication_Models-v1.2.1\\saved_models\\rf_model.joblib' 
+knn_model = 'E:\\Classiffication_Models\\Classiffication_Models-v1.2.1\\saved_models\\knn_model.joblib'
+stack_model = 'E:\\Classiffication_Models\\Classiffication_Models-v1.2.1\\saved_models\\stack_model.joblib'
+
+
+test_sizes = [0.2,0.3]                                                                      # list of floats in the range [0.0, inf)
+# MLP parameters:
+hidden_layer_sizeses = [(70,35),(60,30),(50,25),(40,20),(30,15),(20,10)]                    # list of tulps like (10),(20),(10,20),(20,10,10)....
+activations = ['tanh', 'relu', 'logistic', 'identity']                                      # list of strs among {'tanh', 'relu', 'logistic', 'identity'}
+solvers = ['lbfgs', 'adam', 'sgd']                                                          # list of strs among {'lbfgs', 'adam', 'sgd'}
+alphas = [0.01,0.1,1]                                                                       # list of floats in the range [0.0, inf)
+max_iters = [500,700,1000,1500]                                                             # list of ints in the range [1, inf)
+
+# SVM parameters:
+kernels = ['rbf', 'sigmoid', 'poly', 'linear']                                              # list of strs among {'rbf', 'sigmoid', 'poly', 'precomputed', 'linear'}.better not use 'precomputed'
+Cs = [0.001,0.1,1]                                                                          # list of floats in the range [0.0, inf)
+gammas = ['auto','scale',0.001,0.1,1]                                                       # list of strs among {'auto', 'scale'} or a float in the range [0.0, inf).    
+decision_function_shapes = ['ovo','ovr']                                                    # list of strs among {'ovo', 'ovr'}
+shrinkings =[True,False]                                                                    # list of instances of 'bool'
+probabilitys = [True,False]                                                                 # list of instances of 'bool'
+
+# RandomForest parameters
+n_estimatorses = [25,50,100,150,200]                                                        # list of ints in the range [1, inf)
+criterions = ['entropy', 'gini', 'log_loss']                                                # list of strs among {'entropy', 'gini', 'log_loss'}
+bootstraps = [True]                                                                         # list of instances of 'bool'.But there is someting wrong when using 'False'
+oob_scores = [True,False]                                                                   # list of instances of 'bool'
+
+# KNN parameters
+n_neighborses=[30,35,40,45,50]                                                              #list of ints in the range [1, inf)
+weightses=['uniform', 'distance']                                                           #list of strs among {'uniform', 'distance'}
+algorithms=['auto', 'ball_tree', 'kd_tree', 'brute']                                        #list of strs among {'auto', 'ball_tree', 'kd_tree', 'brute'}
+
+# Stack parameters.Finding the best parameters of every estimator.
+estimatorses=[[
+    ('mlp',MLPClassifier(hidden_layer_sizes=(20,10),activation='identity',solver='adam',alpha=0.1,max_iter=500)),
+    ('svm',SVC(kernel='poly',C = 1,gamma='scale',decision_function_shape='ovo',shrinking=True,probability=True)),
+    ('rf',RandomForestClassifier(n_estimators=150, criterion='entropy',bootstrap=True, oob_score=True)),
+    ('knn',KNeighborsClassifier(n_neighbors=35,weights='distance',algorithm='auto')),],
+    ]
+final_estimators=[MLPClassifier(hidden_layer_sizes=(20,10),activation='identity',solver='adam'
+                                ,alpha=0.1 ,max_iter=1000),
+    ]
+
+"""
+# Parameters below could use to test the programs
+# MLP parameters:
+test_sizes = [0.3]                                  # list of floats in the range [0.0, inf)
+hidden_layer_sizeses = [(30,15)]                    # list of tulps like (10),(20),(10,20),(20,10,10)....
+activations = ['tanh']                              # list of strs among {'tanh', 'relu', 'logistic', 'identity'}
+solvers = ['adam']                                  # list of strs among {'lbfgs', 'adam', 'sgd'}
+alphas = [0.1]                                      # list of floats in the range [0.0, inf)
+max_iters = [500]                                   # list of ints in the range [1, inf)
+
+# SVM parameters:
+kernels = ['poly']                                  # list of strs among {'rbf', 'sigmoid', 'poly', 'precomputed', 'linear'}.better not use 'precomputed'
+Cs = [0.1]                                          # list of floats in the range [0.0, inf)
+gammas = ['auto']                                   # list of strs among {'auto', 'scale'} or a float in the range [0.0, inf).    
+decision_function_shapes = ['ovo']                  # list of strs among {'ovo', 'ovr'}
+shrinkings =[True]                                  # list of instances of 'bool'
+probabilitys = [True]                               # list of instances of 'bool'
+
+# RandomForest parameters
+n_estimatorses = [25]                               # list of ints in the range [1, inf)
+criterions = ['entropy']                            # list of strs among {'entropy', 'gini', 'log_loss'}
+bootstraps = [True]                                 # list of instances of 'bool'.But there is someting wrong when using 'False'
+oob_scores = [True]                                 # list of instances of 'bool'
+
+# KNN parameters
+n_neighborses=[35]                                  #list of ints in the range [1, inf)
+weightses=['uniform']                               #list of strs among {'uniform', 'distance'}
+algorithms=['auto']                                 #list of strs among {'auto', 'ball_tree', 'kd_tree', 'brute'}
+
+# Stack parameters.Finding the best parameters of every estimator.
+estimatorses=[[
+    ('mlp',MLPClassifier(hidden_layer_sizes=(20,10),activation='identity',solver='adam',alpha=0.1,max_iter=500)),
+    ('svm',SVC(kernel='poly',C = 1,gamma='scale',decision_function_shape='ovo',shrinking=True,probability=True)),
+    ('rf',RandomForestClassifier(n_estimators=150, criterion='entropy',bootstrap=True, oob_score=True)),
+    ('knn',KNeighborsClassifier(n_neighbors=35,weights='distance',algorithm='auto')),],
+    ]
+final_estimators=[MLPClassifier(hidden_layer_sizes=(20,10),activation='identity',solver='adam'
+                                ,alpha=0.1 ,max_iter=1000),
+    ]
+"""
+
+def main():
+    """
+    Loop,save the models,and use models to predict.
+    
+    ## MLP:
+    #loop_mlp(file,test_sizes,hidden_layer_sizeses,activations,solvers,alphas,max_iters)
+    #save_mlp(file,hidden_layer_sizeses[0],activations[0],solvers[0],alphas[0],max_iters[0])
+    #mlp_predict(predict_file,mlp_model)
+
+    ## SVM:
+    #svm_predict(predict_file,svm_model)
+    #loop_svm(file,test_sizes,kernels,Cs,gammas,decision_function_shapes,shrinkings,probabilitys)
+    #save_svm(file,kernels[0],Cs[0],gammas[0],decision_function_shapes[0],shrinkings[0],probabilitys[0])
+    
+    ## RandomForest:
+    #rf_predict(predict_file,rf_model)
+    #loop_rf(file,test_sizes,n_estimatorses, criterions,bootstraps, oob_scores)
+    #save_rf(file,n_estimatorses[0], criterions[0],bootstraps[0], oob_scores[0])
+
+    ## KNN:
+    #knn_predict(predict_file,knn_model)
+    #loop_knn(file,test_sizes,n_neighborses,weightses,algorithms)
+    #save_knn(file,n_neighborses[0],weightses[0],algorithms[0])
+ 
+    ## Stack:    
+    #save_stack(file,estimatorses[0],final_estimators[0])
+    #stack_predict(predict_file,stack_model)
+    #loop_stack(file,test_sizes,estimatorses,final_estimators)
+
+    """
+    # train the models:
+    #loop_mlp(file,test_sizes,hidden_layer_sizeses,activations,solvers,alphas,max_iters)
+    #loop_svm(file,test_sizes,kernels,Cs,gammas,decision_function_shapes,shrinkings,probabilitys)
+    #loop_rf(file,test_sizes,n_estimatorses, criterions,bootstraps, oob_scores)
+    #loop_knn(file,test_sizes,n_neighborses,weightses,algorithms)
+    #loop_stack(file,test_sizes,estimatorses,final_estimators)
+
+    # save the models:
+    #save_mlp(file,hidden_layer_sizeses[0],activations[0],solvers[0],alphas[0],max_iters[0])
+    #save_svm(file,kernels[0],Cs[0],gammas[0],decision_function_shapes[0],shrinkings[0],probabilitys[0])
+    #save_rf(file,n_estimatorses[0], criterions[0],bootstraps[0], oob_scores[0])
+    #save_knn(file,n_neighborses[0],weightses[0],algorithms[0])
+    #save_stack(file,estimatorses[0],final_estimators[0])
+
+    # predict
+    #mlp_predict(predict_file,mlp_model)
+    #svm_predict(predict_file,svm_model)
+    #rf_predict(predict_file,rf_model)
+    #knn_predict(predict_file,knn_model)
+    #stack_predict(predict_file,stack_model)
+    
+    global running
+    running = False
+
+
+def print_time():
+    global running
+    while running:
+        current_time = time.time()
+        elapsed_time = current_time - start_time
+        print(f"Program has been running for {elapsed_time:.2f}s")
+        time.sleep(1)
+    if not running:
+        print(f"Program running time is {elapsed_time:.2f}s")
+
+
+t1 = threading.Thread(target=main)
+t2 = threading.Thread(target=print_time)
+
+t1.start()
+t2.start()
+
+t1.join()
+t2.join()

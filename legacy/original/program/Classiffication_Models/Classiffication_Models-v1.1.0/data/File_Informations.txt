@@ -1,0 +1,9 @@
+original_data.xlsx为原始数据
+complete_data.xlsx为完整的特征与标签数据，包含测谎题，未进行数据清洗
+clean-unstandardized-data.xlsx为清洗后，但是家庭关系与父母关系未合成并标准化
+standardized-data .xlsx为标准化后的数据，但冲动性人格与反社会人格包含分维度与总分，无第一行
+subdimension-data.xlsx为删去冲动性人格总分维度与反社会人格18题的数据，是本次所使用的数据，无第一行
+subdimension-data-1.xlsx为将标签1、2、3重新编码为1、4编码为3后的数据
+test.xlsx 是用于模型预测的数据
+
+
