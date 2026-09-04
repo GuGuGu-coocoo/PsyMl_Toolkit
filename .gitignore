@@ -7,6 +7,7 @@ psyml_legacy_backup/
 **/saved_models/
 *.rar
 *.sav
+!legacy/original/program/Regression_Models/Regression_Models-v1.1.0/data/shiyan1_2 94.sav
 *.joblib
 *.pth
 

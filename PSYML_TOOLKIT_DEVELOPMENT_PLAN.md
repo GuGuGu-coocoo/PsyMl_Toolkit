@@ -4,7 +4,9 @@
 
 PsyML Toolkit 将本科研究与应用项目遗留的 Python 机器学习脚本，逐步整理为可运行、可复现、可维护、能避免常见数据泄漏，且对非程序研究者友好的研究工具。
 
-已完成的 Phase 0–6 已移至 [docs/completed_phases.md](docs/completed_phases.md)。遗留代码继续原样保存在 `legacy/original/program/`；新的实现只放在 `src/psyml/`。
+已完成的 Phase 0–6、8–9 已移至 [docs/completed_phases.md](docs/completed_phases.md)。遗留代码继续原样保存在 `legacy/original/program/`；新的实现只放在 `src/psyml/`。
+
+完成规则：每个阶段完成时，先在 `docs/` 写入可核验的完成记录，再追加到 `docs/completed_phases.md`，并从本计划移除该阶段的详细待办。
 
 当前不在范围内：AutoML、Transformer、LLM、云服务、数据库、SHAP、高级模型搜索、大规模深度学习、Web SaaS 与商业化。
 
@@ -20,47 +22,6 @@ PsyML Toolkit 将本科研究与应用项目遗留的 Python 机器学习脚本�
 - 重复代码、硬编码路径与参数、全局变量、输出管理、异常处理、弃用 API、依赖、可维护性与可测试性。
 
 将遗留代码归类为 Core Candidate、Specialized / Experimental 或 Archive Only。
-
-## Phase 8 — First Round Fixes
-
-状态：已完成（新核心实现；legacy 保持不修改）。
-
-已解决的优先事项：
-
-- 使用训练集内拟合的预处理 Pipeline，防止标准化、填补和编码泄漏。
-- 以显式配置替代硬编码输入和输出路径。
-- 统一随机种子、数据读取、验证、评价与结果导出。
-- 采用未弃用的 SVM 评分接口。
-- 对 CSV/XLSX 输入、目标列、分组列和模型选项进行早期校验。
-
-## Phase 9 — Create Modern PsyML Core
-
-状态：已完成。
-
-新核心位于 `src/psyml/`：
-
-```text
-src/psyml/
-├── data/
-├── models/
-│   ├── classification/
-│   └── regression/
-├── preprocessing/
-├── validation/
-├── evaluation/
-├── reporting/
-└── utils/
-```
-
-已提供：
-
-- 可序列化的分析配置，以及 `psyml` 命令行入口。
-- CSV/XLSX 读取和数据结构校验。
-- 分类与回归的统一预处理、训练/测试切分，以及可选的 group-aware split。
-- KNN、Lasso、MLP、Random Forest、SVR、SVM、Stacking 和 Decision Tree 的基础运行入口。
-- 仅以留出集预测计算的分类与回归指标。
-- `metrics.csv`、`predictions.csv` 和 `config.json` 的统一导出。
-- 覆盖数据读取、分组切分、泄漏保护、输出和 CLI 的自动化测试。
 
 ## Phase 10 — Basic Model Completion
 

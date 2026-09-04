@@ -13,6 +13,7 @@ Audit date: 2026-09-04
 - Workbook sheet names, sheet count, used-range dimensions, column labels where present, cell types, formulas, and formatting are retained.
 - The generated file-level record is `docs/data_sanitization_manifest.json`.
 - The accompanying CSV files are also replaced with synthetic values while their header row, delimiter, row count, and column count are retained. The SPSS file retains its 94-row, 16-column schema and column labels.
+- A post-sanitization, current-worktree verification is recorded in `docs/data_sanitization_verification.md`.
 
 ## Local deletion and Git exclusions
 

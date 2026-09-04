@@ -1,6 +1,6 @@
 # PsyML Toolkit Completed Phases
 
-本文件归档开发计划中已完成的阶段，避免当前计划混入已经结束的工作。
+本文件归档开发计划中已完成的阶段，避免当前计划混入已经结束的工作。今后每完成一个阶段，必须先补充其完成证据与验证记录，再在本文件增加对应条目，并从 `PSYML_TOOLKIT_DEVELOPMENT_PLAN.md` 移除该阶段的详细待办。
 
 ## Phase 0 — Legacy Asset Inventory
 
@@ -29,3 +29,11 @@
 ## Phase 6 — Current State Baseline
 
 已建立 `docs/current_state.md`，记录遗留资产可运行、失效和待确认状态，以及输入、输出和人工配置情况。
+
+## Phase 8 — First Round Fixes
+
+已在新的 PsyML Core 中完成，不修改 legacy 代码。训练集内预处理、防硬编码路径、统一随机种子、验证、评价、输出、输入校验和未弃用的 SVM 评分路径均已落实。完成证据与自动化验证见 `docs/phase_8_9_completion.md`。
+
+## Phase 9 — Create Modern PsyML Core
+
+已建立 `src/psyml/`、命令行入口、统一的分类/回归流程、group-aware 切分、留出集评价和结果导出。完成证据与自动化验证见 `docs/phase_8_9_completion.md`。
