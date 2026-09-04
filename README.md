@@ -43,18 +43,11 @@ uv run python tools/launch_gui.py
 
 截图使用随机合成数据，不包含真实参与者信息。公开可复查示例采用 UCI 的 [Iris（分类）](https://doi.org/10.24432/C56C76)与[混凝土抗压强度（回归）](https://doi.org/10.24432/C5PK67)，两者均为 CC BY 4.0；运行方法见 [公开示例说明](examples/public/README.md)。
 
-### 项目状态与文档
+### 隐私与复现
 
-Phase 0–14 已全部完成，现暂停扩展功能并进入研究者试用。Legacy 代码由仓库所有者编写，权属已经确认；它只作历史参考，不用于新分析。原始研究数据已经删除，仓库内数据均为随机合成数据；公开示例数据仅在本地按固定哈希下载，不提交进仓库。项目尚未选择许可证，因此公开可见并不自动授予他人复制、修改或分发代码的权利。
+PsyML 在本机运行，不会上传输入数据。仓库中的截图与测试夹具均为合成数据；公开示例数据会在本地下载、校验固定哈希，且不会提交到仓库。每次成功分析都会保存实际配置、Methods 说明和可复现性报告。当前分析只使用 `src/psyml/`；`legacy/` 仅作历史代码参考，不参与运行。
 
-- [已完成阶段](docs/completed_phases.md)
-- [隐私与知识产权审计](docs/privacy_ip_audit.md)
-- [合成数据验证](docs/data_sanitization_verification.md)
-- [Core JSON 接口](docs/core_interface.md)
-- [Phase 13 完成记录](docs/phase_13_completion.md)
-- [Phase 14 完成记录](docs/phase_14_completion.md)
-- [发布审计](docs/release_audit.md)
-- [人工验收流程](docs/manual_acceptance_test.md)
+除另行标注的第三方内容外，本项目代码与文档采用 [Apache License 2.0](LICENSE)，允许使用、修改和分发，并包含明确的专利授权。第三方依赖与公开数据仍遵循各自的许可证。
 
 <a id="english"></a>
 
@@ -95,7 +88,11 @@ For command-line use, run `uv run psyml --help`. If Godot is not on `PATH`, set 
 
 The screenshots use random synthetic data and contain no participant information. Auditable public examples use UCI’s CC BY 4.0 [Iris classification dataset](https://doi.org/10.24432/C56C76) and [Concrete Compressive Strength regression dataset](https://doi.org/10.24432/C5PK67); see the [public example instructions](examples/public/README.md).
 
-Phases 0–14 are complete, feature expansion is paused, and the project is ready for researcher trials. The repository owner authored the legacy code and has confirmed its ownership; it remains historical reference only. Original research data have been removed. Repository datasets are randomly generated, while public examples are downloaded locally with pinned hashes and are not committed. No project license has been selected, so public visibility does not automatically grant permission to copy, modify or redistribute the code.
+### Privacy and reproducibility
+
+PsyML runs locally and does not upload input data. Repository screenshots and test fixtures use synthetic data. Public example datasets are downloaded locally, checked against pinned hashes and never committed. Every successful analysis saves the effective configuration, a Methods summary and a reproducibility report. Current analyses use only `src/psyml/`; `legacy/` is historical reference code and is not executed.
+
+Except for separately identified third-party material, this project's code and documentation are licensed under the [Apache License 2.0](LICENSE), which permits use, modification and distribution and includes an express patent grant. Third-party dependencies and public datasets remain subject to their own licenses.
 
 <a id="french"></a>
 
@@ -136,4 +133,8 @@ Pour la ligne de commande : `uv run psyml --help`. Si Godot n’est pas dans le 
 
 Les captures utilisent des données synthétiques aléatoires sans information de participant. Les exemples publics vérifiables emploient les jeux UCI sous CC BY 4.0 [Iris pour la classification](https://doi.org/10.24432/C56C76) et [Concrete Compressive Strength pour la régression](https://doi.org/10.24432/C5PK67) ; voir les [instructions des exemples publics](examples/public/README.md).
 
-Les phases 0–14 sont terminées, l’ajout de fonctionnalités est suspendu et le projet est prêt pour des essais par des chercheurs. Le propriétaire du dépôt a écrit le code historique et en a confirmé la propriété ; ce code sert uniquement de référence. Les données de recherche originales ont été supprimées. Les données du dépôt sont générées aléatoirement, tandis que les exemples publics sont téléchargés localement avec des empreintes figées et ne sont pas commités. Aucune licence de projet n’a encore été choisie : la visibilité publique n’accorde donc pas automatiquement le droit de copier, modifier ou redistribuer le code.
+### Confidentialité et reproductibilité
+
+PsyML fonctionne localement et ne téléverse pas les données d’entrée. Les captures et les données de test du dépôt sont synthétiques. Les jeux d’exemple publics sont téléchargés localement, vérifiés à l’aide d’empreintes figées et ne sont jamais commités. Chaque analyse réussie enregistre la configuration effective, un résumé Methods et un rapport de reproductibilité. Les analyses actuelles utilisent uniquement `src/psyml/` ; `legacy/` contient du code historique qui n’est pas exécuté.
+
+Sauf mention contraire pour les éléments tiers, le code et la documentation de ce projet sont placés sous [licence Apache 2.0](LICENSE). Celle-ci autorise l’utilisation, la modification et la distribution et comprend une concession explicite de droits de brevet. Les dépendances tierces et les jeux de données publics restent soumis à leurs propres licences.

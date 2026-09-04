@@ -3,6 +3,7 @@ name = "psyml-toolkit"
 version = "0.1.0"
 description = "Reproducible machine-learning workflows for research data."
 readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.10,<3.13"
 dependencies = [
   "matplotlib>=3.8,<4",
@@ -39,6 +40,7 @@ packages = ["src/psyml"]
 [tool.hatch.build.targets.sdist]
 include = [
   "src/psyml",
+  "LICENSE",
   "README.md",
   "pyproject.toml",
 ]
