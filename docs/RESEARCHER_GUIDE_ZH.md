@@ -1,6 +1,6 @@
 # 研究者参考：模型、指标、结果与术语
 
-适用代码版本：**v0.1.1-rc1**。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准。
+适用代码版本：**v0.1.1**。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准。
 
 [返回 README 中文部分](../README.md#chinese) · **中文** · [English](RESEARCHER_GUIDE_EN.md) · [Français](RESEARCHER_GUIDE_FR.md)
 

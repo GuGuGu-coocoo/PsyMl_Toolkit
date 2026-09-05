@@ -1,6 +1,6 @@
 [project]
 name = "psyml-toolkit"
-version = "0.1.1rc1"
+version = "0.1.1"
 description = "Reproducible machine-learning workflows for research data."
 readme = "README.md"
 license = "Apache-2.0"

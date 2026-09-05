@@ -31,7 +31,7 @@ def main():
     if not mac and sys.platform != "win32":
         raise SystemExit("Build on Apple Silicon macOS or Windows x64")
     architecture = "macOS-arm64" if mac else "Windows-x64"
-    destination = ROOT / "dist" / f"PsyML-Toolkit-0.1.1-test-{architecture}"
+    destination = ROOT / "dist" / f"PsyML-Toolkit-0.1.1-{architecture}"
     if destination.exists():
         shutil.rmtree(destination)
     destination.mkdir(parents=True, exist_ok=True)
@@ -69,7 +69,7 @@ def main():
     shutil.copy2(ROOT / "tools/NATIVE_START_HERE.txt", destination / "START_HERE.txt")
     shutil.copytree(ROOT / "tools/licenses", destination / "licenses", dirs_exist_ok=True)
     (destination / "BUILD.json").write_text(json.dumps({
-        "version": "0.1.1-test", "platform": architecture,
+        "version": "0.1.1", "platform": architecture,
         "python": platform.python_version(),
         "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT,
                                            text=True).strip(),

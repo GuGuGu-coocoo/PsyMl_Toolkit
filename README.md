@@ -20,7 +20,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 ### 打开应用
 
-请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。目前 Releases 仅提供 v0.1.0 源码包，环境配置见[开发者指南](docs/DEVELOPMENT_ZH.md)。以下打开步骤适用于包含运行环境的独立应用包。
+请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。下载 v0.1.1 中与你的系统对应的独立应用 ZIP：`macOS-arm64` 或 `Windows-x64`。应用包包含运行环境；GitHub 自动生成的 Source code 压缩包仅含源码，开发安装见[开发者指南](docs/DEVELOPMENT_ZH.md)。
 
 - **macOS（Apple 芯片）**：完整解压对应应用包，双击 `PsyML Toolkit.app`。
 - **Windows（Intel/AMD x64）**：完整解压对应应用包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
@@ -226,7 +226,7 @@ Automatic reports are available in Chinese and English. Exported plot axes, clas
 
 ### Open the application
 
-Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for available versions and platforms. Releases currently provides only the v0.1.0 source distribution; environment setup is covered in the [developer guide](docs/DEVELOPMENT_EN.md). The steps below apply to standalone application packages with a bundled runtime.
+Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for available versions and platforms. Download the v0.1.1 standalone ZIP for your system: `macOS-arm64` or `Windows-x64`. These application packages include the runtime. GitHub’s automatic Source code archives contain source only; see the [developer guide](docs/DEVELOPMENT_EN.md) for source installation.
 
 - **macOS (Apple Silicon)**: fully extract the matching application archive and double-click `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)**: fully extract the matching archive and double-click `PsyML Toolkit.exe`. Keep the adjacent `core` folder; do not move the EXE alone.
@@ -398,7 +398,7 @@ Les rapports automatiques sont disponibles en chinois et en anglais. Les axes de
 
 ### Ouvrir l’application
 
-Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) pour les versions et plateformes disponibles. Releases propose actuellement uniquement la distribution source v0.1.0 ; l’installation de l’environnement est décrite dans le [guide de développement](docs/DEVELOPMENT_FR.md). Les étapes suivantes concernent les applications autonomes avec environnement intégré.
+Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) pour les versions et plateformes disponibles. Téléchargez le ZIP autonome v0.1.1 adapté à votre système : `macOS-arm64` ou `Windows-x64`. Ces applications incluent leur environnement. Les archives Source code générées par GitHub ne contiennent que les sources ; leur installation est décrite dans le [guide de développement](docs/DEVELOPMENT_FR.md).
 
 - **macOS (puce Apple)** : décompressez entièrement l’archive correspondante puis double-cliquez sur `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)** : décompressez entièrement l’archive puis double-cliquez sur `PsyML Toolkit.exe`. Conservez le dossier `core` adjacent ; ne déplacez pas seulement l’EXE.

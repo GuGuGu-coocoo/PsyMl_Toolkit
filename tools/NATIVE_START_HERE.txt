@@ -1,4 +1,4 @@
-PsyML Toolkit 0.1.1-rc1 — Test build / 测试版 / Version de test
+PsyML Toolkit 0.1.1 — Desktop application / 桌面应用 / Application de bureau
 
 中文
 完整解压。Mac 双击 PsyML Toolkit.app；Windows 双击 PsyML Toolkit.exe，保留 core 文件夹。
@@ -8,7 +8,7 @@ PsyML Toolkit 0.1.1-rc1 — Test build / 测试版 / Version de test
 在第 2 页选择本机输出文件夹，点击运行。也可先“保存配置…”再重新导入。
 regression_config.json 用于回归示例。全部样例为合成数据。
 数据路径失效时，在弹窗中重新选择对应的 CSV。结果始终保存到新的本机子目录。
-测试版未商业签名/公证，首次打开可能需要系统安全确认。
+应用未商业签名/公证，首次打开可能需要系统安全确认。
 
 English
 Extract everything. On Mac open PsyML Toolkit.app; on Windows open PsyML Toolkit.exe and keep core beside it.
@@ -18,7 +18,7 @@ Check target, participant, score/category, Decision Tree and Group K Fold.
 On page 2 choose a local output folder and run. You can save and reimport the configuration first.
 Use regression_config.json for regression. All examples are synthetic.
 Relink a missing CSV in the dialog. Results always use a new local subfolder.
-Test builds have no commercial signing/notarization; the OS may require first-launch confirmation.
+Applications have no commercial signing/notarization; the OS may require first-launch confirmation.
 
 Français
 Décompressez tout. Sur Mac, ouvrez PsyML Toolkit.app ; sur Windows, PsyML Toolkit.exe, en conservant core à côté.

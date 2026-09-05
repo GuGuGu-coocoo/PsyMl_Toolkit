@@ -38,3 +38,8 @@ docs/PSYML_TOOLKIT_DEVELOPMENT_PLAN.md
 /tmp/
 .pytest_cache/
 .ruff_cache/
+
+# Local researcher distribution (not a release attachment)
+/PsyML-Toolkit-Researcher-Share-*/
+/PsyML-Toolkit-Researcher-Share-*.zip
+/PsyML-Toolkit-Researcher-Share-*.zip.sha256

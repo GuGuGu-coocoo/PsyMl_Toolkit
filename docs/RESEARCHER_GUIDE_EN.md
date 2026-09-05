@@ -1,6 +1,6 @@
 # Researcher reference: models, metrics, results and terminology
 
-Applies to code version **v0.1.1-rc1**. See `analysis_manifest.json` in each analysis output for runtime and dependency versions.
+Applies to code version **v0.1.1**. See `analysis_manifest.json` in each analysis output for runtime and dependency versions.
 
 [Back to the English README](../README.md#english) · [中文](RESEARCHER_GUIDE_ZH.md) · **English** · [Français](RESEARCHER_GUIDE_FR.md)
 
