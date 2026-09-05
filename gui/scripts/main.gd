@@ -101,6 +101,8 @@ func _ready() -> void:
 	else:
 		_populate_models()
 	_apply_language()
+	if "--psyml-smoke-test" in OS.get_cmdline_user_args():
+		preload("res://scripts/native_smoke.gd").run(self)
 
 
 func _build_theme() -> void:

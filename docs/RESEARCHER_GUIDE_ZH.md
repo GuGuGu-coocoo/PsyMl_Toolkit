@@ -273,3 +273,7 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 本项目行为以[模型目录](../src/psyml/models/catalog.py)、[模型工厂](../src/psyml/models/factory.py)、[指标实现](../src/psyml/evaluation/metrics.py)、[验证切分](../src/psyml/validation/split.py)、[运行逻辑](../src/psyml/runner.py)、[结果报告](../src/psyml/reporting/research.py)为准。默认值与行为可能随版本改变；复现时核对 `analysis_manifest.json` 中记录的版本。
 
 通用原理可继续阅读 scikit-learn 的[指标说明](https://scikit-learn.org/stable/modules/model_evaluation.html)、[线性模型](https://scikit-learn.org/stable/modules/linear_model.html)、[集成模型](https://scikit-learn.org/stable/modules/ensemble.html)、[交叉验证](https://scikit-learn.org/stable/modules/cross_validation.html)及[嵌套验证示例](https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html)。这些参考不意味着项目实现了文档中所有功能。
+
+## 从配置快速复现
+
+应用第 1 页的“导入配置…”可读取附带示例、结果目录的 `config.json`，或固定参数文件 `best_parameters_configure.json`；无需命令行。数据路径失效时，重新选择对应数据；程序会核对所需列。检查变量、验证与参数后，在第 2 页选择本机输出目录并运行。每次建立新的结果子目录，导入的输出路径不会被沿用。“保存配置…”可保存当前设置。固定最佳参数的再运行不重现原搜索，也不是独立验证。

@@ -22,6 +22,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--godot", default="godot")
     args = parser.parse_args()
+    args.godot = shutil.which(args.godot) or args.godot
     mac = sys.platform == "darwin"
     if not mac and sys.platform != "win32":
         raise SystemExit("Build on Apple Silicon macOS or Windows x64")
@@ -85,11 +86,13 @@ def main():
     executable = next(path for path in binary_dir.iterdir()
                       if path.is_file() and (path.suffix == ".exe" if not mac
                                              else os.access(path, os.X_OK)))
+    report_path = ROOT / "tmp/native/smoke-report.txt"
+    report_path.unlink(missing_ok=True)
+    environment["PSYML_SMOKE_REPORT"] = str(report_path)
     gui_smoke = subprocess.run(
-        [str(executable), "--headless", "--script",
-         str(ROOT / "gui/tests/test_native_bundle.gd")], cwd=destination,
+        [str(executable), "--headless", "--verbose", "--", "--psyml-smoke-test"], cwd=destination,
         env=environment, check=True, capture_output=True, text=True, timeout=420)
-    if "PSYML_NATIVE_BUNDLE_OK" not in gui_smoke.stdout or "SCRIPT ERROR" in gui_smoke.stderr:
+    if not report_path.exists() or report_path.read_text() != "PSYML_NATIVE_BUNDLE_OK":
         raise RuntimeError(gui_smoke.stdout + gui_smoke.stderr)
     print(gui_smoke.stdout)
     archive = destination.with_suffix(".zip")
