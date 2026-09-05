@@ -84,6 +84,8 @@ class ExperimentConfig:
         }:
             raise ValueError(f"Unsupported validation_strategy: {self.validation_strategy}")
         selected_validations = self.selected_validations()
+        if not selected_validations:
+            raise ValueError("validation_strategies cannot be empty")
         if len(selected_validations) != len(set(selected_validations)):
             raise ValueError("validation_strategies cannot contain duplicates")
         for strategy in selected_validations:
@@ -102,8 +104,7 @@ class ExperimentConfig:
             ):
                 raise ValueError(f"{strategy} is only valid for classification")
             if (
-                strategy
-                in {"group_k_fold", "stratified_group_k_fold", "leave_one_group_out"}
+                strategy in {"group_k_fold", "stratified_group_k_fold", "leave_one_group_out"}
                 and not self.group_column
             ):
                 raise ValueError(f"{strategy} requires group_column")

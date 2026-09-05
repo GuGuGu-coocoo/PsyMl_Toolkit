@@ -124,30 +124,49 @@ def _methods_summary(
 ) -> str:
     group_sentence = (
         f"The grouping variable `{_display(config.group_column)}` was excluded from predictors and "
-        "used by the configured split."
+        + (
+            "used by the configured outer split."
+            if config.validation_strategy not in {"k_fold", "stratified_k_fold"}
+            else "NOT used to isolate groups by the configured outer split."
+        )
         if config.group_column
         else "No grouping variable was configured."
     )
     parameters = json.dumps(config.model_params, ensure_ascii=False, sort_keys=True)
     metrics = ", ".join(metric_names)
     selected_models = ", ".join(f"`{name}`" for name in config.selected_models())
-    selected_validations = ", ".join(
-        f"`{name}`" for name in config.selected_validations()
-    )
+    selected_validations = ", ".join(f"`{name}`" for name in config.selected_validations())
     selection_text = (
         f"Candidate models ({selected_models}) and validation strategies "
         f"({selected_validations}) were compared using `{config.resolved_selection_metric()}`. "
         f"Parameter mode was `{config.tuning_mode}` with at most {config.max_candidates} "
         f"candidates per model. When multiple parameter candidates were present, selection used "
-        f"{config.inner_splits}-fold cross-validation restricted to each outer training partition. "
-        "The final reported performance therefore comes from outer partitions not used to select "
+        f"up to {config.inner_splits}-fold cross-validation restricted to each outer training partition. "
+        "The per-family reported performance comes from outer partitions not used to select "
         "the parameters. After model comparison, parameters for the final fitted model were "
-        "selected by inner cross-validation across all analyzed rows; this did not change the "
-        "outer performance estimate."
+        "selected by inner cross-validation across all analyzed rows when multiple candidates existed; this did not change the "
+        "outer performance estimate. A single candidate is fitted without a search. "
+        "The first validation in the configured list is primary; other validations are sensitivity "
+        "analyses. "
+        + (
+            "Model-family selection uses primary outer scores: the winning score is NOT an "
+            "independent estimate after model-family selection. Independent validation or a further "
+            "outer layer is required to evaluate that selection procedure."
+            if len(config.selected_models()) > 1
+            else "The model family was prespecified."
+        )
         if len(config.selected_models()) > 1
         or len(config.selected_validations()) > 1
         or config.tuning_mode != "none"
         else "No model or hyperparameter search was performed."
+    )
+    stacking_text = (
+        "Stacking cross-fits complete base pipelines, including preprocessing, using group-aware "
+        "splits when groups are configured. Its internal fold count is up to cv (default 5), "
+        "subject to available classes/groups; its split seed is the configured seed. "
+        "With passthrough, original features are preprocessed within the meta-estimator fit."
+        if config.model_name == "stacking"
+        else ""
     )
     return f"""# Methods Summary
 
@@ -155,9 +174,15 @@ PsyML analyzed {analyzed_rows} rows with {feature_columns} predictor columns for
 
 Missing predictor values used the `{config.missing_strategy}` strategy. Numeric scaling was `{config.scaling}`, and categorical predictors were one-hot encoded. All learned preprocessing steps were fitted within each training partition only.
 
-The `{config.model_name}` model was evaluated using {_validation_description(config)} with random seed {config.random_seed}. Explicit model parameters were `{parameters}`. Performance was calculated only from held-out predictions using: {metrics}.
+The `{config.model_name}` model was evaluated using {_validation_description(config)} with random seed {config.random_seed}. Final full-data parameter overrides were `{parameters}`; outer folds may use different parameters recorded in `parameter_search.csv`. Performance was calculated only from held-out predictions using: {metrics}.
 
 {selection_text}
+
+{stacking_text}
+
+The final model was fitted on all analyzed rows. Reported metrics remain held-out evaluation metrics, not final-fit training scores. Fold means are unweighted; standard deviations are descriptive (ddof=0), not confidence intervals. Undefined secondary metrics are excluded and their available fold counts are in `metrics_summary.csv`. Binary AUC treats estimator `classes_[1]` as positive; multiclass AUC uses matching probability columns and is omitted when class sets differ. Figures use Class 1, Class 2, etc. in the same order as `confusion_matrix.csv`.
+
+`config.json`, `analysis_config.json`, and `study_config.json` retain the original search design for reruns; `best_parameters.json` records final parameter overrides. The configured seed controls splits and seeded estimators; inner split seeds add the outer fold number (zero for final tuning), and explicit estimator random_state overrides take precedence.
 
 This text describes the executed configuration and is intended as a starting point for a manuscript Methods section; researchers remain responsible for study-specific justification and reporting.
 """
@@ -197,7 +222,7 @@ def _reproducibility_report(
     warning_lines = "\n".join(f"- {warning}" for warning in warnings) or "- None recorded."
     fingerprint = data["sha256"] or "disabled"
     rerun_note = (
-        "The saved `config.json` contains the source path required for a CLI rerun."
+        "The saved `config.json` contains the original study design and source path for a CLI rerun; change output_dir to a new empty directory first."
         if config.input_path is not None
         else "This run used an in-memory dataframe; attach an input path before a CLI rerun."
     )
@@ -314,9 +339,7 @@ def write_research_outputs(
         encoding="utf-8",
     )
     metric_names = [
-        column
-        for column in fold_metrics.columns
-        if column not in {"fold", "model", "validation"}
+        column for column in fold_metrics.columns if column not in {"fold", "model", "validation"}
     ]
     (output_dir / "methods_summary.md").write_text(
         _methods_summary(config, analyzed_rows, feature_columns, metric_names),

@@ -1,7 +1,11 @@
 extends Control
 
-const ACCENT := Color("5f7cf7")
-const TEXT := Color("172033")
+const ACCENT := Color("5261c9")
+const TEXT := Color("20232b")
+const SURFACE := Color("f7f8fa")
+const BORDER := Color("dce0e6")
+const MUTED := Color("626977")
+const RADIUS := 6
 
 var bridge: CoreBridge
 var capabilities: Dictionary = {}
@@ -56,6 +60,7 @@ var open_results_button: Button
 var file_dialog: FileDialog
 var folder_dialog: FileDialog
 var last_result_dir := ""
+var last_result_path := ""
 var status_key := "READY"
 var status_detail := ""
 var last_warnings: Array = []
@@ -66,6 +71,7 @@ var progress_values: Dictionary = {}
 
 
 func _ready() -> void:
+	get_window().min_size = Vector2i(1000, 700)
 	PsyMLI18n.install()
 	TranslationServer.set_locale("zh_CN")
 	_build_theme()
@@ -84,7 +90,7 @@ func _ready() -> void:
 
 func _build_theme() -> void:
 	var app_theme := Theme.new()
-	app_theme.default_font_size = 17
+	app_theme.default_font_size = 16
 	for control_type in ["Label", "Button", "OptionButton", "LineEdit", "TextEdit", "Tree", "ItemList"]:
 		app_theme.set_color("font_color", control_type, TEXT)
 	app_theme.set_color("font_hover_color", "Button", TEXT)
@@ -93,45 +99,75 @@ func _build_theme() -> void:
 	app_theme.set_color("font_unselected_color", "TabBar", Color("59657a"))
 	app_theme.set_color("font_selected_color", "ItemList", Color.WHITE)
 	app_theme.set_color("font_readonly_color", "TextEdit", TEXT)
-	app_theme.set_stylebox("panel", "TabContainer", _style_box(Color.WHITE, 8))
-	app_theme.set_stylebox("panel", "PanelContainer", _style_box(Color("fbfcff"), 7, Color("d9deea")))
-	app_theme.set_stylebox("panel", "Tree", _style_box(Color("fbfcff"), 5, Color("d9deea")))
-	app_theme.set_stylebox("panel", "ItemList", _style_box(Color("fbfcff"), 5, Color("d9deea")))
-	app_theme.set_stylebox("selected", "ItemList", _style_box(ACCENT, 4))
-	app_theme.set_stylebox("selected_focus", "ItemList", _style_box(ACCENT, 4))
-	app_theme.set_stylebox("normal", "LineEdit", _style_box(Color.WHITE, 5, Color("cbd2e1")))
-	app_theme.set_stylebox("focus", "LineEdit", _style_box(Color.WHITE, 5, ACCENT))
-	app_theme.set_stylebox("normal", "TextEdit", _style_box(Color.WHITE, 5, Color("cbd2e1")))
-	app_theme.set_stylebox("read_only", "TextEdit", _style_box(Color("fbfcff"), 5, Color("cbd2e1")))
+	app_theme.set_stylebox("panel", "TabContainer", _style_box(Color.WHITE, RADIUS))
+	app_theme.set_stylebox("panel", "PanelContainer", _style_box(SURFACE, RADIUS))
+	app_theme.set_stylebox("panel", "Tree", _style_box(Color.WHITE, RADIUS, BORDER))
+	app_theme.set_stylebox("panel", "ItemList", _style_box(Color.WHITE, RADIUS, BORDER))
+	app_theme.set_stylebox("selected", "ItemList", _style_box(ACCENT, RADIUS))
+	app_theme.set_stylebox("selected_focus", "ItemList", _style_box(ACCENT, RADIUS))
+	app_theme.set_stylebox("normal", "LineEdit", _style_box(Color.WHITE, RADIUS, Color("cbd2e1")))
+	app_theme.set_stylebox("focus", "LineEdit", _style_box(Color.TRANSPARENT, RADIUS, ACCENT))
+	app_theme.set_stylebox("normal", "TextEdit", _style_box(Color.WHITE, RADIUS, Color("cbd2e1")))
+	app_theme.set_stylebox("read_only", "TextEdit", _style_box(Color("fbfcff"), RADIUS, Color("cbd2e1")))
 	for button_type in ["Button", "OptionButton"]:
-		app_theme.set_stylebox("normal", button_type, _style_box(Color("eef1f8"), 5))
-		app_theme.set_stylebox("hover", button_type, _style_box(Color("e1e7fb"), 5))
-		app_theme.set_stylebox("pressed", button_type, _style_box(Color("d2dcfb"), 5))
-		app_theme.set_stylebox("focus", button_type, _style_box(Color("eef1f8"), 5, ACCENT))
-		app_theme.set_stylebox("disabled", button_type, _style_box(Color("eef0f4"), 5))
-		app_theme.set_color("font_disabled_color", button_type, Color("9098a8"))
-	app_theme.set_stylebox("tab_selected", "TabBar", _style_box(Color.WHITE, 5))
-	app_theme.set_stylebox("tab_unselected", "TabBar", _style_box(Color("e3e7ef"), 5))
-	app_theme.set_stylebox("background", "ProgressBar", _style_box(Color("e3e7ef"), 5))
-	app_theme.set_stylebox("fill", "ProgressBar", _style_box(ACCENT, 5))
+		app_theme.set_stylebox("normal", button_type, _style_box(Color("f1f3f6"), RADIUS))
+		app_theme.set_stylebox("hover", button_type, _style_box(Color("e7eaf0"), RADIUS))
+		app_theme.set_stylebox("pressed", button_type, _style_box(Color("dde1eb"), RADIUS))
+		app_theme.set_stylebox("focus", button_type, _style_box(Color.TRANSPARENT, RADIUS, ACCENT))
+		app_theme.set_stylebox("disabled", button_type, _style_box(Color("eef0f4"), RADIUS))
+		app_theme.set_color("font_disabled_color", button_type, MUTED)
+	app_theme.set_stylebox("tab_selected", "TabBar", _style_box(Color.WHITE, RADIUS))
+	app_theme.set_stylebox("tab_unselected", "TabBar", _style_box(Color("e3e7ef"), RADIUS))
+	app_theme.set_stylebox("background", "ProgressBar", _style_box(Color("e3e7ef"), RADIUS))
+	app_theme.set_stylebox("fill", "ProgressBar", _style_box(ACCENT, RADIUS))
 	app_theme.set_type_variation("AccentButton", "Button")
-	app_theme.set_stylebox("normal", "AccentButton", _style_box(ACCENT, 5))
-	app_theme.set_stylebox("hover", "AccentButton", _style_box(Color("4d6bea"), 5))
-	app_theme.set_stylebox("pressed", "AccentButton", _style_box(Color("405ed8"), 5))
-	app_theme.set_stylebox("focus", "AccentButton", _style_box(ACCENT, 5, Color("263f9f")))
-	app_theme.set_stylebox("disabled", "AccentButton", _style_box(Color("b8c2e8"), 5))
+	app_theme.set_stylebox("normal", "AccentButton", _style_box(ACCENT, RADIUS))
+	app_theme.set_stylebox("hover", "AccentButton", _style_box(Color("4d6bea"), RADIUS))
+	app_theme.set_stylebox("pressed", "AccentButton", _style_box(Color("405ed8"), RADIUS))
+	app_theme.set_stylebox("focus", "AccentButton", _style_box(Color.TRANSPARENT, RADIUS, Color("263f9f")))
+	app_theme.set_stylebox("disabled", "AccentButton", _style_box(Color("b8c2e8"), RADIUS))
 	app_theme.set_color("font_color", "AccentButton", Color.WHITE)
 	app_theme.set_color("font_hover_color", "AccentButton", Color.WHITE)
 	app_theme.set_color("font_disabled_color", "AccentButton", Color("f5f6fb"))
 	app_theme.set_type_variation("DangerButton", "Button")
-	app_theme.set_stylebox("normal", "DangerButton", _style_box(Color("fff0f0"), 5, Color("e6a3a3")))
-	app_theme.set_stylebox("hover", "DangerButton", _style_box(Color("ffe1e1"), 5, Color("cf6f6f")))
-	app_theme.set_stylebox("pressed", "DangerButton", _style_box(Color("f8caca"), 5, Color("b84f4f")))
-	app_theme.set_stylebox("focus", "DangerButton", _style_box(Color("fff0f0"), 5, Color("b84f4f")))
-	app_theme.set_stylebox("disabled", "DangerButton", _style_box(Color("eef0f4"), 5))
+	app_theme.set_stylebox("normal", "DangerButton", _style_box(Color("fff0f0"), RADIUS, Color("e6a3a3")))
+	app_theme.set_stylebox("hover", "DangerButton", _style_box(Color("ffe1e1"), RADIUS, Color("cf6f6f")))
+	app_theme.set_stylebox("pressed", "DangerButton", _style_box(Color("f8caca"), RADIUS, Color("b84f4f")))
+	app_theme.set_stylebox("focus", "DangerButton", _style_box(Color("fff0f0"), RADIUS, Color("b84f4f")))
+	app_theme.set_stylebox("disabled", "DangerButton", _style_box(Color("eef0f4"), RADIUS))
 	app_theme.set_color("font_color", "DangerButton", Color("9f3030"))
 	app_theme.set_color("font_hover_color", "DangerButton", Color("842424"))
-	app_theme.set_color("font_disabled_color", "DangerButton", Color("9098a8"))
+	app_theme.set_color("font_disabled_color", "DangerButton", MUTED)
+	app_theme.set_color("font_uneditable_color", "LineEdit", MUTED)
+	app_theme.set_color("font_focus_color", "Button", TEXT)
+	app_theme.set_color("font_focus_color", "OptionButton", TEXT)
+	app_theme.set_color("font_focus_color", "AccentButton", Color.WHITE)
+	app_theme.set_color("font_focus_color", "DangerButton", Color("842424"))
+	app_theme.set_color("default_color", "RichTextLabel", TEXT)
+	app_theme.set_color("font_pressed_color", "AccentButton", Color.WHITE)
+	app_theme.set_color("font_pressed_color", "DangerButton", Color("842424"))
+	app_theme.set_color("font_selected_color", "ItemList", TEXT)
+	app_theme.set_stylebox("selected", "ItemList", _style_box(Color("e6e9fc"), RADIUS))
+	app_theme.set_stylebox("selected_focus", "ItemList", _style_box(Color("e6e9fc"), RADIUS, ACCENT))
+	app_theme.set_constant("line_separation", "ItemList", 4)
+	app_theme.set_color("guide_color", "Tree", Color.TRANSPARENT)
+	app_theme.set_color("font_color", "Tree", TEXT)
+	app_theme.set_color("title_button_color", "Tree", MUTED)
+	for state in ["normal", "hover", "pressed"]:
+		app_theme.set_stylebox("title_button_" + state, "Tree", _style_box(SURFACE, 0))
+	for kind in ["Tree", "ItemList", "TextEdit"]:
+		app_theme.set_stylebox("focus", kind, _style_box(Color.TRANSPARENT, RADIUS, ACCENT))
+	app_theme.set_stylebox("read_only", "LineEdit", _style_box(SURFACE, RADIUS, BORDER))
+	var selected_tab := _style_box(Color.WHITE, RADIUS)
+	selected_tab.border_color = ACCENT
+	selected_tab.border_width_bottom = 2
+	app_theme.set_stylebox("tab_selected", "TabContainer", selected_tab)
+	app_theme.set_stylebox("tab_unselected", "TabContainer", _style_box(Color.TRANSPARENT, RADIUS))
+	app_theme.set_stylebox("tab_hovered", "TabContainer", _style_box(Color("e9ecf2"), RADIUS))
+	app_theme.set_stylebox("tab_focus", "TabContainer", _style_box(Color.TRANSPARENT, RADIUS, ACCENT))
+	app_theme.set_color("font_selected_color", "TabContainer", TEXT)
+	app_theme.set_color("font_unselected_color", "TabContainer", MUTED)
+	app_theme.set_color("font_hovered_color", "TabContainer", TEXT)
 	theme = app_theme
 
 
@@ -191,7 +227,7 @@ func _bind_data_tab() -> void:
 	browse_button.pressed.connect(func(): file_dialog.popup_centered_ratio(0.8))
 	preview_button.pressed.connect(_request_preview)
 	data_path_edit.text_changed.connect(_on_data_path_changed)
-	feature_list.item_selected.connect(func(_index): _refresh_review())
+	feature_list.multi_selected.connect(func(_index, _selected): _refresh_review())
 
 
 func _bind_config_tab() -> void:
@@ -286,6 +322,7 @@ func _bind_review_tab() -> void:
 			{"node": refresh_review_button, "key": "REFRESH_REVIEW"},
 			{"node": %OutputHelpLabel, "key": "OUTPUT_HELP"},
 			{"node": %ExecutionSectionLabel, "key": "EXECUTION_SECTION"},
+			{"node": %StopHelpLabel, "key": "STOP_HELP"},
 			{"node": status_label, "key": "READY"},
 			{"node": cancel_button, "key": "CANCEL"},
 			{"node": run_button, "key": "RUN"},
@@ -378,6 +415,8 @@ func _apply_language() -> void:
 	_populate_parameter_editor()
 	_render_warnings()
 	_refresh_review()
+	if not last_result_path.is_empty():
+		_load_results(last_result_path, false)
 
 
 func _update_tree_titles() -> void:
@@ -407,9 +446,19 @@ func _on_file_selected(path: String) -> void:
 
 
 func _request_preview() -> void:
+	if is_preview_loading or is_analysis_running:
+		return
 	if data_path_edit.text.strip_edges().is_empty():
 		_show_error(tr("SELECT_DATA"))
 		return
+	_clear_results()
+	preview_payload = {}
+	previewed_path = ""
+	variable_tree.clear()
+	sample_tree.clear()
+	feature_list.clear()
+	target_option.clear()
+	group_option.clear()
 	pending_preview_path = data_path_edit.text
 	is_preview_loading = true
 	data_summary_label.text = tr("PREVIEW_LOADING")
@@ -461,6 +510,8 @@ func _populate_sample(rows: Array) -> void:
 	sample_tree.column_titles_visible = true
 	for index in range(headers.size()):
 		sample_tree.set_column_title(index, str(headers[index]))
+		sample_tree.set_column_custom_minimum_width(index, 150)
+		sample_tree.set_column_expand(index, false)
 	var root := sample_tree.create_item()
 	for values in rows:
 		var item := sample_tree.create_item(root)
@@ -471,7 +522,8 @@ func _populate_sample(rows: Array) -> void:
 func _on_preview_failed(error: Dictionary) -> void:
 	is_preview_loading = false
 	pending_preview_path = ""
-	_update_action_states(false)
+	data_summary_label.text = tr("NO_DATA")
+	_refresh_review()
 	_show_core_error(error)
 
 
@@ -572,6 +624,7 @@ func _populate_parameter_editor() -> void:
 			enabled.toggled.connect(func(_pressed): _refresh_review())
 			parameter_grid.add_child(values)
 			parameter_controls[key] = {"enabled": enabled, "values": values}
+	_set_parameter_inputs_enabled(not is_analysis_running)
 	_refresh_review()
 
 
@@ -605,6 +658,7 @@ func _update_validation_availability() -> void:
 			and not has_group
 		)
 		validation_list.set_item_disabled(index, unavailable)
+		validation_list.set_item_tooltip(index, tr("GROUP_REQUIRED") if unavailable else "")
 		if unavailable:
 			validation_list.deselect(index)
 	if validation_list.get_selected_items().is_empty():
@@ -619,9 +673,12 @@ func _on_column_role_changed() -> void:
 		return
 	var target = target_option.get_item_metadata(target_option.selected)
 	var group = group_option.get_item_metadata(group_option.selected)
+	target_option.tooltip_text = str(target)
+	group_option.tooltip_text = str(group) if group != null else tr("NONE")
 	for index in range(feature_list.item_count):
 		var column = feature_list.get_item_metadata(index)
 		feature_list.set_item_disabled(index, column == target or column == group)
+		feature_list.set_item_tooltip(index, str(column) + (" — " + tr("ROLE_EXCLUDED") if column == target or column == group else ""))
 		if column == target or column == group:
 			feature_list.deselect(index)
 	_update_validation_availability()
@@ -655,7 +712,7 @@ func _parameter_grid_payload() -> Dictionary:
 
 
 func _build_config() -> Dictionary:
-	if preview_payload.is_empty():
+	if is_preview_loading or preview_payload.is_empty() or previewed_path != data_path_edit.text:
 		return {"error": tr("SELECT_DATA")}
 	if target_option.item_count == 0:
 		return {"error": tr("SELECT_TARGET")}
@@ -671,6 +728,10 @@ func _build_config() -> Dictionary:
 	var output_path := output_edit.text.strip_edges()
 	if output_path.is_empty() or not output_path.is_absolute_path():
 		return {"error": tr("SELECT_OUTPUT")}
+	if DirAccess.dir_exists_absolute(output_path):
+		var directory := DirAccess.open(output_path)
+		if directory == null or not directory.get_files().is_empty() or not directory.get_directories().is_empty():
+			return {"error": tr("OUTPUT_NOT_EMPTY")}
 	var grid_payload := _parameter_grid_payload()
 	if grid_payload.has("error"):
 		return grid_payload
@@ -777,7 +838,12 @@ func _update_action_states(config_valid: bool) -> void:
 		or is_preview_loading
 		or data_path_edit.text.strip_edges().is_empty()
 	)
-	run_button.disabled = is_analysis_running or not config_valid
+	browse_button.disabled = is_analysis_running or is_preview_loading
+	run_button.disabled = is_analysis_running or is_preview_loading or not config_valid
+	run_button.tooltip_text = tr("RUNNING") if is_analysis_running else str(_build_config().get("error", ""))
+	preview_button.tooltip_text = tr("PREVIEW_LOADING") if is_preview_loading else tr("SELECT_DATA")
+	cancel_button.tooltip_text = tr("STOP_HELP") if is_analysis_running else tr("NO_RUNNING_TASK")
+	open_results_button.tooltip_text = tr("NO_RESULTS") if last_result_dir.is_empty() else last_result_dir
 	cancel_button.disabled = not is_analysis_running
 	open_results_button.disabled = last_result_dir.is_empty()
 
@@ -787,6 +853,7 @@ func _on_run_pressed() -> void:
 	if config.has("error"):
 		_show_error(config.error)
 		return
+	_clear_results()
 	pending_config_path = OS.get_temp_dir().path_join(
 		"psyml_pending_%d.json" % Time.get_ticks_usec()
 	)
@@ -910,11 +977,26 @@ func _cleanup_pending_config() -> void:
 	pending_config_path = ""
 
 
-func _load_results(result_path: String) -> void:
+func _clear_results() -> void:
+	last_result_dir = ""
+	last_result_path = ""
+	last_warnings = []
+	best_result_label.text = ""
+	warnings_text.text = ""
+	for tree in [comparison_tree, metrics_tree, predictions_tree]:
+		tree.clear()
+	figure_view.texture = null
+	no_results_label.visible = true
+	open_results_button.disabled = true
+
+
+func _load_results(result_path: String, navigate := true) -> void:
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(result_path))
-	if not parsed is Dictionary:
-		_show_error("Invalid result.json")
+	if not parsed is Dictionary or parsed.get("status", "") != "completed" or not parsed.has("metrics") or not parsed.has("artifacts"):
+		_clear_results()
+		_show_error("Invalid or incomplete result.json")
 		return
+	last_result_path = result_path
 	last_result_dir = result_path.get_base_dir()
 	open_results_button.disabled = false
 	no_results_label.visible = false
@@ -924,6 +1006,7 @@ func _load_results(result_path: String) -> void:
 		_validation_display(str(parsed.get("best_validation", ""))),
 		_metric_display(str(parsed.get("selection_metric", ""))),
 	]
+	best_result_label.text += "\n" + tr("FINAL_PARAMETERS") + JSON.stringify(parsed.get("best_parameters", {}))
 	_render_warnings()
 	metrics_tree.clear()
 	var root := metrics_tree.create_item()
@@ -937,7 +1020,8 @@ func _load_results(result_path: String) -> void:
 	var image := Image.load_from_file(last_result_dir.path_join(artifacts.figure))
 	if image != null and not image.is_empty():
 		figure_view.texture = ImageTexture.create_from_image(image)
-	tabs.current_tab = 3
+	if navigate:
+		tabs.current_tab = 3
 
 
 func _load_predictions(path: String) -> void:
@@ -1038,12 +1122,16 @@ func _show_error(message: String) -> void:
 		status_key = "ERROR"
 		status_detail = message
 		status_label.text = tr("ERROR") % message
+		status_label.add_theme_color_override("font_color", Color("a12c35"))
+		progress_bar.value = 0.0
+		_set_progress("PROGRESS_FAILED")
 
 
 func _set_status(key: String) -> void:
 	status_key = key
 	status_detail = ""
 	status_label.text = tr(key)
+	status_label.add_theme_color_override("font_color", TEXT)
 
 
 func _show_core_error(error: Dictionary) -> void:
@@ -1057,6 +1145,8 @@ func _show_core_error(error: Dictionary) -> void:
 
 
 func _localized_warning(warning: String) -> String:
+	if warning.begins_with("Model-family selection"):
+		return tr("WARN_MODEL_SELECTION")
 	if warning.begins_with("Dropped "):
 		return tr("WARN_DROPPED")
 	if warning.begins_with("A group column was supplied"):
@@ -1072,4 +1162,4 @@ func _render_warnings() -> void:
 	var warning_lines: Array[String] = []
 	for warning in last_warnings:
 		warning_lines.append(_localized_warning(warning))
-	warnings_text.text = "\n".join(warning_lines)
+	warnings_text.text = tr("NO_WARNINGS") if warning_lines.is_empty() else "\n".join(warning_lines)

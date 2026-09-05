@@ -1,0 +1,345 @@
+FFFFFFFFFFFF                                                             [100%]
+=================================== FAILURES ===================================
+_____________ test_unselected_missing_admin_does_not_exclude_rows ______________
+
+tmp_path = PosixPath('/private/var/folders/92/7jswd6tj6m36fc8j7bxkkdwh0000gn/T/pytest-of-gugu/pytest-271/test_unselected_missing_admin_0')
+
+    def test_unselected_missing_admin_does_not_exclude_rows(tmp_path):
+        data = frame().assign(admin=np.nan)
+>       x, y, groups, dropped = _prepare_data(config(tmp_path, feature_columns=["x"],
+            group_column="group", missing_strategy="drop"), data)
+
+tests/test_scientific_audit.py:29: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = ExperimentConfig(task='classification', target_column='y', model_name='dummy', input_path=None, output_dir=PosixPath('...tion_strategies=None, tuning_mode='none', parameter_grids={}, selection_metric=None, inner_splits=3, max_candidates=20)
+frame =         x  y  group  admin
+100   0.0  0      0    NaN
+101   1.0  1      0    NaN
+102   2.0  0      0    NaN
+103   3.0 ...  10    NaN
+144  44.0  0     11    NaN
+145  45.0  1     11    NaN
+146  46.0  0     11    NaN
+147  47.0  1     11    NaN
+
+    def _prepare_data(
+        config: ExperimentConfig, frame: pd.DataFrame
+    ) -> tuple[pd.DataFrame, pd.Series, pd.Series | None, int]:
+        validate_dataset(frame, config.target_column, config.group_column)
+        working = frame.dropna(subset=[config.target_column]).copy()
+        before_missing_drop = len(working)
+        if config.missing_strategy == "drop":
+            working = working.dropna()
+        dropped_rows = before_missing_drop - len(working)
+        if working.empty:
+>           raise ValueError("No rows remain after missing-data handling")
+E           ValueError: No rows remain after missing-data handling
+
+src/psyml/runner.py:181: ValueError
+________ test_missing_target_is_counted_and_prediction_indices_survive _________
+
+tmp_path = PosixPath('/private/var/folders/92/7jswd6tj6m36fc8j7bxkkdwh0000gn/T/pytest-of-gugu/pytest-271/test_missing_target_is_counted0')
+
+    def test_missing_target_is_counted_and_prediction_indices_survive(tmp_path):
+        data = frame()
+        data.loc[101, "y"] = np.nan
+        data.loc[105, "x"] = np.nan
+        result = run_experiment(config(tmp_path, feature_columns=["x"], group_column="group",
+            missing_strategy="drop", validation_strategy="group_k_fold", n_splits=3), data)
+        assert set(result.predictions.row_index) == set(data.index) - {101, 105}
+        assert result.predictions.observed.tolist() == data.loc[result.predictions.row_index, "y"].tolist()
+>       assert any("target" in w and "1" in w for w in result.warnings)
+E       assert False
+E        +  where False = any(<generator object test_missing_target_is_counted_and_prediction_indices_survive.<locals>.<genexpr> at 0x119828d40>)
+
+tests/test_scientific_audit.py:43: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  matplotlib:__init__.py:577 /Users/gugu/.matplotlib is not a writable directory
+WARNING  matplotlib:__init__.py:593 Matplotlib created a temporary cache directory at /var/folders/92/7jswd6tj6m36fc8j7bxkkdwh0000gn/T/matplotlib-whfcfnwy because there was an issue with the default path ({configdir}); it is highly recommended to set the MPLCONFIGDIR environment variable to a writable directory, in particular to speed up the import of Matplotlib and to better support multiprocessing.
+WARNING  matplotlib.font_manager:font_manager.py:1249 Matplotlib is building the font cache; this may take a moment.
+_________ test_holdout_final_model_uses_all_rows_without_changing_oos __________
+
+tmp_path = PosixPath('/private/var/folders/92/7jswd6tj6m36fc8j7bxkkdwh0000gn/T/pytest-of-gugu/pytest-271/test_holdout_final_model_uses_0')
+
+    def test_holdout_final_model_uses_all_rows_without_changing_oos(tmp_path):
+        result = run_experiment(config(tmp_path, feature_columns=["x"]), frame())
+        scaler = result.model.named_steps["preprocess"].named_transformers_["numeric"]["scale"]
+>       assert scaler.n_samples_seen_ == 48
+E       assert np.float64(38.0) == 48
+E        +  where np.float64(38.0) = StandardScaler().n_samples_seen_
+
+tests/test_scientific_audit.py:49: AssertionError
+_______ test_multiclass_training_binary_test_does_not_invent_binary_auc ________
+
+    def test_multiclass_training_binary_test_does_not_invent_binary_auc():
+        x = pd.DataFrame({"x": range(9)})
+        model = DummyClassifier(strategy="prior").fit(x, [0, 1, 2] * 3)
+        metrics = classification_metrics(model, x.iloc[:4], [0, 2, 0, 2], [0] * 4)
+>       assert "roc_auc" not in metrics
+E       AssertionError: assert 'roc_auc' not in {'accuracy': 0.5, 'balanced_accuracy': 0.5, 'precision_weighted': 0.25, 'recall_weighted': 0.5, ...}
+
+tests/test_scientific_audit.py:57: AssertionError
+__________________ test_binary_auc_uses_estimator_class_order __________________
+
+    def test_binary_auc_uses_estimator_class_order():
+        class Reversed:
+            classes_ = np.array(["yes", "no"])
+            def predict_proba(self, x):
+                return np.array([[0.9, 0.1], [0.2, 0.8], [0.8, 0.2], [0.1, 0.9]])
+        observed = np.array(["yes", "no", "yes", "no"])
+        m = classification_metrics(Reversed(), None, observed, observed)
+>       assert m["roc_auc"] == roc_auc_score(observed == "no", [0.1, 0.8, 0.2, 0.9])
+E       AssertionError: assert 0.0 == 1.0
+E        +  where 1.0 = roc_auc_score(array(['yes', 'no', 'yes', 'no'], dtype='<U3') == 'no', [0.1, 0.8, 0.2, 0.9])
+
+tests/test_scientific_audit.py:67: AssertionError
+___________________________ test_dummy_respects_seed ___________________________
+
+    def test_dummy_respects_seed():
+        x = np.zeros((100, 1)); y = [0, 1] * 50
+        a = build_model("classification", "dummy", 19, {"strategy": "stratified"}).fit(x, y)
+        b = build_model("classification", "dummy", 19, {"strategy": "stratified"}).fit(x, y)
+>       np.testing.assert_array_equal(a.predict(x), b.predict(x))
+E       AssertionError: 
+E       Arrays are not equal
+E       
+E       Mismatched elements: 49 / 100 (49%)
+E       First 5 mismatches are at indices:
+E        [0]: 1 (ACTUAL), 0 (DESIRED)
+E        [6]: 1 (ACTUAL), 0 (DESIRED)
+E        [7]: 0 (ACTUAL), 1 (DESIRED)
+E        [8]: 0 (ACTUAL), 1 (DESIRED)
+E        [9]: 1 (ACTUAL), 0 (DESIRED)
+E       Max absolute difference among violations: 1
+E       Max relative difference among violations: 1.
+E        ACTUAL: array([1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1,
+E              1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+E              1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1,...
+E        DESIRED: array([0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1,
+E              0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1,
+E              1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0,...
+
+tests/test_scientific_audit.py:74: AssertionError
+___________________ test_default_parameter_can_be_overridden ___________________
+
+    def test_default_parameter_can_be_overridden():
+>       assert build_model("classification", "mlp", 19, {"max_iter": 12}).max_iter == 12
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_scientific_audit.py:78: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/psyml/models/__init__.py:12: in build_model
+    return build(task, model_name, random_seed, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/psyml/models/factory.py:31: in build_model
+    return _build_classifier(normalized, random_seed, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'mlp', random_seed = 19, params = {'max_iter': 12}
+
+    def _build_classifier(name: str, random_seed: int, params: dict[str, Any]):
+        if name == "knn":
+            return KNeighborsClassifier(**params)
+        if name == "random_forest":
+            return RandomForestClassifier(random_state=random_seed, **params)
+        if name == "svm":
+            return SVC(random_state=random_seed, **params)
+        if name == "mlp":
+>           return MLPClassifier(random_state=random_seed, max_iter=500, **params)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: sklearn.neural_network._multilayer_perceptron.MLPClassifier() got multiple values for keyword argument 'max_iter'
+
+src/psyml/models/factory.py:43: TypeError
+_________ test_no_inner_splits_cannot_silently_choose_first_candidate __________
+
+tmp_path = PosixPath('/private/var/folders/92/7jswd6tj6m36fc8j7bxkkdwh0000gn/T/pytest-of-gugu/pytest-271/test_no_inner_splits_cannot_si0')
+
+    def test_no_inner_splits_cannot_silently_choose_first_candidate(tmp_path):
+        data = frame().iloc[:8].copy()
+        data["group"] = [0] * 4 + [1] * 4
+        cfg = config(tmp_path, feature_columns=["x"], group_column="group",
+            validation_strategy="group_k_fold", n_splits=2, tuning_mode="custom",
+            parameter_grids={"dummy": {"strategy": ["prior", "stratified"]}})
+>       with pytest.raises(ValueError, match="inner|parameter candidates"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/test_scientific_audit.py:87: Failed
+_______________ test_replay_config_retains_original_search_base ________________
+
+tmp_path = PosixPath('/private/var/folders/92/7jswd6tj6m36fc8j7bxkkdwh0000gn/T/pytest-of-gugu/pytest-271/test_replay_config_retains_ori0')
+
+    def test_replay_config_retains_original_search_base(tmp_path):
+        cfg = config(tmp_path, feature_columns=["x"], tuning_mode="custom",
+            parameter_grids={"dummy": {"strategy": ["prior", "stratified"]}}, inner_splits=2)
+        run_experiment(cfg, frame())
+        payload = json.loads((cfg.output_dir / "config.json").read_text())
+>       assert payload["model_params"] == {}
+E       AssertionError: assert {'strategy': 'stratified'} == {}
+E         
+E         Left contains 1 more item:
+E         {'strategy': 'stratified'}
+E         Use -v to get more diff
+
+tests/test_scientific_audit.py:96: AssertionError
+__________________ test_existing_output_is_preserved_on_retry __________________
+
+tmp_path = PosixPath('/private/var/folders/92/7jswd6tj6m36fc8j7bxkkdwh0000gn/T/pytest-of-gugu/pytest-271/test_existing_output_is_preser0')
+
+    def test_existing_output_is_preserved_on_retry(tmp_path):
+        cfg = config(tmp_path, feature_columns=["x"])
+        run_experiment(cfg, frame())
+        before = (cfg.output_dir / "result.json").read_bytes()
+>       with pytest.raises((ValueError, FileExistsError), match="output|Output"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE any of (ValueError, FileExistsError)
+
+tests/test_scientific_audit.py:103: Failed
+____________________ test_tiny_r2_primary_has_clear_failure ____________________
+
+tmp_path = PosixPath('/private/var/folders/92/7jswd6tj6m36fc8j7bxkkdwh0000gn/T/pytest-of-gugu/pytest-271/test_tiny_r2_primary_has_clear0')
+
+    def test_tiny_r2_primary_has_clear_failure(tmp_path):
+        cfg = ExperimentConfig(task="regression", target_column="y", model_name="dummy",
+            feature_columns=["x"], output_dir=tmp_path / "tiny", validation_strategy="k_fold",
+            n_splits=3, selection_metric="r2")
+        with pytest.raises(ValueError, match="selection|finite"):
+>           run_experiment(cfg, pd.DataFrame({"x": [1, 2, 3], "y": [2, 4, 9]}))
+
+tests/test_scientific_audit.py:113: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = ExperimentConfig(task='regression', target_column='y', model_name='dummy', input_path=None, output_dir=PosixPath('/pri...tion_strategies=None, tuning_mode='none', parameter_grids={}, selection_metric='r2', inner_splits=3, max_candidates=20)
+frame =    x  y
+0  1  2
+1  2  4
+2  3  9, progress_callback = None
+
+    def run_experiment(
+        config: ExperimentConfig,
+        frame: pd.DataFrame | None = None,
+        progress_callback: ProgressCallback | None = None,
+    ) -> ExperimentResult:
+        """Run one or more models and validations with optional nested parameter search."""
+        if frame is None:
+            if config.input_path is None:
+                raise ValueError("input_path is required when frame is not supplied")
+            frame = load_dataframe(config.input_path)
+        source_frame = frame
+        features, target, groups, dropped_rows = _prepare_data(config, frame)
+        warnings = _risk_warnings(config, target, groups, dropped_rows)
+        work_items, total_tasks = _make_work_items(config, features, target, groups)
+        tracker = _ProgressTracker(total_tasks, progress_callback)
+        tracker.announce()
+        tuning_rows: list[dict[str, Any]] = []
+        combo_folds: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        combo_predictions: dict[tuple[str, str], list[pd.DataFrame]] = {}
+        combo_models: dict[tuple[str, str], list[Pipeline]] = {}
+        combo_errors: dict[tuple[str, str], list[str]] = {}
+    
+        for work in work_items:
+            key = (work.validation, work.model_name)
+            train_x = features.iloc[work.train_index]
+            test_x = features.iloc[work.test_index]
+            train_y = target.iloc[work.train_index]
+            test_y = target.iloc[work.test_index]
+            try:
+                selected_params = _choose_parameters(
+                    config, work, train_x, train_y, tracker, tuning_rows
+                )
+                model = _build_pipeline(config, train_x, work.model_name, selected_params)
+                model.fit(train_x, train_y)
+                predicted = model.predict(test_x)
+                metrics = _fold_result(config, model, test_x, test_y, predicted)
+                combo_folds.setdefault(key, []).append(
+                    {
+                        "fold": work.fold_number,
+                        "model": work.model_name,
+                        "validation": work.validation,
+                        **metrics,
+                    }
+                )
+                combo_predictions.setdefault(key, []).append(
+                    pd.DataFrame(
+                        {
+                            "row_index": test_y.index,
+                            "fold": work.fold_number,
+                            "observed": test_y.to_numpy(),
+                            "predicted": predicted,
+                        }
+                    )
+                )
+                combo_models.setdefault(key, []).append(model)
+            except Exception as error:  # noqa: BLE001
+                combo_errors.setdefault(key, []).append(f"{type(error).__name__}: {error}")
+            tracker.advance(
+                phase="evaluating",
+                message="Outer evaluation fold completed",
+                current_model=work.model_name,
+                current_validation=work.validation,
+                current_fold=work.fold_number,
+            )
+    
+        leaderboard_rows: list[dict[str, Any]] = []
+        combo_results: dict[tuple[str, str], tuple[dict[str, float], pd.DataFrame, pd.DataFrame]] = {}
+        for validation in config.selected_validations():
+            for model_name in config.selected_models():
+                key = (validation, model_name)
+                fold_rows = combo_folds.get(key, [])
+                if not fold_rows or key in combo_errors:
+                    leaderboard_rows.append(
+                        {
+                            "rank": None,
+                            "model": model_name,
+                            "validation": validation,
+                            "selection_metric": config.resolved_selection_metric(),
+                            "selection_score": math.nan,
+                            "status": "failed",
+                            "error": " | ".join(combo_errors.get(key, ["No completed folds"])),
+                        }
+                    )
+                    continue
+                fold_frame = pd.DataFrame(fold_rows)
+                metrics, _ = _summaries(fold_frame)
+                predictions = pd.concat(combo_predictions[key], ignore_index=True)
+>               selection_score = metrics[config.resolved_selection_metric()]
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               KeyError: 'r2'
+
+src/psyml/runner.py:520: KeyError
+___________________ test_family_selection_warning_and_report ___________________
+
+tmp_path = PosixPath('/private/var/folders/92/7jswd6tj6m36fc8j7bxkkdwh0000gn/T/pytest-of-gugu/pytest-271/test_family_selection_warning_0')
+
+    def test_family_selection_warning_and_report(tmp_path):
+        cfg = replace(config(tmp_path, feature_columns=["x"]), model_names=["dummy", "decision_tree"])
+        result = run_experiment(cfg, frame())
+>       assert any("selection" in w and "independent" in w for w in result.warnings)
+E       assert False
+E        +  where False = any(<generator object test_family_selection_warning_and_report.<locals>.<genexpr> at 0x11ad852f0>)
+
+tests/test_scientific_audit.py:119: AssertionError
+=============================== warnings summary ===============================
+tests/test_scientific_audit.py::test_tiny_r2_primary_has_clear_failure
+tests/test_scientific_audit.py::test_tiny_r2_primary_has_clear_failure
+tests/test_scientific_audit.py::test_tiny_r2_primary_has_clear_failure
+  /Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/.venv/lib/python3.12/site-packages/sklearn/metrics/_regression.py:1295: UndefinedMetricWarning: R^2 score is not well-defined with less than two samples.
+    warnings.warn(msg, UndefinedMetricWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_scientific_audit.py::test_unselected_missing_admin_does_not_exclude_rows
+FAILED tests/test_scientific_audit.py::test_missing_target_is_counted_and_prediction_indices_survive
+FAILED tests/test_scientific_audit.py::test_holdout_final_model_uses_all_rows_without_changing_oos
+FAILED tests/test_scientific_audit.py::test_multiclass_training_binary_test_does_not_invent_binary_auc
+FAILED tests/test_scientific_audit.py::test_binary_auc_uses_estimator_class_order
+FAILED tests/test_scientific_audit.py::test_dummy_respects_seed - AssertionEr...
+FAILED tests/test_scientific_audit.py::test_default_parameter_can_be_overridden
+FAILED tests/test_scientific_audit.py::test_no_inner_splits_cannot_silently_choose_first_candidate
+FAILED tests/test_scientific_audit.py::test_replay_config_retains_original_search_base
+FAILED tests/test_scientific_audit.py::test_existing_output_is_preserved_on_retry
+FAILED tests/test_scientific_audit.py::test_tiny_r2_primary_has_clear_failure
+FAILED tests/test_scientific_audit.py::test_family_selection_warning_and_report
+12 failed, 3 warnings in 16.85s

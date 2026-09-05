@@ -61,6 +61,7 @@ func _run_test() -> void:
 			main.tuning_option.select(index)
 			break
 	main._populate_parameter_editor()
+	assert(main.feature_list.multi_selected.get_connections().size() > 0)
 	var comparative_config = main._build_config()
 	assert(comparative_config.model_names.size() == 2)
 	assert(comparative_config.validation_strategies.size() == 2)
@@ -86,6 +87,7 @@ func _run_test() -> void:
 	assert(not main.data_path_edit.editable)
 	assert(main.task_option.disabled)
 	assert(main.feature_list.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	await _capture_state(main, "07-running.png")
 	var result_path := result_dir.path_join("result.json")
 	var run_deadline := Time.get_ticks_msec() + 30000
 	while (
@@ -123,6 +125,9 @@ func _run_test() -> void:
 	)
 	main.output_edit.text = regression_dir
 	main._on_run_pressed()
+	assert(main.last_result_dir.is_empty())
+	assert(main.open_results_button.disabled)
+	assert(main.figure_view.texture == null)
 	var regression_result_path := regression_dir.path_join("result.json")
 	var regression_deadline := Time.get_ticks_msec() + 30000
 	while (
@@ -161,13 +166,65 @@ func _run_test() -> void:
 	assert(main.bridge.is_running())
 	main._request_cancel()
 	assert(main.status_key == "CANCELLED")
+	await _capture_state(main, "08-stopped.png")
 	assert(not main.is_analysis_running)
 	assert(not main.bridge.is_running())
 	assert(main.pending_config_path.is_empty())
 	assert(not main.run_button.disabled)
+	assert(main.last_result_dir.is_empty())
+	assert(main.metrics_tree.get_root() == null)
+	assert(main.open_results_button.disabled)
+	# Force a real core failure after cancellation, then retry successfully.
+	for index in range(main.model_list.item_count):
+		main.model_list.deselect(index)
+		if main.model_list.get_item_metadata(index) == "dummy":
+			main.model_list.select(index, false)
+	main.tuning_option.select(0)
+	main._populate_parameter_editor()
+	for index in range(main.group_option.item_count):
+		if main.group_option.get_item_metadata(index) == "participant":
+			main.group_option.select(index)
+	main._on_column_role_changed()
+	for index in range(main.validation_list.item_count):
+		main.validation_list.deselect(index)
+		if main.validation_list.get_item_metadata(index) == "group_k_fold":
+			main.validation_list.select(index, false)
+	main.folds_spin.value = 20
+	main.output_edit.text = OS.get_temp_dir().path_join("psyml-invalid-%d" % Time.get_ticks_usec())
+	main._on_run_pressed()
+	var failure_deadline := Time.get_ticks_msec() + 20000
+	while main.is_analysis_running and Time.get_ticks_msec() < failure_deadline:
+		await create_timer(0.05).timeout
+	assert(main.status_key == "ERROR", main.status_label.text)
+	await _capture_state(main, "09-error.png")
+	assert(main.last_result_dir.is_empty())
+	assert(main.figure_view.texture == null)
+	assert(main.open_results_button.disabled)
+	main.folds_spin.value = 3
+	main.output_edit.text = OS.get_temp_dir().path_join("psyml-recovery-%d" % Time.get_ticks_usec())
+	main._on_run_pressed()
+	var recovery_deadline := Time.get_ticks_msec() + 20000
+	while main.is_analysis_running and Time.get_ticks_msec() < recovery_deadline:
+		await create_timer(0.05).timeout
+	assert(main.status_key == "COMPLETED", main.status_label.text)
+	assert(not main.last_result_dir.is_empty())
+	main._on_language_selected(1)
+	assert(main.comparison_tree.get_column_title(0) == "Rank")
+	assert(main.best_result_label.text.begins_with("Current best"))
 	main._on_language_selected(2)
 	assert(main.run_button.text == "Exécuter l’analyse")
 	assert(main.tabs.get_tab_title(3) == "4  Résultats")
-	assert(main.progress_detail_label.text == "L’analyse est arrêtée ; vous pouvez modifier les réglages et relancer.")
+	assert(main.comparison_tree.get_column_title(0) == "Rang")
 	print("PSYML_GODOT_UI_FLOW_OK")
 	quit(0)
+
+
+func _capture_state(main: Control, filename: String) -> void:
+	var directory := OS.get_environment("PSYML_SCREENSHOT_DIR")
+	if directory.is_empty():
+		return
+	DirAccess.make_dir_recursive_absolute(directory)
+	main.tabs.current_tab = 2
+	await process_frame
+	await process_frame
+	root.get_viewport().get_texture().get_image().save_png(directory.path_join(filename))

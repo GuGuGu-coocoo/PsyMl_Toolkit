@@ -2,6 +2,7 @@ import json
 import signal
 import subprocess
 import sys
+from pathlib import Path
 
 import jsonschema
 import pandas as pd
@@ -143,9 +144,11 @@ def test_versioned_cli_run_emits_events_and_valid_outputs(tmp_path, capsys):
     jsonschema.validate(saved_config, _schema("analysis_config"))
 
     first_predictions = (config.output_dir / "predictions.csv").read_bytes()
+    saved_config["output_dir"] = str(tmp_path / "replayed output")
+    config_path.write_text(json.dumps(saved_config), encoding="utf-8")
     assert main(["run", "--config", str(config_path)]) == 0
     capsys.readouterr()
-    assert (config.output_dir / "predictions.csv").read_bytes() == first_predictions
+    assert (Path(saved_config["output_dir"]) / "predictions.csv").read_bytes() == first_predictions
 
 
 def test_versioned_cli_returns_structured_failure(tmp_path, capsys):

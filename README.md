@@ -38,7 +38,7 @@ uv run python tools/launch_gui.py
 
 #### 1. 数据与变量
 
-点击“选择文件”，支持 CSV、TSV、XLSX、XLS、SPSS SAV、Stata DTA、SAS7BDAT、XPT 和 Parquet。点击“读取预览”后：
+点击“浏览…”，支持 CSV、TSV、XLSX、XLS、SPSS SAV、Stata DTA、SAS7BDAT、XPT 和 Parquet。选择文件后会自动读取预览；直接编辑路径时点击“读取预览”。预览后：
 
 - 核对行数、列数、变量类型和缺失值数量；
 - 在预览表中确认分隔、表头和字符编码没有被误读；
@@ -46,7 +46,7 @@ uv run python tools/launch_gui.py
 - 不要把参与者编号、答案键、采集时间戳等仅用于识别或管理的字段当成预测变量；
 - 目标变量和分组变量会自动从预测变量中排除。
 
-![中文数据与变量界面](docs/images/zh/01-data.png)
+![中文数据与变量界面](docs/audit-2026-09-05/after/zh/01-data.png)
 
 #### 2. 任务、目标与分组
 
@@ -83,7 +83,7 @@ uv run python tools/launch_gui.py
 
 建议至少保留一个可解释的简单模型和一个 Dummy 基线。复杂模型胜出并不自动意味着研究结论更可靠；还要检查差值、波动、样本规模和外部有效性。
 
-![中文分析设置界面](docs/images/zh/02-configure.png)
+![中文分析设置界面](docs/audit-2026-09-05/after/zh/02-configure.png)
 
 #### 6. 参数与选择指标
 
@@ -105,13 +105,13 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 进入“检查与运行”后：
 
-1. 选择新的结果目录，避免覆盖需要保留的旧分析；
+1. 选择新建或空结果目录；程序拒绝覆盖非空目录，已有输出会保留；
 2. 核对输入路径、变量、主要验证顺序、模型、参数网格、指标、随机种子和任务数量；
 3. 点击运行；界面持续显示当前阶段、模型、验证和外部折，以及已完成/剩余任务和动态预计时间；
 4. 预计时间根据已完成任务更新，模型耗时差异较大时会波动；它是估计，不是承诺；
 5. 如任务过长，点击“终止运行”。后台分析进程会停止，未完成的结果不应作为有效研究输出；调整候选数、模型或验证后可重新运行。
 
-![中文检查与运行界面](docs/images/zh/03-review.png)
+![中文检查与运行界面](docs/audit-2026-09-05/after/zh/03-review.png)
 
 #### 8. 结果与解释
 
@@ -127,7 +127,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 6. 敏感性验证下模型排序是否稳定；
 7. Methods 与复现报告是否准确描述最终分析。
 
-![中文结果界面](docs/images/zh/04-results.png)
+![中文结果界面](docs/audit-2026-09-05/after/zh/04-results.png)
 
 ### 输出文件
 
@@ -136,7 +136,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 | `result.json` | GUI 使用的最终摘要、最佳模型、主要验证和最佳参数 |
 | `model_comparison.csv` | 每个模型—验证组合的状态、排名和指标 |
 | `parameter_search.csv` | 各外部训练折及最终全数据调参中，所有候选的内部验证成绩与失败信息 |
-| `best_parameters.json` | 最终选中模型最常胜出的参数 |
+| `best_parameters.json` | 最终选中模型在全部分析数据上再搜索得到的参数覆盖；单候选时使用该候选 |
 | `study_config.json` | 完整比较设计，包括全部候选模型与验证 |
 | `analysis_config.json` / `config.json` | 实际执行并可用于重跑的配置 |
 | `metrics.csv` | 主要验证下最佳模型的汇总指标 |
@@ -145,6 +145,14 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 | `confusion_matrix.csv` | 分类任务的混淆矩阵 |
 | `warnings.json` | 方法和数据风险提示 |
 | `methods_summary.md` / `reproducibility_report.md` | 用于核对论文方法与复现环境的说明 |
+
+### 本轮审查与人工验收
+
+- [中文 GUI 人工测试指南：15分钟主流程 + 15–20分钟边界测试](docs/GUI_MANUAL_TEST_ZH.md)
+- [科学正确性专项审查、修复证据与人工决策](docs/audit-2026-09-05/SCIENTIFIC_REVIEW.md)
+- [视觉变化与四页前后截图](docs/audit-2026-09-05/VISUAL_REVIEW.md)
+
+当前模型家族仍用主要验证的外层成绩选择；获胜成绩存在选择乐观偏差，不能当成家族选择后的独立性能估计。三份配置文件保留原始搜索设计，最终参数单独保存在 `best_parameters.json`；复跑前把输出目录改成新的空目录。主要验证按列表最靠前的已选项决定，非点击先后；GUI没有重排控件。最终模型在全部分析数据上拟合，外层预测保持不变。
 
 ### 方法边界、隐私与许可
 
@@ -196,7 +204,7 @@ For the command line, run `uv run psyml --help`. If Godot is not on `PATH`, set 
 
 Choose a CSV, TSV, XLSX, XLS, SPSS SAV, Stata DTA, SAS7BDAT, XPT or Parquet file and load its preview. Check dimensions, inferred types, missing counts, headers and character handling. Select only genuine predictors. Administrative IDs, answer keys and acquisition timestamps should not normally become predictors. The outcome and group fields are automatically excluded.
 
-![English data and variables screen](docs/images/en/01-data.png)
+![English data and variables screen](docs/audit-2026-09-05/after/en/01-data.png)
 
 #### 2. Task, outcome and groups
 
@@ -227,7 +235,7 @@ Classification provides KNN, random forest, SVM, MLP, decision tree, logistic re
 
 Select several models in one run. Retaining an interpretable simple model and a Dummy baseline makes the comparison more informative. A complex winner is not automatically a stronger scientific conclusion.
 
-![English analysis setup screen](docs/images/en/02-configure.png)
+![English analysis setup screen](docs/audit-2026-09-05/after/en/02-configure.png)
 
 #### 6. Parameters and selection metric
 
@@ -245,7 +253,7 @@ Classification offers balanced accuracy (default), macro F1 and accuracy. Regres
 
 Choose a fresh output directory, then verify paths, roles, primary-validation order, models, grids, metric, seed and displayed workload. During the run, the GUI reports the phase, current model, validation and outer fold, completed and remaining tasks, and a dynamic ETA. ETA changes as the observed cost of models changes. “Stop run” terminates the analysis process; incomplete outputs should not be treated as research results. Reduce models, candidates or validations and rerun when needed.
 
-![English review and run screen](docs/images/en/03-review.png)
+![English review and run screen](docs/audit-2026-09-05/after/en/03-review.png)
 
 #### 8. Results and interpretation
 
@@ -253,11 +261,11 @@ The result tab shows the best model selected under the primary validation, its p
 
 Check warnings first, improvement over Dummy and simple models, fold-level variability, systematic prediction errors, the classification confusion matrix or regression error plot, and whether sensitivity validations tell a consistent story. Finally, verify the generated Methods and reproducibility reports.
 
-![English results screen](docs/images/en/04-results.png)
+![English results screen](docs/audit-2026-09-05/after/en/04-results.png)
 
 ### Output files
 
-`result.json` is the GUI summary. `model_comparison.csv` contains all model–validation rankings; `parameter_search.csv` contains inner-search evidence; `best_parameters.json` and `study_config.json` record the chosen parameters and full design. `metrics.csv`, `fold_metrics.csv`, `metrics_summary.csv`, `predictions.csv` and `confusion_matrix.csv` provide evaluation details. `warnings.json`, `methods_summary.md` and `reproducibility_report.md` support review and reporting. Saved configuration files can be used to rerun the study.
+`result.json` is the GUI summary. `model_comparison.csv` contains all model–validation rankings; `parameter_search.csv` contains inner-search evidence; `best_parameters.json` and `study_config.json` record the chosen parameters and full design. `metrics.csv`, `fold_metrics.csv`, `metrics_summary.csv`, `predictions.csv` and `confusion_matrix.csv` provide evaluation details. `warnings.json`, `methods_summary.md` and `reproducibility_report.md` support review and reporting. Saved configuration files preserve the original search design; rerun into a new or empty output directory. Final parameters are saved separately. Model families are selected using primary outer scores, so the winning score is not an independent estimate after family selection.
 
 ### Methodological scope, privacy and license
 
@@ -309,7 +317,7 @@ Pour la ligne de commande, utilisez `uv run psyml --help`. Si Godot n’est pas 
 
 Choisissez un fichier CSV, TSV, XLSX, XLS, SPSS SAV, Stata DTA, SAS7BDAT, XPT ou Parquet, puis chargez l’aperçu. Vérifiez les dimensions, les types, les valeurs manquantes, les en-têtes et les caractères. Ne retenez que de vrais prédicteurs : les identifiants administratifs, clés de réponse et horodatages ne devraient généralement pas l’être. La cible et le groupe sont automatiquement exclus.
 
-![Écran français des données et variables](docs/images/fr/01-data.png)
+![Écran français des données et variables](docs/audit-2026-09-05/after/fr/01-data.png)
 
 #### 2. Tâche, cible et groupes
 
@@ -340,7 +348,7 @@ La classification propose KNN, forêt aléatoire, SVM, MLP, arbre de décision, 
 
 Plusieurs modèles peuvent être comparés en une seule exécution. Conserver un modèle simple interprétable et une référence Dummy rend la comparaison plus utile. Un modèle complexe gagnant ne garantit pas à lui seul une conclusion scientifique plus solide.
 
-![Écran français de configuration](docs/images/fr/02-configure.png)
+![Écran français de configuration](docs/audit-2026-09-05/after/fr/02-configure.png)
 
 #### 6. Paramètres et métrique de sélection
 
@@ -358,7 +366,7 @@ Pour la classification : exactitude équilibrée par défaut, F1 macro ou exacti
 
 Choisissez un nouveau dossier de résultats et vérifiez les chemins, rôles, ordre des validations, modèles, grilles, métrique, graine et charge annoncée. Pendant l’analyse, l’interface montre la phase, le modèle, la validation, le pli externe, les tâches terminées et restantes, ainsi qu’un temps estimé dynamique. L’estimation varie selon le coût réel des modèles. « Arrêter » termine le processus ; des sorties incomplètes ne doivent pas être utilisées comme résultats. Réduisez modèles, candidats ou validations puis relancez si nécessaire.
 
-![Écran français de vérification](docs/images/fr/03-review.png)
+![Écran français de vérification](docs/audit-2026-09-05/after/fr/03-review.png)
 
 #### 8. Résultats et interprétation
 
@@ -366,11 +374,11 @@ L’onglet de résultats affiche le meilleur modèle selon la validation princip
 
 Examinez d’abord les avertissements, puis le gain par rapport aux modèles Dummy et simples, la variabilité entre plis, les erreurs systématiques, la matrice de confusion ou le graphique des erreurs, et la stabilité entre validations de sensibilité. Vérifiez enfin les fichiers Methods et de reproductibilité.
 
-![Écran français des résultats](docs/images/fr/04-results.png)
+![Écran français des résultats](docs/audit-2026-09-05/after/fr/04-results.png)
 
 ### Fichiers produits
 
-`result.json` contient le résumé de l’interface. `model_comparison.csv` contient tous les classements modèle–validation ; `parameter_search.csv` documente la recherche interne ; `best_parameters.json` et `study_config.json` conservent les paramètres retenus et la conception complète. `metrics.csv`, `fold_metrics.csv`, `metrics_summary.csv`, `predictions.csv` et `confusion_matrix.csv` détaillent l’évaluation. `warnings.json`, `methods_summary.md` et `reproducibility_report.md` facilitent l’examen et la rédaction. Les configurations enregistrées permettent de relancer l’étude.
+`result.json` contient le résumé de l’interface. `model_comparison.csv` contient tous les classements modèle–validation ; `parameter_search.csv` documente la recherche interne ; `best_parameters.json` et `study_config.json` conservent les paramètres retenus et la conception complète. `metrics.csv`, `fold_metrics.csv`, `metrics_summary.csv`, `predictions.csv` et `confusion_matrix.csv` détaillent l’évaluation. `warnings.json`, `methods_summary.md` et `reproducibility_report.md` facilitent l’examen et la rédaction. Les configurations enregistrées conservent le plan initial ; utilisez un dossier de sortie nouveau ou vide pour relancer. Les paramètres finaux sont enregistrés séparément. Le score gagnant sert au choix de la famille et ne constitue donc pas une estimation indépendante après cette sélection.
 
 ### Portée méthodologique, confidentialité et licence
 

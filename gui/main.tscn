@@ -20,7 +20,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.964706, 0.968627, 0.984314, 1)
+color = Color(0.95, 0.956, 0.968, 1)
 
 [node name="AppMargin" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -45,8 +45,8 @@ theme_override_constants/separation = 14
 [node name="TitleLabel" type="Label" parent="AppMargin/Page/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.372549, 0.486275, 0.968627, 1)
-theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(0.125, 0.137, 0.169, 1)
+theme_override_font_sizes/font_size = 27
 text = "PsyML Toolkit"
 auto_translate_mode = 0
 
@@ -68,7 +68,7 @@ size_flags_vertical = 3
 
 [node name="Data" type="ScrollContainer" parent="AppMargin/Page/Tabs"]
 layout_mode = 2
-horizontal_scroll_mode = 0
+horizontal_scroll_mode = 1
 
 [node name="Padding" type="MarginContainer" parent="AppMargin/Page/Tabs/Data"]
 layout_mode = 2
@@ -173,6 +173,7 @@ layout_mode = 2
 size_flags_vertical = 3
 columns = 3
 column_titles_visible = true
+hide_root = true
 
 [node name="SampleLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/InspectionPanel/Margin/Content"]
 unique_name_in_owner = true
@@ -184,6 +185,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(460, 170)
 layout_mode = 2
 size_flags_vertical = 3
+hide_root = true
 
 [node name="PredictorsPanel" type="PanelContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace"]
 custom_minimum_size = Vector2(320, 0)
@@ -214,7 +216,7 @@ select_mode = 1
 
 [node name="Configure" type="ScrollContainer" parent="AppMargin/Page/Tabs"]
 layout_mode = 2
-horizontal_scroll_mode = 0
+horizontal_scroll_mode = 1
 
 [node name="Padding" type="MarginContainer" parent="AppMargin/Page/Tabs/Configure"]
 layout_mode = 2
@@ -282,6 +284,8 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(420, 42)
 layout_mode = 2
 size_flags_horizontal = 3
+fit_to_longest_item = false
+clip_text = true
 
 [node name="GroupLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
 unique_name_in_owner = true
@@ -293,6 +297,8 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(420, 42)
 layout_mode = 2
 size_flags_horizontal = 3
+fit_to_longest_item = false
+clip_text = true
 
 [node name="MissingLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
 unique_name_in_owner = true
@@ -448,7 +454,7 @@ theme_override_constants/separation = 10
 
 [node name="Review" type="ScrollContainer" parent="AppMargin/Page/Tabs"]
 layout_mode = 2
-horizontal_scroll_mode = 0
+horizontal_scroll_mode = 1
 
 [node name="Padding" type="MarginContainer" parent="AppMargin/Page/Tabs/Review"]
 layout_mode = 2
@@ -523,7 +529,7 @@ autowrap_mode = 2
 
 [node name="ReviewText" type="TextEdit" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ReviewConfigPanel/Margin/Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 240)
+custom_minimum_size = Vector2(0, 205)
 layout_mode = 2
 size_flags_vertical = 3
 editable = false
@@ -553,6 +559,12 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.34902, 0.396078, 0.478431, 1)
 autowrap_mode = 2
 
+[node name="StopHelpLabel" type="Label" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ExecutionPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.38, 0.41, 0.47, 1)
+autowrap_mode = 2
+
 [node name="RunRow" type="HBoxContainer" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ExecutionPanel/Margin/Content"]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -563,6 +575,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 vertical_alignment = 1
+autowrap_mode = 3
 
 [node name="ProgressBar" type="ProgressBar" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ExecutionPanel/Margin/Content/RunRow"]
 unique_name_in_owner = true
@@ -586,7 +599,7 @@ theme_type_variation = &"AccentButton"
 
 [node name="Results" type="ScrollContainer" parent="AppMargin/Page/Tabs"]
 layout_mode = 2
-horizontal_scroll_mode = 0
+horizontal_scroll_mode = 1
 
 [node name="Padding" type="MarginContainer" parent="AppMargin/Page/Tabs/Results"]
 layout_mode = 2
@@ -652,6 +665,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 170)
 layout_mode = 2
+hide_root = true
 
 [node name="WarningsLabel" type="Label" parent="AppMargin/Page/Tabs/Results/Padding/ResultsContent/ResultsBody/DetailsPanel/Margin/Content"]
 unique_name_in_owner = true
@@ -673,6 +687,7 @@ custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
 columns = 2
 column_titles_visible = true
+hide_root = true
 
 [node name="PredictionsLabel" type="Label" parent="AppMargin/Page/Tabs/Results/Padding/ResultsContent/ResultsBody/DetailsPanel/Margin/Content"]
 unique_name_in_owner = true
@@ -682,6 +697,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
+hide_root = true
 
 [node name="VisualPanel" type="PanelContainer" parent="AppMargin/Page/Tabs/Results/Padding/ResultsContent/ResultsBody"]
 custom_minimum_size = Vector2(430, 0)

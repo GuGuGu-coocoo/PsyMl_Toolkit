@@ -51,7 +51,7 @@ def write_result_summary(
     study_summary: dict | None = None,
 ) -> None:
     """Write the stable result summary after every other artefact succeeds."""
-    (output_dir / "result.json").write_text(
+    (output_dir / ".result.json.tmp").write_text(
         json.dumps(
             result_payload(config, metrics, warnings, study_summary=study_summary),
             indent=2,
@@ -61,6 +61,8 @@ def write_result_summary(
         + "\n",
         encoding="utf-8",
     )
+
+    (output_dir / ".result.json.tmp").replace(output_dir / "result.json")
 
 
 def write_study_outputs(

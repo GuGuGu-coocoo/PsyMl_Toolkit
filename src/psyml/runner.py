@@ -121,7 +121,13 @@ def _build_pipeline(
     training_features: pd.DataFrame,
     model_name: str,
     model_params: dict[str, Any],
+    training_target: pd.Series | None = None,
+    training_groups: pd.Series | None = None,
 ) -> Pipeline:
+    if model_name == "stacking":
+        return _build_stacking_pipeline(
+            config, training_features, training_target, training_groups, model_params
+        )
     return Pipeline(
         [
             (
@@ -137,6 +143,60 @@ def _build_pipeline(
     )
 
 
+def _build_stacking_pipeline(config, features, target, groups, params) -> Pipeline:
+    """Cross-fit whole base pipelines, retaining group isolation at the stacking layer."""
+    model = build_model(config.task, "stacking", config.random_seed, params)
+    requested_cv = 5 if model.cv is None else model.cv
+    if not isinstance(requested_cv, int) or requested_cv < 2:
+        raise ValueError("Stacking cv must be an integer >= 2; prefit stacking is not supported")
+    model.cv = _inner_splits(
+        replace(config, inner_splits=requested_cv), features, target, groups, 0
+    )
+    if not model.cv:
+        raise ValueError("Insufficient rows/classes/groups for stacking inner validation")
+    if any(set(target.iloc[train].unique()) != set(target.unique()) for train, _ in model.cv):
+        raise ValueError("Stacking inner training folds must contain all target classes")
+    model.estimators = [
+        (
+            name,
+            Pipeline(
+                [
+                    (
+                        "preprocess",
+                        build_preprocessor(features, config.missing_strategy, config.scaling),
+                    ),
+                    ("model", estimator),
+                ]
+            ),
+        )
+        for name, estimator in model.estimators
+    ]
+    if model.passthrough:
+        # Stacking concatenates numeric out-of-fold predictions with the original columns.
+        # Fit this meta-level preprocessor only when fitting the meta-estimator.
+        n_classes = target.nunique()
+        n_outputs = len(model.estimators) * (1 if n_classes == 2 else n_classes)
+        template = pd.concat(
+            [
+                pd.DataFrame(
+                    0.0, index=features.index, columns=[f"__stack_{i}" for i in range(n_outputs)]
+                ),
+                features,
+            ],
+            axis=1,
+        )
+        template.columns = [f"column_{i}" for i in range(len(template.columns))]
+        preprocessor = build_preprocessor(template, config.missing_strategy, config.scaling)
+        preprocessor.transformers = [
+            (name, transform, [template.columns.get_loc(c) for c in columns])
+            for name, transform, columns in preprocessor.transformers
+        ]
+        model.final_estimator = Pipeline(
+            [("preprocess", preprocessor), ("model", model.final_estimator)]
+        )
+    return Pipeline([("model", model)])
+
+
 def _risk_warnings(
     config: ExperimentConfig, target: pd.Series, groups: pd.Series | None, dropped_rows: int
 ) -> list[str]:
@@ -144,8 +204,7 @@ def _risk_warnings(
     if dropped_rows:
         warnings.append(f"Dropped {dropped_rows} rows because missing_strategy='drop'.")
     if groups is not None and any(
-        strategy in {"k_fold", "stratified_k_fold"}
-        for strategy in config.selected_validations()
+        strategy in {"k_fold", "stratified_k_fold"} for strategy in config.selected_validations()
     ):
         if len(config.selected_validations()) == 1:
             warnings.append(
@@ -172,13 +231,21 @@ def _prepare_data(
     config: ExperimentConfig, frame: pd.DataFrame
 ) -> tuple[pd.DataFrame, pd.Series, pd.Series | None, int]:
     validate_dataset(frame, config.target_column, config.group_column)
-    working = frame.dropna(subset=[config.target_column]).copy()
+    columns = config.feature_columns
+    if columns is None:
+        columns = [c for c in frame.columns if c not in {config.target_column, config.group_column}]
+    required = [*columns, config.target_column]
+    if config.group_column:
+        required.append(config.group_column)
+    working = frame.loc[:, required].dropna(subset=[config.target_column]).copy()
     before_missing_drop = len(working)
     if config.missing_strategy == "drop":
         working = working.dropna()
     dropped_rows = before_missing_drop - len(working)
     if working.empty:
         raise ValueError("No rows remain after missing-data handling")
+    if config.group_column and working[config.group_column].isna().any():
+        raise ValueError("Missing group identifiers: resolve group membership before analysis")
     target = working.pop(config.target_column)
     groups = working.pop(config.group_column) if config.group_column else None
     if config.feature_columns is not None:
@@ -317,7 +384,10 @@ def _make_work_items(
 ) -> tuple[list[_WorkItem], int]:
     work_items: list[_WorkItem] = []
     total_tasks = 1
-    final_inner = _inner_splits(config, features, target, groups, 0)
+    needs_search = any(
+        len(_parameter_candidates(config, name)) > 1 for name in config.selected_models()
+    )
+    final_inner = _inner_splits(config, features, target, groups, 0) if needs_search else []
     final_tuning_budget = 0
     for validation in config.selected_validations():
         outer_splits = make_validation_splits(
@@ -335,9 +405,7 @@ def _make_work_items(
                 raise ValueError(f"Unsupported {config.task} model: {model_name}")
             candidates = _parameter_candidates(config, model_name)
             if len(candidates) > 1:
-                final_tuning_budget = max(
-                    final_tuning_budget, len(candidates) * len(final_inner)
-                )
+                final_tuning_budget = max(final_tuning_budget, len(candidates) * len(final_inner))
             for fold_number, (train_index, test_index) in enumerate(outer_splits, start=1):
                 train_groups = groups.iloc[train_index] if groups is not None else None
                 inner = (
@@ -373,10 +441,13 @@ def _choose_parameters(
     train_y: pd.Series,
     tracker: _ProgressTracker,
     tuning_rows: list[dict[str, Any]],
+    train_groups: pd.Series | None = None,
 ) -> dict[str, Any]:
     metric = config.resolved_selection_metric()
-    if len(work.candidates) == 1 or not work.inner_splits:
+    if len(work.candidates) == 1:
         return work.candidates[0]
+    if not work.inner_splits:
+        raise ValueError("Insufficient rows/classes/groups for inner parameter selection")
     best_params: dict[str, Any] | None = None
     best_objective = -math.inf
     for candidate_index, candidate in enumerate(work.candidates, start=1):
@@ -389,10 +460,15 @@ def _choose_parameters(
                     train_x.iloc[inner_train],
                     work.model_name,
                     candidate,
+                    train_y.iloc[inner_train],
+                    train_groups.iloc[inner_train] if train_groups is not None else None,
                 )
                 model.fit(train_x.iloc[inner_train], train_y.iloc[inner_train])
                 predicted = model.predict(train_x.iloc[inner_test])
-                scores.append(_selection_score(metric, train_y.iloc[inner_test], predicted))
+                score = _selection_score(metric, train_y.iloc[inner_test], predicted)
+                if not math.isfinite(score):
+                    raise ValueError(f"Non-finite inner selection metric: {metric}")
+                scores.append(score)
             except Exception as error:  # noqa: BLE001
                 error_text = f"{type(error).__name__}: {error}"
             tracker.advance(
@@ -436,6 +512,14 @@ def run_experiment(
     progress_callback: ProgressCallback | None = None,
 ) -> ExperimentResult:
     """Run one or more models and validations with optional nested parameter search."""
+    if frame is not None and config.input_path is not None:
+        raise ValueError(
+            "Supply either frame or input_path, not both; source provenance must be unambiguous"
+        )
+    output_dir = Path(config.output_dir)
+    if output_dir.exists() and (not output_dir.is_dir() or any(output_dir.iterdir())):
+        raise FileExistsError("Output directory must be new or empty; existing output is preserved")
+    output_dir.mkdir(parents=True, exist_ok=True)
     if frame is None:
         if config.input_path is None:
             raise ValueError("input_path is required when frame is not supplied")
@@ -443,13 +527,20 @@ def run_experiment(
     source_frame = frame
     features, target, groups, dropped_rows = _prepare_data(config, frame)
     warnings = _risk_warnings(config, target, groups, dropped_rows)
+    missing_targets = int(frame[config.target_column].isna().sum())
+    if missing_targets:
+        warnings.append(f"Dropped {missing_targets} rows with missing target values.")
+    if len(config.selected_models()) > 1:
+        warnings.append(
+            "Model-family selection used the primary outer scores; the winner's score is not "
+            "an independent estimate after selection. Use prespecified models or independent validation."
+        )
     work_items, total_tasks = _make_work_items(config, features, target, groups)
     tracker = _ProgressTracker(total_tasks, progress_callback)
     tracker.announce()
     tuning_rows: list[dict[str, Any]] = []
     combo_folds: dict[tuple[str, str], list[dict[str, Any]]] = {}
     combo_predictions: dict[tuple[str, str], list[pd.DataFrame]] = {}
-    combo_models: dict[tuple[str, str], list[Pipeline]] = {}
     combo_errors: dict[tuple[str, str], list[str]] = {}
 
     for work in work_items:
@@ -460,12 +551,44 @@ def run_experiment(
         test_y = target.iloc[work.test_index]
         try:
             selected_params = _choose_parameters(
-                config, work, train_x, train_y, tracker, tuning_rows
+                config,
+                work,
+                train_x,
+                train_y,
+                tracker,
+                tuning_rows,
+                groups.iloc[work.train_index] if groups is not None else None,
             )
-            model = _build_pipeline(config, train_x, work.model_name, selected_params)
+            model = _build_pipeline(
+                config,
+                train_x,
+                work.model_name,
+                selected_params,
+                train_y,
+                groups.iloc[work.train_index] if groups is not None else None,
+            )
             model.fit(train_x, train_y)
             predicted = model.predict(test_x)
             metrics = _fold_result(config, model, test_x, test_y, predicted)
+            selection_value = metrics.get(config.resolved_selection_metric(), math.nan)
+            if not math.isfinite(selection_value):
+                raise ValueError(
+                    "Non-finite outer selection metric; this combination cannot be ranked"
+                )
+            if config.task == "classification" and (
+                set(train_y.unique()) != set(target.unique())
+                or set(test_y.unique()) != set(target.unique())
+            ):
+                warnings.append(
+                    f"{work.validation}/{work.model_name}/fold {work.fold_number}: missing classes "
+                    "in training or evaluation; macro/balanced metrics use the labels present, "
+                    "and AUC is omitted when class sets differ."
+                )
+            if any(not math.isfinite(value) for value in metrics.values()):
+                warnings.append(
+                    f"{work.validation}/{work.model_name}/fold {work.fold_number}: undefined "
+                    "secondary metrics are omitted from means; inspect n_folds."
+                )
             combo_folds.setdefault(key, []).append(
                 {
                     "fold": work.fold_number,
@@ -484,7 +607,6 @@ def run_experiment(
                     }
                 )
             )
-            combo_models.setdefault(key, []).append(model)
         except Exception as error:  # noqa: BLE001
             combo_errors.setdefault(key, []).append(f"{type(error).__name__}: {error}")
         tracker.advance(
@@ -532,6 +654,11 @@ def run_experiment(
             )
             combo_results[key] = (metrics, fold_frame, predictions)
 
+    for row in leaderboard_rows:
+        if row["status"] == "failed":
+            warnings.append(
+                f"Failed combination {row['validation']}/{row['model']}: {row['error']}"
+            )
     completed_rows = [row for row in leaderboard_rows if row["status"] == "completed"]
     if not completed_rows:
         details = " | ".join(row["error"] for row in leaderboard_rows)
@@ -558,11 +685,13 @@ def run_experiment(
     best_key = (best["validation"], best["model"])
     metrics, fold_metrics, predictions = combo_results[best_key]
     _, metric_summary = _summaries(fold_metrics)
-    final_inner = _inner_splits(config, features, target, groups, 0)
+    needs_search = any(
+        len(_parameter_candidates(config, name)) > 1 for name in config.selected_models()
+    )
+    final_inner = _inner_splits(config, features, target, groups, 0) if needs_search else []
     final_candidates = _parameter_candidates(config, best["model"])
     final_candidate_counts = [
-        len(_parameter_candidates(config, model_name))
-        for model_name in config.selected_models()
+        len(_parameter_candidates(config, model_name)) for model_name in config.selected_models()
     ]
     final_tuning_budget = max(
         (count * len(final_inner) for count in final_candidate_counts if count > 1),
@@ -578,17 +707,14 @@ def run_experiment(
         candidates=final_candidates,
     )
     best_params = _choose_parameters(
-        config, final_work, features, target, tracker, tuning_rows
+        config, final_work, features, target, tracker, tuning_rows, groups
     )
     used_final_tuning_tasks = (
         len(final_candidates) * len(final_inner) if len(final_candidates) > 1 else 0
     )
     tracker.skip(final_tuning_budget - used_final_tuning_tasks)
-    if best["validation"] == "holdout" and used_final_tuning_tasks == 0:
-        final_model = combo_models[best_key][-1]
-    else:
-        final_model = _build_pipeline(config, features, best["model"], best_params)
-        final_model.fit(features, target)
+    final_model = _build_pipeline(config, features, best["model"], best_params, target, groups)
+    final_model.fit(features, target)
     tracker.advance(
         phase="finalizing",
         message="Best model fitted on all analyzed rows",
@@ -611,7 +737,7 @@ def run_experiment(
     output_dir = Path(config.output_dir)
     write_results(
         output_dir,
-        executed_config,
+        config,
         metrics,
         predictions,
         fold_metrics=fold_metrics,
@@ -634,7 +760,7 @@ def run_experiment(
             "error",
         ],
     )
-    write_study_outputs(output_dir, executed_config, leaderboard, tuning_results, best_params)
+    write_study_outputs(output_dir, config, leaderboard, tuning_results, best_params)
     write_research_outputs(
         output_dir,
         executed_config,

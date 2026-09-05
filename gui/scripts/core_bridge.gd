@@ -118,19 +118,19 @@ func _process(_delta: float) -> void:
 	_read_available_lines()
 	var exit_code := OS.get_process_exit_code(_process_data["pid"])
 	var stderr_text: String = _process_data["stderr"].get_as_text()
-	if not _pending_terminal_event.is_empty():
+	if not _pending_terminal_event.is_empty() and (exit_code == 0 or _pending_terminal_event.get("event") != "completed"):
 		var terminal_event := _pending_terminal_event
 		_cleanup_process()
 		event_received.emit(terminal_event)
 		return
-	if exit_code != 0 and not _saw_terminal_event:
+	if exit_code != 0 or not _saw_terminal_event:
 		_cleanup_process()
 		event_received.emit(
 			{
 				"schema_version": "1.0",
 				"event": "failed",
 				"progress": 0.0,
-				"error": {"code": "process_failed", "message": stderr_text},
+				"error": {"code": "process_failed", "message": stderr_text if not stderr_text.is_empty() else "Process exited without a valid completion event."},
 			}
 		)
 	else:

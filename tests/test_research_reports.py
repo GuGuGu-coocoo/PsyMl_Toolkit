@@ -49,7 +49,7 @@ def test_regression_research_outputs_match_executed_file_run(tmp_path):
     assert "`ridge`" in methods
     assert "4-fold cross-validation" in methods
     assert '"alpha": 0.25' in methods
-    assert "metrics_summary.csv" not in methods
+    assert "Fold means are unweighted" in methods
     assert expected_hash in report
     assert "Sensitive Participant Folder" not in report
     figure = output_dir / "figures" / "observed_vs_predicted.png"

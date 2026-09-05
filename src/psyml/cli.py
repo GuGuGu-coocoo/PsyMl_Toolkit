@@ -22,7 +22,7 @@ from psyml.protocol import (
 COMMANDS = {"capabilities", "preview", "run", "schema"}
 
 
-class CancellationRequested(Exception):
+class CancellationRequested(BaseException):
     """Raised when the local subprocess receives a cancellation signal."""
 
 
@@ -151,6 +151,7 @@ def _run_versioned(args: argparse.Namespace) -> int:
         config = load_config(args.config)
         if args.events:
             _print_json(event_payload("started", 0.0))
+
         def report_progress(details: dict) -> None:
             progress = float(details.pop("progress"))
             _print_json(event_payload("progress", progress, details=details))

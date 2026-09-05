@@ -35,18 +35,24 @@ def classification_metrics(model, features, observed, predicted) -> dict[str, fl
         "f1_macro": float(f1_score(observed, predicted, average="macro", zero_division=0)),
     }
     labels = np.unique(observed)
-    if len(labels) == 2:
+    classes = np.asarray(model.classes_)
+    # A test fold containing two of three training classes is not a binary task.
+    if set(labels) != set(classes):
+        return metrics
+    if len(classes) == 2:
         if hasattr(model, "predict_proba"):
             scores = model.predict_proba(features)[:, 1]
         elif hasattr(model, "decision_function"):
             scores = model.decision_function(features)
         else:
             return metrics
-        metrics["roc_auc"] = float(roc_auc_score(observed, scores))
+        metrics["roc_auc"] = float(roc_auc_score(np.asarray(observed) == classes[1], scores))
     elif len(labels) > 2 and hasattr(model, "predict_proba"):
         probabilities = model.predict_proba(features)
         metrics["roc_auc_ovr_weighted"] = float(
-            roc_auc_score(observed, probabilities, multi_class="ovr", average="weighted")
+            roc_auc_score(
+                observed, probabilities, multi_class="ovr", average="weighted", labels=classes
+            )
         )
     return metrics
 

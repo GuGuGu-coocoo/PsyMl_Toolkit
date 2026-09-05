@@ -19,7 +19,7 @@ def _classification_frame() -> pd.DataFrame:
     )
 
 
-def test_classification_pipeline_fits_scaler_to_training_partition_only(tmp_path):
+def test_classification_pipeline_fits_scaler_to_training_partition_only(tmp_path, monkeypatch):
     frame = _classification_frame()
     config = ExperimentConfig(
         task="classification",
@@ -29,6 +29,18 @@ def test_classification_pipeline_fits_scaler_to_training_partition_only(tmp_path
         random_seed=7,
     )
 
+    from sklearn.preprocessing import StandardScaler
+
+    fitted_means = []
+    original_fit = StandardScaler.fit
+
+    def record_fit(self, X, y=None, sample_weight=None):
+        fitted_means.append(
+            float(X.iloc[:, 0].mean()) if hasattr(X, "iloc") else float(X[:, 0].mean())
+        )
+        return original_fit(self, X, y, sample_weight)
+
+    monkeypatch.setattr(StandardScaler, "fit", record_fit)
     result = run_experiment(config, frame)
 
     train_x, _, _, _ = split_train_test(
@@ -41,8 +53,9 @@ def test_classification_pipeline_fits_scaler_to_training_partition_only(tmp_path
     scaler = (
         result.model.named_steps["preprocess"].named_transformers_["numeric"].named_steps["scale"]
     )
-    assert scaler.mean_[0] == train_x["continuous"].mean()
-    assert scaler.mean_[0] != frame["continuous"].mean()
+    assert fitted_means[0] == train_x["continuous"].mean()
+    assert fitted_means[0] != frame["continuous"].mean()
+    assert scaler.mean_[0] == frame["continuous"].mean()
     assert {"accuracy", "balanced_accuracy", "f1_weighted", "roc_auc"} <= result.metrics.keys()
     assert (config.output_dir / "metrics.csv").is_file()
     assert (config.output_dir / "predictions.csv").is_file()
@@ -258,16 +271,15 @@ def test_multi_model_multi_validation_nested_search_and_progress(tmp_path):
     assert set(result.tuning_results.loc[result.tuning_results["outer_fold"] == 0, "model"]) == {
         result.best_model_name
     }
-    assert json.loads(
-        (config.output_dir / "best_parameters.json").read_text(encoding="utf-8")
-    ) == result.best_params
+    assert (
+        json.loads((config.output_dir / "best_parameters.json").read_text(encoding="utf-8"))
+        == result.best_params
+    )
     assert progress[0]["progress"] == 0.0
     assert progress[0]["estimated_remaining_seconds"] is None
     assert progress[-1]["progress"] == 1.0
     assert progress[-1]["remaining_tasks"] == 0
-    assert [item["progress"] for item in progress] == sorted(
-        item["progress"] for item in progress
-    )
+    assert [item["progress"] for item in progress] == sorted(item["progress"] for item in progress)
     for artifact in [
         "model_comparison.csv",
         "parameter_search.csv",
