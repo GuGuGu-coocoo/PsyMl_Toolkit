@@ -11,6 +11,9 @@ config_version=5
 [application]
 
 config/name="PsyML Toolkit"
+config/icon="res://assets/psyml-icon.png"
+config/macos_native_icon="res://assets/psyml-icon.icns"
+config/windows_native_icon="res://assets/psyml-icon.ico"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7")
 
