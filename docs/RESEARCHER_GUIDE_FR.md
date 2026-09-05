@@ -1,6 +1,6 @@
 # Guide de référence : modèles, métriques, résultats et terminologie
 
-Version : **v0.1.0**.
+Version du code documentée : **v0.1.1-rc1**. Les versions de l’environnement et des dépendances figurent dans `analysis_manifest.json` pour chaque analyse.
 
 [Retour au README français](../README.md#french) · [中文](RESEARCHER_GUIDE_ZH.md) · [English](RESEARCHER_GUIDE_EN.md) · **Français**
 

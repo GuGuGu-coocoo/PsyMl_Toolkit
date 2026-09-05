@@ -51,6 +51,8 @@ uv run psyml run --config examples/synthetic/regression_config.json --events
 
 CLI relative paths resolve from the working directory. CLI runs use the exact `output_dir` and reject existing results; choose a fresh empty directory before repeating. GUI imports resolve data relative to the configuration first and support repository-style examples. Missing paths prompt for relinking; missing columns fail. The GUI always uses a new subfolder in the chosen local output directory. Saved data paths are relative only when data and configuration share a directory.
 
+In JSON, `primary_validation: null` enables separate outputs per validation, a strategy name selects an explicit primary, and omission preserves legacy first-selected behavior. Python callers use `validation_results[strategy]`; root `model=None` and `metrics={}` are intentional.
+
 ## Behavior to preserve
 
 - Fit encoding, imputation and scaling on the relevant training partition only. Select families/parameters internally, never from outer rankings. Explain scientific changes; passing tests is not scientific justification.
@@ -77,6 +79,6 @@ uv run --group build python tools/build_native.py
 
 The script rebuilds the same named output directory under `dist/`, checks classification and regression with the bundled runtime, and writes a ZIP and SHA-256. `--reuse-core` is only for local GUI debugging when core/dependencies are unchanged; rebuild fully for delivery. Verify versions, lockfile, architecture, licenses, extracted-app startup and native dialogs. Apps without commercial signing/notarization may trigger OS prompts.
 
-[Core CI](../.github/workflows/ci.yml) covers three operating systems. The [standalone workflow](../.github/workflows/native-test-build.yml) builds Windows on manual dispatch or pushes to `desktop-test`. **Do not push to that branch while packaging is on hold.** It retains artifacts without creating a release.
+[Core CI](../.github/workflows/ci.yml) covers three operating systems. The [standalone workflow](../.github/workflows/native-test-build.yml) builds Windows on manual dispatch or pushes to `desktop-test`. A push consumes build resources; use this branch when a test package is needed. It retains artifacts without creating a release.
 
-`tools/package_release.py` builds the old source distribution, not standalone apps. `tools/build_release_pdfs.py` generates the two Chinese PDFs, which require page-by-page review and belong to a separate researcher-sharing archive, not updated release attachments. Building, user acceptance and publishing are separate steps; there is no automatic release publication.
+`tools/package_release.py` creates source distributions; use `tools/build_native.py` for standalone apps. `tools/build_release_pdfs.py` generates Chinese usage and terminology PDFs in `output/pdf/`; review every page before distribution. Maintainers publish tested and accepted artifacts manually.

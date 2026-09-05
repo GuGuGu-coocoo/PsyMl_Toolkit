@@ -51,6 +51,8 @@ uv run psyml run --config examples/synthetic/regression_config.json --events
 
 En CLI, les chemins relatifs dépendent du dossier courant ; `output_dir` est utilisé tel quel et les résultats existants ne sont pas écrasés. Choisissez un nouveau dossier vide pour relancer. L’importation GUI recherche les données près du JSON puis reconnaît les chemins des exemples du dépôt. Un chemin manquant demande une réassociation ; une colonne manquante provoque une erreur. L’interface crée toujours un nouveau sous-dossier local. Le chemin sauvegardé des données n’est relatif que si données et configuration partagent le même dossier.
 
+Dans le JSON, `primary_validation: null` active les sorties séparées par validation ; un nom désigne une validation principale et l’omission conserve le comportement historique. En Python, utiliser `validation_results[stratégie]` ; `model=None` et `metrics={}` à la racine sont intentionnels.
+
 ## Comportements à préserver
 
 - Ajuster encodage, imputation et mise à l’échelle sur la partition d’entraînement pertinente. Choisir familles/paramètres dans les partitions internes, jamais via le classement externe. Justifier les changements scientifiques au-delà de la réussite des tests.
@@ -77,6 +79,6 @@ uv run --group build python tools/build_native.py
 
 Le script reconstruit le dossier de sortie de même nom dans `dist/`, vérifie classification et régression avec l’environnement intégré, puis crée un ZIP et son SHA-256. `--reuse-core` sert uniquement au débogage local du GUI quand noyau et dépendances sont inchangés ; reconstruisez intégralement avant livraison. Vérifiez versions, verrouillage, architecture, licences, démarrage après extraction et dialogues natifs. Sans signature commerciale/notarisation, le système peut afficher une alerte.
 
-[Core CI](../.github/workflows/ci.yml) couvre trois systèmes. Le [workflow autonome](../.github/workflows/native-test-build.yml) construit Windows sur déclenchement manuel ou push vers `desktop-test`. **Ne poussez pas sur cette branche lorsque l’empaquetage est suspendu.** Il conserve les artefacts sans créer de release.
+[Core CI](../.github/workflows/ci.yml) couvre trois systèmes. Le [workflow autonome](../.github/workflows/native-test-build.yml) construit Windows sur déclenchement manuel ou push vers `desktop-test`. Un push consomme des ressources de construction ; utilisez cette branche lorsqu’un paquet de test est nécessaire. Il conserve les artefacts sans créer de release.
 
-`tools/package_release.py` prépare l’ancienne distribution source, pas les applications autonomes. `tools/build_release_pdfs.py` génère les deux PDF chinois à vérifier page par page ; ils appartiennent à une archive de partage distincte, pas aux pièces jointes de la nouvelle release. Construction, acceptation utilisateur et publication sont séparées ; aucune publication de release n’est automatique.
+`tools/package_release.py` crée les distributions source ; utilisez `tools/build_native.py` pour les applications autonomes. `tools/build_release_pdfs.py` génère les PDF chinois d’utilisation et de terminologie dans `output/pdf/` ; vérifiez chaque page avant diffusion. Les responsables publient manuellement les artefacts testés et acceptés.

@@ -51,6 +51,8 @@ uv run psyml run --config examples/synthetic/regression_config.json --events
 
 CLI 的相对路径基于运行目录，按配置的 `output_dir` 写入且拒绝覆盖已有结果；重复运行前须换新空目录。GUI 导入优先从配置目录解析数据，兼容示例路径；找不到时让用户重新关联，缺列时报错。GUI 始终使用本机选定目录的新子目录，不沿用导入的输出路径。保存配置时，仅数据与配置同目录的情况保存相对文件名。
 
+配置中 `primary_validation: null` 表示各验证分别输出；策略名表示显式主要项；省略该字段时保留旧配置的首项语义。 Python API 此模式返回 `validation_results[策略名]`；顶层 `model=None`、`metrics={}`，调用者需明确选择验证。
+
 ## 修改时必须保留的行为
 
 - 编码、填补、缩放只在相应训练分区拟合；模型家族与参数在内层选择，不用外层排行榜挑最终模型。科研方法变化需在贡献说明中解释，不能只以测试通过代替科学论证。
@@ -77,6 +79,6 @@ uv run --group build python tools/build_native.py
 
 脚本会重建同名 `dist/` 输出目录，运行两种任务的包内环境检查，并生成 ZIP 与 SHA-256。`--reuse-core` 仅适合核心和依赖完全未变的本地 GUI 调试；交付时完整重建。发布前核对版本、锁文件、平台、许可证、解压后的启动与原生文件窗口；未商业签名/公证的应用可能遇到系统安全提示。
 
-[Core CI](../.github/workflows/ci.yml) 检查三个操作系统；[独立包工作流](../.github/workflows/native-test-build.yml) 可手动触发，也会在推送 `desktop-test` 分支时自动构建 Windows 测试包。**暂不打包时不要推送到该分支。** 工作流仅保存构建产物，不创建 release。
+[Core CI](../.github/workflows/ci.yml) 检查三个操作系统；[独立包工作流](../.github/workflows/native-test-build.yml) 可手动触发，也会在推送 `desktop-test` 分支时自动构建 Windows 测试包。推送到该分支会消耗构建资源，提交前应确认需要生成测试包。工作流仅保存构建产物，不创建 release。
 
-`tools/package_release.py` 是旧的源码发行包流程，不是独立应用构建器。两份中文 PDF 由 `tools/build_release_pdfs.py` 生成并需逐页检查；它们属于另行制作的研究者分享包，不是新版 release 附件。构建、用户验收、发布是分开的步骤；当前没有自动发布流程。
+`tools/package_release.py` 用于源码发行包；独立应用使用 `tools/build_native.py`。`tools/build_release_pdfs.py` 可生成中文使用说明和术语指南 PDF，输出位于 `output/pdf/`；分发前须逐页核对版式与内容。构建产物经测试验收后，由维护者手动发布。

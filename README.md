@@ -20,7 +20,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 ### 打开应用
 
-请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。v0.1.0 提供的是源码包，环境配置见[开发者指南](docs/DEVELOPMENT_ZH.md)。以下打开步骤适用于包含运行环境的独立应用包。
+请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。目前 Releases 仅提供 v0.1.0 源码包，环境配置见[开发者指南](docs/DEVELOPMENT_ZH.md)。以下打开步骤适用于包含运行环境的独立应用包。
 
 - **macOS（Apple 芯片）**：完整解压对应应用包，双击 `PsyML Toolkit.app`。
 - **Windows（Intel/AMD x64）**：完整解压对应应用包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
@@ -63,7 +63,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 5. **选择候选模型**：可同时比较多个模型，不需要逐个重跑。
 6. **选择参数策略**：使用默认参数、内置快速搜索，或输入自定义候选值。
 7. **检查并运行**：运行前查看完整配置和任务规模；运行时查看当前工作和预计剩余时间，也可终止。
-8. **解释与导出**：先看风险提示和主要验证指标，再看逐折结果、预测、探索性排行榜和复现文件。
+8. **解释与导出**：先看风险提示和所选验证的指标，再看逐折结果、预测、探索性排行榜和复现文件。
 
 ### 数据分析操作
 
@@ -95,7 +95,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 #### 4. 验证策略：主要验证或独立输出
 
-按研究设计预先选择验证，不能看结果再挑最高分。多选时，在**主要验证**下拉框中自主指定一项，决定主指标和样本外预测；其余为敏感性分析。也可选择 **“不指定主要验证（分别输出）”**：每种验证独立生成完整指标、预测、图形、报告和最佳参数配置，结果页选择验证后再查看；不默认显示某一种，也不自动选最高分。配置中 `primary_validation: null` 表示此模式；策略名表示显式主要项；省略该字段时保留旧配置的首项语义。每个外层训练分区独立在内层选择家族与参数，最终全数据家族也只由全数据内层选择确定，外层排行榜不参与选择。
+按研究设计预先选择验证，不能看结果再挑最高分。多选时，在**主要验证**下拉框中自主指定一项，决定主指标和样本外预测；其余为敏感性分析。也可选择 **“不指定主要验证（分别输出）”**：每种验证独立生成完整指标、预测、图形、报告和最佳参数配置，结果页选择验证后再查看；不默认显示某一种，也不自动选最高分。每个外层训练分区独立在内层选择家族与参数，最终全数据家族也只由全数据内层选择确定，外层排行榜不参与选择。
 
 | 策略 | 适用情形 | 关键限制 |
 | --- | --- | --- |
@@ -137,7 +137,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 进入“检查与运行”后：
 
 1. 选择结果总文件夹，每次运行自动新建 `run_日期时间_标识/`，不同运行不会混放；
-2. 核对输入路径、变量、主要验证顺序、模型、参数网格、指标、随机种子和任务数量；
+2. 核对输入路径、变量、验证方法及主要验证设置、模型、参数网格、指标、随机种子和任务数量；
 3. 点击运行；界面持续显示当前阶段、模型、验证和外部折，以及已完成/剩余任务和动态预计时间；
 4. 预计时间根据已完成任务更新，模型耗时差异较大时会波动；它是估计，不是承诺；
 5. 如任务过长，点击“终止运行”。后台分析进程会停止，未完成的结果不应作为有效研究输出；调整候选数、模型或验证后可重新运行。
@@ -166,9 +166,9 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 每个 `run_日期时间_标识/` 是一次独立分析，包含下表文件。总目录只负责收纳多次分析；`figures/` 保存本次勾选的图形；运行最佳参数配置后生成的 `best_parameters_run/` 是另一份完整固定参数分析。中止或失败的目录可能不完整。`completed` 表示全部完成；独立验证模式下 `completed_with_errors` 表示部分验证失败，应逐项查看。全部失败时不会生成成功的 `result.json`。
 
-“不指定”时，每种验证的完整文件在 `validations/<策略名>/`，总目录仅保存配置、逐验证汇总、警告和报告索引，不生成全局主指标、统一预测图或跨验证最佳模型。结果页先显示选择提示，可切换成功或失败的验证；失败项保留 `error.json`。下面的完整结果文件表适用于指定主要验证的运行，或独立模式的每个成功子目录。Python API 此模式返回 `validation_results[策略名]`；顶层 `model=None`、`metrics={}`，调用者需明确选择验证。
+“不指定”时，每种验证的完整文件在 `validations/<策略名>/`，总目录仅保存配置、逐验证汇总、警告和报告索引，不生成全局主指标、统一预测图或跨验证最佳模型。结果页先显示选择提示，可切换成功或失败的验证；失败项保留 `error.json`。下面的完整结果文件表适用于指定主要验证的运行，或独立模式的每个成功子目录。
 
-中英文摘要、报告和建议均由本地确定性规则生成，可离线运行。**summary 不保证绝对正确，请研究者自己检查一遍**，特别是研究设计、分组、泄漏风险、参数和指标解释。JSON 标准不支持注释，简短中英文解释单独保存在 `configuration_guide.md`，不影响配置直接运行。
+中英文摘要、报告和建议均由本地确定性规则生成，可离线运行。**自动摘要需由研究者复核**，特别是研究设计、分组、泄漏风险、参数和指标解释。JSON 标准不支持注释，简短中英文解释单独保存在 `configuration_guide.md`，不影响配置直接运行。
 
 | 文件或目录 | 意义、作用与优先检查内容 |
 | --- | --- |
@@ -226,7 +226,7 @@ Automatic reports are available in Chinese and English. Exported plot axes, clas
 
 ### Open the application
 
-Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for available versions and platforms. v0.1.0 is a source distribution; environment setup is covered in the [developer guide](docs/DEVELOPMENT_EN.md). The steps below apply to standalone application packages with a bundled runtime.
+Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for available versions and platforms. Releases currently provides only the v0.1.0 source distribution; environment setup is covered in the [developer guide](docs/DEVELOPMENT_EN.md). The steps below apply to standalone application packages with a bundled runtime.
 
 - **macOS (Apple Silicon)**: fully extract the matching application archive and double-click `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)**: fully extract the matching archive and double-click `PsyML Toolkit.exe`. Keep the adjacent `core` folder; do not move the EXE alone.
@@ -289,7 +289,7 @@ Missing rows can be dropped or values imputed with the mean, median or mode. Mea
 
 #### 4. Validation: a primary design or independent outputs
 
-Prespecify validation from the research design. Choose the primary strategy explicitly in the dropdown; it supplies primary metrics and out-of-sample predictions. Other strategies are sensitivity analyses. Alternatively choose **No primary validation (separate outputs)**. Every validation receives full metrics, predictions, figures, reports and a fixed-parameter recipe. The result page starts with a neutral selector; it does not pick the highest score. In JSON, `primary_validation: null` enables this mode, a strategy name selects an explicit primary, and omission preserves legacy first-selected behavior. Family and parameter selection occur within each outer training partition. Final full-data selection also uses inner CV, never the outer family leaderboard.
+Prespecify validation from the research design. Choose the primary strategy explicitly in the dropdown; it supplies primary metrics and out-of-sample predictions. Other strategies are sensitivity analyses. Alternatively choose **No primary validation (separate outputs)**. Every validation receives full metrics, predictions, figures, reports and a fixed-parameter recipe. The result page starts with a neutral selector; it does not pick the highest score. Family and parameter selection occur within each outer training partition. Final full-data selection also uses inner CV, never the outer family leaderboard.
 
 | Strategy | Typical use | Main limitation |
 | --- | --- | --- |
@@ -340,7 +340,7 @@ Check warnings first, improvement over Dummy and simple models, fold-level varia
 
 ### Output files, in review order
 
-Each GUI run gets its own directory. With no primary validation, complete outputs live under `validations/<strategy>/`; the root contains configuration, per-validation summary, warnings and report indexes. It has no global model or headline score. `completed_with_errors` means partial failure; failed entries retain `error.json`. All-failed runs create no success marker. Python callers use `validation_results[strategy]`; root `model=None` and `metrics={}` are intentional. The following table describes a primary-validation run or a successful independent child.
+Each GUI run gets its own directory. With no primary validation, complete outputs live under `validations/<strategy>/`; the root contains configuration, per-validation summary, warnings and report indexes. It has no global model or headline score. `completed_with_errors` means partial failure; failed entries retain `error.json`. All-failed runs create no success marker. The following table describes a primary-validation run or a successful independent child.
 
 Reports and recommendations use deterministic local rules and work offline. **Automatic summaries are not guaranteed correct; researchers must review them**, especially design, groups, leakage, parameters and metrics. JSON has no comments; field explanations are in `configuration_guide.md`.
 
@@ -398,7 +398,7 @@ Les rapports automatiques sont disponibles en chinois et en anglais. Les axes de
 
 ### Ouvrir l’application
 
-Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) pour les versions et plateformes disponibles. v0.1.0 contient les sources ; l’installation de l’environnement est décrite dans le [guide de développement](docs/DEVELOPMENT_FR.md). Les étapes suivantes concernent les applications autonomes avec environnement intégré.
+Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) pour les versions et plateformes disponibles. Releases propose actuellement uniquement la distribution source v0.1.0 ; l’installation de l’environnement est décrite dans le [guide de développement](docs/DEVELOPMENT_FR.md). Les étapes suivantes concernent les applications autonomes avec environnement intégré.
 
 - **macOS (puce Apple)** : décompressez entièrement l’archive correspondante puis double-cliquez sur `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)** : décompressez entièrement l’archive puis double-cliquez sur `PsyML Toolkit.exe`. Conservez le dossier `core` adjacent ; ne déplacez pas seulement l’EXE.
@@ -461,7 +461,7 @@ Les lignes manquantes peuvent être supprimées, ou les valeurs imputées par mo
 
 #### 4. Validation : choix principal ou sorties indépendantes
 
-Prédéfinissez la validation selon le plan de recherche. Vous pouvez choisir **Sans validation principale (sorties séparées)** : chaque validation produit métriques, prédictions, figures, rapports et configuration de paramètres complète. Choisissez ensuite les résultats à afficher, sans sélection automatique du meilleur score. Dans le JSON, `primary_validation: null` active ce mode ; un nom désigne une validation principale et l’omission conserve le comportement historique. La stratégie principale choisie dans le menu fournit les métriques principales et les prédictions hors entraînement ; les autres sont des analyses de sensibilité. Le choix des familles et paramètres se fait dans les partitions internes, jamais à partir du classement externe.
+Prédéfinissez la validation selon le plan de recherche. Vous pouvez choisir **Sans validation principale (sorties séparées)** : chaque validation produit métriques, prédictions, figures, rapports et configuration de paramètres complète. Choisissez ensuite les résultats à afficher, sans sélection automatique du meilleur score. La stratégie principale choisie dans le menu fournit les métriques principales et les prédictions hors entraînement ; les autres sont des analyses de sensibilité. Le choix des familles et paramètres se fait dans les partitions internes, jamais à partir du classement externe.
 
 | Stratégie | Usage typique | Limite principale |
 | --- | --- | --- |
@@ -496,7 +496,7 @@ Pour la classification : exactitude équilibrée par défaut, F1 macro ou exacti
 
 #### 7. Vérifier, lancer, suivre et arrêter
 
-Choisissez un dossier parent : l’interface crée un nouveau `run_<date>_<id>/` à chaque exécution. Vérifiez les chemins, rôles, ordre des validations, modèles, grilles, métrique, graine et charge annoncée. Pendant l’analyse, l’interface montre la phase, le modèle, la validation, le pli externe, les tâches terminées et restantes, ainsi qu’un temps estimé dynamique. L’estimation varie selon le coût réel des modèles. « Arrêter » termine le processus ; des sorties incomplètes ne doivent pas être utilisées comme résultats. Réduisez modèles, candidats ou validations puis relancez si nécessaire.
+Choisissez un dossier parent : l’interface crée un nouveau `run_<date>_<id>/` à chaque exécution. Vérifiez les chemins, rôles, validations et choix de la validation principale, modèles, grilles, métrique, graine et charge annoncée. Pendant l’analyse, l’interface montre la phase, le modèle, la validation, le pli externe, les tâches terminées et restantes, ainsi qu’un temps estimé dynamique. L’estimation varie selon le coût réel des modèles. « Arrêter » termine le processus ; des sorties incomplètes ne doivent pas être utilisées comme résultats. Réduisez modèles, candidats ou validations puis relancez si nécessaire.
 
 ![Écran français de vérification](docs/images/fr/03-review.png)
 
@@ -512,7 +512,7 @@ Examinez d’abord les avertissements, puis le gain par rapport aux modèles Dum
 
 ### Fichiers produits, par ordre de lecture
 
-Chaque exécution GUI a son dossier. Sans validation principale, les sorties complètes sont dans `validations/<stratégie>/` ; la racine conserve configuration, résumé par validation, avertissements et index des rapports, sans modèle ni score global. `completed_with_errors` signale un échec partiel ; les erreurs restent dans `error.json`. Un échec total ne crée aucun marqueur de succès. En Python, utiliser `validation_results[stratégie]` ; `model=None` et `metrics={}` à la racine sont intentionnels. Le tableau concerne une validation principale ou un sous-dossier indépendant réussi.
+Chaque exécution GUI a son dossier. Sans validation principale, les sorties complètes sont dans `validations/<stratégie>/` ; la racine conserve configuration, résumé par validation, avertissements et index des rapports, sans modèle ni score global. `completed_with_errors` signale un échec partiel ; les erreurs restent dans `error.json`. Un échec total ne crée aucun marqueur de succès. Le tableau concerne une validation principale ou un sous-dossier indépendant réussi.
 
 Rapports et conseils utilisent des règles locales déterministes et fonctionnent hors ligne. **Les résumés automatiques ne sont pas garantis corrects : le chercheur doit les vérifier**, notamment plan, groupes, fuites, paramètres et métriques. Les explications des champs sont dans `configuration_guide.md`, séparées du JSON sans commentaires.
 
