@@ -1,2 +1,0 @@
-rank,model,validation,selection_metric,selection_score,status,error,r2,mae,rmse
-1,dummy,group_k_fold,rmse,2.386294355581652,completed,,-0.37398226107857285,1.959312737455197,2.386294355581652

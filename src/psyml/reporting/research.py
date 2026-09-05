@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -157,7 +157,7 @@ def _methods_summary(
             "candidates existed, and reselected on all analyzed rows for the final fit. A single fixed "
             "candidate requires no inner search. "
         )
-        + "The first configured validation is primary; others are sensitivity analyses, summarized "
+        + f"The designated primary validation is `{config.resolved_primary_validation()}`; others are sensitivity analyses, summarized "
         "separately in `validation_summary.csv`. Neither sensitivity results nor outer family ranks "
         "select the final model. Ties follow configured family/candidate order. Candidates with any "
         "failed inner fold are ineligible; if the inner-selected family fails outer evaluation, the "
@@ -191,7 +191,7 @@ The final model was fitted on all analyzed rows. Reported metrics remain held-ou
 
 `config.json`, `analysis_config.json`, and `study_config.json` retain the original search design for reruns; `best_parameters.json` records final parameter overrides. The configured seed controls splits and seeded estimators; inner split seeds add the outer fold number (zero for final tuning), and explicit estimator random_state overrides take precedence.
 
-This text describes the executed configuration and is intended as a starting point for a manuscript Methods section; researchers remain responsible for study-specific justification and reporting.
+This summary is generated offline by local rules and is not guaranteed to be correct. Researchers must check the data, design, warnings and results. This text describes the executed configuration and is intended as a starting point for a manuscript Methods section; researchers remain responsible for study-specific justification and reporting.
 """
 
 
@@ -257,6 +257,16 @@ def _reproducibility_report(
 {safe_config}
 ```
 
+## Best parameters
+
+Final family: `{config.model_name}`. Final full-data parameter overrides (best_parameters):
+
+```json
+{json.dumps(config.model_params, ensure_ascii=False, indent=2)}
+```
+
+Use `best_parameters_configure.json` for a fixed-parameter run. This is not a rerun of the original nested search; its evaluation reuses data involved in parameter selection and is not independent validation.
+
 ## Fold metrics
 
 {_markdown_table(fold_metrics)}
@@ -271,6 +281,10 @@ def _reproducibility_report(
 {group_safeguard}
 - Imputation, scaling and one-hot encoding were fitted inside each training partition.
 - Reported metrics use only predictions from held-out partitions.
+
+## Review suggestions
+
+Check warnings, fold variability and systematic errors in held-out predictions and task-specific figures. Assess practical relevance using the research question. These rule-based suggestions run offline and are not guaranteed to be correct; researcher review is required.
 
 ## Re-running and artefacts
 
@@ -290,7 +304,33 @@ def _write_figure(
     from matplotlib import pyplot as plt
 
     figures_dir.mkdir(parents=True, exist_ok=True)
-    if config.task == "regression":
+    selected = config.figure_types if config.figure_types is not None else [
+        "confusion_matrix" if config.task == "classification" else "observed_vs_predicted"
+    ]
+    residual = predictions["observed"] - predictions["predicted"] if config.task == "regression" else None
+    for name in selected:
+        if name not in {"residuals", "residual_distribution", "class_distribution"}:
+            continue
+        figure, axis = plt.subplots(figsize=(6.4, 5.2))
+        if name == "residuals":
+            axis.scatter(predictions["predicted"], residual, alpha=0.7)
+            axis.axhline(0, linestyle="--", color="black")
+            axis.set(xlabel="Predicted", ylabel="Observed - predicted", title="Held-out residuals")
+        elif name == "residual_distribution":
+            axis.hist(residual, bins="auto", edgecolor="white")
+            axis.set(xlabel="Observed - predicted", ylabel="Count", title="Held-out residual distribution")
+        elif confusion is not None:
+            values = confusion.to_numpy()
+            positions = list(range(len(values)))
+            axis.bar([x - .2 for x in positions], values.sum(axis=1), .4, label="Observed")
+            axis.bar([x + .2 for x in positions], values.sum(axis=0), .4, label="Predicted")
+            axis.set_xticks(positions, [f"Class {x + 1}" for x in positions])
+            axis.set(ylabel="Count", title="Held-out class distribution")
+            axis.legend()
+        figure.tight_layout()
+        figure.savefig(figures_dir / f"{name}.png", dpi=160)
+        plt.close(figure)
+    if "observed_vs_predicted" in selected:
         figure, axis = plt.subplots(figsize=(6.4, 5.2))
         axis.scatter(predictions["observed"], predictions["predicted"], alpha=0.7)
         lower = min(predictions["observed"].min(), predictions["predicted"].min())
@@ -302,7 +342,7 @@ def _write_figure(
         plt.close(figure)
         return
 
-    if confusion is None:
+    if confusion is None or "confusion_matrix" not in selected:
         return
     values = confusion.to_numpy()
     figure, axis = plt.subplots(figsize=(6.0, 5.2))
@@ -356,4 +396,122 @@ def write_research_outputs(
         _reproducibility_report(config, manifest, fold_metrics, warnings),
         encoding="utf-8",
     )
+    _write_companion_outputs(output_dir, config, manifest, fold_metrics, warnings)
     _write_figure(output_dir / "figures", config, predictions, confusion)
+
+
+CONFIG_HELP = {
+    "schema_version": "配置格式版本 / Configuration schema version",
+    "task": "分类或回归 / Classification or regression",
+    "target_column": "预测目标列 / Outcome column",
+    "model_name": "单模型或最终模型名称 / Single or final model name",
+    "model_names": "候选模型，顺序用于并列裁决 / Candidate families; order breaks ties",
+    "input_path": "本地数据路径 / Local input data path",
+    "output_dir": "新建空结果目录 / New empty output directory",
+    "group_column": "分组列，不作为预测变量 / Group identifier excluded from predictors",
+    "feature_columns": "预测变量；null 表示排除目标和分组后的所有列 / Predictors; null selects remaining columns",
+    "test_size": "留出法测试集比例 / Holdout test fraction",
+    "random_seed": "可复现随机种子 / Reproducible random seed",
+    "validation_strategy": "单一验证的兼容字段 / Legacy single-validation field",
+    "primary_validation": "null 不指定；策略名显式指定；first_selected 兼容旧配置 / null for independent outputs, strategy name for explicit primary, first_selected for legacy configs",
+    "validation_strategies": "已选验证列表；主要项由 primary_validation 决定 / Selected validations; primary_validation determines priority",
+    "n_splits": "外层折数 / Outer fold count",
+    "missing_strategy": "预测变量缺失处理 / Predictor missing-value strategy",
+    "scaling": "数值缩放 / Numeric scaling",
+    "include_data_hash": "是否保存数据指纹 / Save data fingerprint",
+    "model_params": "固定参数覆盖 / Fixed parameter overrides",
+    "tuning_mode": "none 固定、quick 快速、custom 自定义 / Fixed, quick or custom search",
+    "parameter_grids": "训练集内部搜索候选值 / Inner-training search candidates",
+    "selection_metric": "内层模型及参数选择指标 / Inner model and parameter selection metric",
+    "inner_splits": "内层折数 / Inner fold count",
+    "max_candidates": "每模型候选数上限 / Candidate limit per family",
+    "selection_protocol": "嵌套模型家族选择协议 / Nested family selection protocol",
+    "figure_types": "图形列表；null 默认图，[] 不输出图 / Figures; null for default, [] for none",
+}
+
+
+def _write_companion_outputs(output_dir, config, manifest, fold_metrics, warnings):
+    from psyml.protocol import config_to_dict
+
+    # A fixed-parameter recipe must not retain other families or restart a search.
+    recipe = replace(
+        config, model_names=[config.model_name], tuning_mode="none", parameter_grids={},
+        validation_strategies=[config.validation_strategy],
+        output_dir=output_dir / "best_parameters_run",
+    )
+    (output_dir / "best_parameters_configure.json").write_text(
+        json.dumps(config_to_dict(recipe), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    guide = "# 配置字段说明 / Configuration guide\n\nJSON 不支持注释，因此解释单独保存，配置可直接运行。 / JSON comments are kept in this companion file so configurations remain runnable.\n\n"
+    guide += "\n".join(f"- `{key}`: {description}" for key, description in CONFIG_HELP.items())
+    guide += "\n\n`config.json` 复现原始搜索设计；`best_parameters_configure.json` 固定最终参数重新运行，不复现原始搜索。后者使用曾参与选参的数据，不能视作独立验证。 / config.json reruns the original search; best_parameters_configure.json reruns fixed parameters on previously used data, not independent validation.\n"
+    (output_dir / "configuration_guide.md").write_text(guide, encoding="utf-8")
+    data = manifest["data"]
+    parameters = json.dumps(config.model_params, ensure_ascii=False, indent=2)
+    grouped = (
+        "已设置分组列并从预测变量中排除。内层搜索隔离分组；外层是否隔离取决于所选验证。"
+        if config.group_column else "未设置分组变量；请确认数据不存在未处理的重复测量或聚类结构。"
+    )
+    methods = f"""# 方法摘要（中文）
+
+本次为 {config.task} 任务，共分析 {data['analyzed_rows']} 行、{data['feature_columns']} 个预测变量。目标列为 `{_display(config.target_column)}`。{grouped}
+
+缺失处理为 `{config.missing_strategy}`，数值缩放为 `{config.scaling}`，类别预测变量使用独热编码。所有预处理仅在各训练分区拟合。
+
+主要验证为 `{config.validation_strategy}`，K 折类策略的外层折数为 {config.n_splits}，留出比例为 {config.test_size}，随机种子为 {config.random_seed}。内层最多 {config.inner_splits} 折，按 `{config.resolved_selection_metric()}` 选择，每个家族最多 {config.max_candidates} 个候选。候选模型：{', '.join(config.selected_models())}；验证：{', '.join(config.selected_validations())}；搜索模式：`{config.tuning_mode}`。
+
+多家族比较时，家族与参数联合嵌套选择；单一家族固定时，仅在存在多个参数候选时进行内层搜索。外层测试分数不参与最终模型选择。主要指标评估选择流程，不代表最终全数据拟合模型的独立性能。其他验证为敏感性分析，不能根据最高分事后更换主要验证。并列时按配置候选顺序决定；内层任一折失败的候选不参与选择。
+
+最终全数据模型为 `{config.model_name}`，best_parameters 为：
+
+```json
+{parameters}
+```
+
+每折选择可不同，见 `selection_trace.csv` 和 `parameter_search.csv`。最终模型使用全部分析行拟合，报告指标来自样本外预测。折均值未按样本量加权，标准差（ddof=0）为描述性统计，不是置信区间。不可定义的次要指标不计入其均值，有效折数见 `metrics_summary.csv`。分类图中 Class 编号顺序对应 `confusion_matrix.csv`；二分类 AUC 的正类为估计器 classes_[1]。
+
+{'堆叠模型在内部交叉拟合完整基础流水线，设置分组时采用分组切分；passthrough 的原始变量在元估计器内预处理。' if 'stacking' in config.selected_models() else ''}
+
+本摘要由本地规则离线生成，不保证绝对正确，也不替代科学判断。研究者应核对数据、研究设计、缺失处理、分组、参数、警告和结果后再用于论文。内部验证不证明可推广至新群体、中心或时间，也不能防止查看结果后修改设计造成的偏差。
+"""
+    (output_dir / "methods_summary_zh.md").write_text(methods, encoding="utf-8")
+    warning_text = "\n".join(f"- {warning}" for warning in warnings) or "- 无记录。"
+    report = f"""# 可复现性报告（中文）
+
+## 优先检查
+
+先查看 `warnings.json` 和下方警告，再查看 `metrics.csv`、`metrics_summary.csv`、`validation_summary.csv`。模型排行榜仅供探索，不能把排序最高的分数当作独立验证。
+
+## 环境与数据
+
+PsyML {manifest['psyml_version']}；Python {manifest['python']['version']}；系统 {manifest['operating_system']['system']}。输入 {data['input_rows']} 行，分析 {data['analyzed_rows']} 行。数据 SHA-256：`{data['sha256'] or '未启用'}`。依赖版本详见 `analysis_manifest.json`。
+
+## 最佳参数 best_parameters
+
+最终模型：`{config.model_name}`。
+
+```json
+{parameters}
+```
+
+`best_parameters_configure.json` 可以直接用于固定参数运行；它使用曾参与选择的数据，不能作为独立验证。复现原始搜索请使用 `config.json`，先把 output_dir 改为新空目录。内存数据运行需补充 input_path。
+
+## 配置（本地路径已隐藏）
+
+```json
+{json.dumps(_safe_configuration(config), ensure_ascii=False, indent=2, default=str)}
+```
+
+## 逐折指标
+
+{_markdown_table(fold_metrics)}
+
+## 警告（保留核心原始信息）
+
+{warning_text}
+
+## 核查与建议
+
+{grouped} 目标列在预处理前排除。请检查样本外预测与残差/混淆矩阵是否存在系统性错误，检查折间波动，并结合研究问题判断性能是否有实际意义。自动建议仅由本地规则生成，无需网络，不保证绝对正确，请研究者逐项复核。完整方法与指标限制见 `methods_summary_zh.md`；英文版见 `methods_summary.md` 和 `reproducibility_report.md`。
+"""
+    (output_dir / "reproducibility_report_zh.md").write_text(report, encoding="utf-8")

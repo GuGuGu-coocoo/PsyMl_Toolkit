@@ -98,3 +98,24 @@ def quick_parameter_grid(task: str, model_name: str) -> dict[str, list[object]]:
         parameter: list(values)
         for parameter, values in QUICK_PARAMETER_GRIDS[task].get(model_name, {}).items()
     }
+
+
+# JSON clients such as Godot decode all numbers as doubles. These fields use
+# integer counts; genuine fractions for min_samples_* remain fractions.
+INTEGER_PARAMETERS = {
+    "n_neighbors", "n_estimators", "max_depth", "min_samples_leaf", "min_samples_split",
+    "max_leaf_nodes", "max_iter", "random_state", "cv", "n_jobs", "degree", "n_components",
+}
+
+
+def normalize_parameter(parameter: str, value: object) -> object:
+    """Restore integral JSON counts without rounding or changing fractional values."""
+    # 1.0 is a valid fraction for sklearn min_samples_*, whereas counts >= 2
+    # cannot be fractions. Keep existing Python/CLI fraction semantics intact.
+    if parameter in {"min_samples_leaf", "min_samples_split"} and value == 1.0 and isinstance(value, float):
+        return value
+    if parameter in INTEGER_PARAMETERS and isinstance(value, float) and value.is_integer():
+        return int(value)
+    if parameter == "hidden_layer_sizes" and isinstance(value, list):
+        return [int(v) if isinstance(v, float) and v.is_integer() else v for v in value]
+    return value

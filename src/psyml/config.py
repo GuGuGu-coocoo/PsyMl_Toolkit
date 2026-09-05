@@ -47,9 +47,32 @@ class ExperimentConfig:
     selection_metric: str | None = None
     inner_splits: int = 3
     max_candidates: int = 20
+    figure_types: list[str] | None = None
     selection_protocol: str = "nested_family_v1"
+    primary_validation: ValidationKind | Literal["first_selected"] | None = "first_selected"
 
     def __post_init__(self) -> None:
+        from psyml.models.catalog import normalize_parameter
+
+        if not isinstance(self.model_params, dict) or not isinstance(self.parameter_grids, dict):
+            raise TypeError("model_params and parameter_grids must be JSON objects")
+        object.__setattr__(self, "model_params", {
+            key: normalize_parameter(key, value) for key, value in self.model_params.items()
+        })
+        object.__setattr__(self, "parameter_grids", {
+            model: {key: [normalize_parameter(key, value) for value in values]
+                    if isinstance(values, list) else values for key, values in grid.items()}
+            if isinstance(grid, dict) else grid
+            for model, grid in self.parameter_grids.items()
+        })
+        allowed_figures = {"confusion_matrix", "class_distribution"} if self.task == "classification" else {
+            "observed_vs_predicted", "residuals", "residual_distribution"
+        }
+        if self.figure_types is not None and (
+            len(self.figure_types) != len(set(self.figure_types))
+            or not set(self.figure_types) <= allowed_figures
+        ):
+            raise ValueError(f"Unsupported or duplicate figure_types for {self.task}")
         if self.selection_protocol != "nested_family_v1":
             raise ValueError("Unsupported selection_protocol; expected nested_family_v1")
         if self.task not in {"classification", "regression"}:
@@ -111,6 +134,8 @@ class ExperimentConfig:
                 and not self.group_column
             ):
                 raise ValueError(f"{strategy} requires group_column")
+        if self.primary_validation not in {None, "first_selected", *selected_validations}:
+            raise ValueError("primary_validation must be null, first_selected, or a selected validation")
         if self.missing_strategy not in {"drop", "mean", "median", "mode"}:
             raise ValueError(f"Unsupported missing_strategy: {self.missing_strategy}")
         if self.scaling not in {"none", "standard", "minmax"}:
@@ -150,6 +175,12 @@ class ExperimentConfig:
         if self.validation_strategies is not None:
             return list(self.validation_strategies)
         return [self.validation_strategy]
+
+    def resolved_primary_validation(self) -> ValidationKind | None:
+        """Keep legacy first-selected semantics; null explicitly requests independent outputs."""
+        if self.primary_validation == "first_selected":
+            return self.selected_validations()[0]
+        return self.primary_validation
 
     def resolved_selection_metric(self) -> str:
         """Return the research-oriented default used to compare candidates."""

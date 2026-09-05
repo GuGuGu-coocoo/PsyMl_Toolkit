@@ -22,10 +22,16 @@
     },
     "test_size": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
     "random_seed": {"type": "integer"},
+    "primary_validation": {"enum": [null, "first_selected", "holdout", "k_fold", "stratified_k_fold", "group_k_fold", "stratified_group_k_fold", "leave_one_group_out"]},
     "validation_strategy": {"enum": ["holdout", "k_fold", "stratified_k_fold", "group_k_fold", "stratified_group_k_fold", "leave_one_group_out"]},
     "n_splits": {"type": "integer", "minimum": 2},
     "missing_strategy": {"enum": ["drop", "mean", "median", "mode"]},
     "scaling": {"enum": ["none", "standard", "minmax"]},
+    "figure_types": {
+      "type": ["array", "null"],
+      "items": {"enum": ["confusion_matrix", "class_distribution", "observed_vs_predicted", "residuals", "residual_distribution"]},
+      "uniqueItems": true
+    },
     "include_data_hash": {"type": "boolean"},
     "model_params": {"type": "object"},
     "model_names": {

@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "task": "classification",
+  "target_column": "target",
+  "model_name": "decision_tree",
+  "input_path": "examples/synthetic/classification.csv",
+  "output_dir": "results/example_classification",
+  "feature_columns": [
+    "score",
+    "category"
+  ],
+  "group_column": "participant",
+  "validation_strategy": "group_k_fold",
+  "n_splits": 3,
+  "random_seed": 42,
+  "tuning_mode": "quick",
+  "inner_splits": 3,
+  "max_candidates": 12,
+  "figure_types": [
+    "confusion_matrix",
+    "class_distribution"
+  ]
+}

@@ -32,3 +32,9 @@ examples/public/data/
 # Local internal documentation
 docs/PSYML_TOOLKIT_DEVELOPMENT_PLAN.md
 /docs/internal/
+
+# Release/PDF working files
+/output/
+/tmp/
+.pytest_cache/
+.ruff_cache/

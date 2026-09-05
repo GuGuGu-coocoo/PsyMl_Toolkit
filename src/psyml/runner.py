@@ -45,7 +45,7 @@ class ExperimentResult:
 
     metrics: dict[str, float]
     predictions: pd.DataFrame
-    model: Pipeline
+    model: Pipeline | None
     fold_metrics: pd.DataFrame
     metric_summary: pd.DataFrame
     warnings: list[str]
@@ -57,6 +57,7 @@ class ExperimentResult:
     best_params: dict[str, Any] = field(default_factory=dict)
     selection_trace: pd.DataFrame = field(default_factory=pd.DataFrame)
     validation_summary: pd.DataFrame = field(default_factory=pd.DataFrame)
+    validation_results: dict[str, ExperimentResult] = field(default_factory=dict)
 
 
 @dataclass
@@ -506,7 +507,7 @@ def _choose_parameters(
     if best_params is None:
         raise ValueError(
             f"All parameter candidates failed for {work.model_name} in {work.validation} "
-            f"outer fold {work.fold_number}"
+            f"outer fold {work.fold_number}. Cause / 具体原因: {error_text}"
         )
     return best_params
 
@@ -536,6 +537,17 @@ def run_experiment(
         raise ValueError(
             "Supply either frame or input_path, not both; source provenance must be unambiguous"
         )
+    if config.resolved_primary_validation() is None:
+        return _run_independent_validations(config, frame, progress_callback)
+    return _run_prioritized(config, frame, progress_callback)
+
+
+def _run_prioritized(
+    config: ExperimentConfig,
+    frame: pd.DataFrame | None,
+    progress_callback: ProgressCallback | None,
+) -> ExperimentResult:
+    """Execute the existing nested procedure; internal callers may supply a file snapshot."""
     output_dir = Path(config.output_dir)
     if output_dir.exists() and (not output_dir.is_dir() or any(output_dir.iterdir())):
         raise FileExistsError("Output directory must be new or empty; existing output is preserved")
@@ -704,7 +716,7 @@ def run_experiment(
         row for row in leaderboard_rows if row["status"] != "completed"
     ]
     leaderboard = pd.DataFrame(leaderboard_rows)
-    primary_validation = config.selected_validations()[0]
+    primary_validation = config.resolved_primary_validation()
     family_search = len(config.selected_models()) > 1
     selection_rows: list[dict[str, Any]] = []
     validation_rows: list[dict[str, Any]] = []
@@ -913,4 +925,95 @@ def run_experiment(
         best_params=best_params,
         selection_trace=selection_trace,
         validation_summary=validation_summary,
+    )
+
+
+
+def _run_independent_validations(
+    config: ExperimentConfig,
+    frame: pd.DataFrame | None,
+    progress_callback: ProgressCallback | None,
+) -> ExperimentResult:
+    """Run the same nested procedure for each validation without selecting a global winner."""
+    from psyml.protocol import error_payload
+    from psyml.reporting.output import write_independent_outputs
+
+    output_dir = Path(config.output_dir)
+    if output_dir.exists() and (not output_dir.is_dir() or any(output_dir.iterdir())):
+        raise FileExistsError("Output directory must be new or empty; existing output is preserved")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if frame is None:
+        if config.input_path is None:
+            raise ValueError("input_path is required when frame is not supplied")
+        frame = load_dataframe(config.input_path)
+    validations = config.selected_validations()
+    results: dict[str, ExperimentResult] = {}
+    entries: dict[str, dict[str, Any]] = {}
+    summaries, warnings = [], []
+    started = time.monotonic()
+
+    for index, validation in enumerate(validations):
+        def report(
+            details: dict[str, Any], index: int = index, validation: str = validation
+        ) -> None:
+            if progress_callback is None:
+                return
+            fraction = (index + details.get("progress", 0.0)) / len(validations)
+            elapsed = time.monotonic() - started
+            completed = index + int(details.get("progress", 0.0) >= 1.0)
+            progress_callback({
+                **details, "progress": fraction, "current_validation": validation,
+                "completed_tasks": completed, "total_tasks": len(validations),
+                "remaining_tasks": len(validations) - completed,
+                "elapsed_seconds": elapsed,
+                "estimated_remaining_seconds": elapsed * (1 - fraction) / fraction
+                if fraction > 0 else None,
+            })
+
+        child_dir = output_dir / "validations" / validation
+        child_config = replace(
+            config, output_dir=child_dir, validation_strategy=validation,
+            validation_strategies=[validation], primary_validation=validation,
+        )
+        try:
+            child = _run_prioritized(child_config, frame, report)
+        except (ValueError, TypeError, KeyError) as error:
+            # Scientific/data failures remain explicit; cancellation and IO failures propagate.
+            details = error_payload(error)
+            entries[validation] = {"status": "failed", "error": details}
+            summaries.append({
+                "validation": validation, "role": "independent", "status": "failed",
+                "error": str(error), "n_folds": 0,
+            })
+            warnings.append(f"Validation {validation} failed: {error}")
+        else:
+            results[validation] = child
+            entries[validation] = {
+                "status": "completed", "result_path": f"validations/{validation}/result.json",
+                "metrics": child.metrics,
+            }
+            summaries.append({
+                "validation": validation, "role": "independent", "status": "completed",
+                "error": "", "n_folds": len(child.fold_metrics), **child.metrics,
+            })
+            warnings.extend(f"[{validation}] {warning}" for warning in child.warnings)
+        report({"progress": 1.0, "phase": "finalizing", "current_fold": 1})
+
+    summary = pd.DataFrame(summaries)
+    write_independent_outputs(output_dir, config, summary, entries, warnings, results)
+    if not results:
+        raise ValueError("Every independent validation failed; see validation_summary.csv: "
+                         + " | ".join(warnings))
+    if progress_callback is not None:
+        progress_callback({
+            "progress": 1.0, "phase": "finalizing", "completed_tasks": len(validations),
+            "total_tasks": len(validations), "remaining_tasks": 0,
+            "elapsed_seconds": time.monotonic() - started, "estimated_remaining_seconds": 0.0,
+            "current_validation": "", "current_fold": 1,
+        })
+    # Empty headline fields are deliberate: callers must choose an entry explicitly.
+    return ExperimentResult(
+        metrics={}, predictions=pd.DataFrame(), model=None, fold_metrics=pd.DataFrame(),
+        metric_summary=pd.DataFrame(), warnings=warnings, validation_summary=summary,
+        validation_results=results,
     )

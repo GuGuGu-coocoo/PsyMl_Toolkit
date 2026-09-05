@@ -11,7 +11,7 @@ func _run_test() -> void:
 	await process_frame
 	assert(main.has_node("AppMargin/Page/Header/TitleLabel"))
 	assert(main.has_node("AppMargin/Page/Tabs/Data/Padding/DataContent/DataSourcePanel"))
-	assert(main.has_node("AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel"))
+	assert(main.has_node("AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel"))
 	assert(main.has_node("AppMargin/Page/Tabs/Review/Padding/ReviewContent/ExecutionPanel"))
 	assert(main.has_node("AppMargin/Page/Tabs/Results/Padding/ResultsContent/ResultsBody"))
 	assert(main.get_node("AppMargin/Page/Header/TitleLabel").text == "PsyML Toolkit")
@@ -19,7 +19,7 @@ func _run_test() -> void:
 	assert(main.bridge == main.get_node("CoreBridge"))
 	assert(TranslationServer.get_locale() == "zh_CN")
 	assert(TranslationServer.translate("COLUMN_RANK") == "排名")
-	assert(TranslationServer.translate("METRIC_PRECISION_WEIGHTED") == "加权精确率")
+	assert(TranslationServer.translate("METRIC_PRECISION_WEIGHTED") == "加权精确率（Weighted Precision）")
 	assert(main.run_button.text == "运行分析")
 	assert(main.run_button.disabled)
 	assert(main.cancel_button.disabled)
@@ -32,6 +32,7 @@ func _run_test() -> void:
 	while main.preview_payload.is_empty() and Time.get_ticks_msec() < preview_deadline:
 		await create_timer(0.05).timeout
 	assert(not main.preview_payload.is_empty(), main.status_label.text)
+	assert(main.tabs.current_tab == 0)
 	assert(not main.preview_button.disabled)
 	var changed_path := fixture + ".changed"
 	main.data_path_edit.text = changed_path
@@ -101,6 +102,7 @@ func _run_test() -> void:
 	assert(main.task_option.disabled)
 	assert(main.feature_list.mouse_filter == Control.MOUSE_FILTER_IGNORE)
 	await _capture_state(main, "07-running.png")
+	result_dir = main._build_config().output_dir
 	var result_path := result_dir.path_join("result.json")
 	var run_deadline := Time.get_ticks_msec() + 30000
 	while (
@@ -120,7 +122,7 @@ func _run_test() -> void:
 	assert(main.metrics_tree.get_root().get_first_child() != null)
 	assert(main.comparison_tree.get_root().get_first_child() != null)
 	assert(main.comparison_tree.get_column_title(0) == "排名")
-	assert(main.metrics_tree.get_root().get_first_child().get_text(0) == "准确率")
+	assert(main.metrics_tree.get_root().get_first_child().get_text(0) == "准确率（Accuracy）")
 	assert(main.figure_view.texture != null)
 	assert(main.progress_bar.value == 1.0)
 	assert(main.progress_detail_label.text == "全部任务已完成。")
@@ -142,6 +144,7 @@ func _run_test() -> void:
 	assert(main.last_result_dir.is_empty())
 	assert(main.open_results_button.disabled)
 	assert(main.figure_view.texture == null)
+	regression_dir = main._build_config().output_dir
 	var regression_result_path := regression_dir.path_join("result.json")
 	var regression_deadline := Time.get_ticks_msec() + 30000
 	while (
@@ -227,7 +230,7 @@ func _run_test() -> void:
 	assert(main.best_result_label.text.begins_with("Final fit"))
 	main._on_language_selected(2)
 	assert(main.run_button.text == "Exécuter l’analyse")
-	assert(main.tabs.get_tab_title(3) == "4  Résultats")
+	assert(main.tabs.get_tab_title(3) == "3  Résultats")
 	assert(main.comparison_tree.get_column_title(0) == "Rang")
 	print("PSYML_GODOT_UI_FLOW_OK")
 	quit(0)

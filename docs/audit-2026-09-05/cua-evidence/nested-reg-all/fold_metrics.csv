@@ -1,2 +1,0 @@
-fold,model,validation,r2,mae,rmse
-1,linear_regression,holdout,0.9579102363354475,0.4305215635849535,0.4855869148534085

@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "task": "regression",
+  "target_column": "target",
+  "model_name": "ridge",
+  "input_path": "examples/synthetic/regression.csv",
+  "output_dir": "results/example_regression",
+  "feature_columns": [
+    "score",
+    "category"
+  ],
+  "group_column": "participant",
+  "validation_strategy": "group_k_fold",
+  "n_splits": 3,
+  "random_seed": 42,
+  "tuning_mode": "quick",
+  "inner_splits": 3,
+  "max_candidates": 12,
+  "figure_types": [
+    "observed_vs_predicted",
+    "residuals",
+    "residual_distribution"
+  ]
+}

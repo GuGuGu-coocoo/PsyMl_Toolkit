@@ -67,3 +67,12 @@ jobs:
 
       - name: Test complete Godot workflow
         run: godot --headless --path gui --script res://tests/test_ui_flow.gd
+
+      - name: Test researcher feedback interactions
+        run: godot --headless --path gui --script res://tests/test_feedback.gd
+
+      - name: Test task-specific parameter state
+        run: godot --headless --path gui --script res://tests/test_parameter_context.gd
+
+      - name: Test independent validation result switching
+        run: godot --headless --path gui --script res://tests/test_independent_results.gd

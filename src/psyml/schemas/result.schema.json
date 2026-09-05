@@ -8,14 +8,29 @@
   "properties": {
     "schema_version": {"const": "1.0"},
     "selection_protocol": {"const": "nested_family_v1"},
-    "status": {"const": "completed"},
+    "status": {"enum": ["completed", "completed_with_errors"]},
     "task": {"enum": ["classification", "regression"]},
     "metrics": {"type": "object", "additionalProperties": {"type": "number"}},
     "warnings": {"type": "array", "items": {"type": "string"}},
     "artifacts": {"type": "object", "additionalProperties": {"type": "string"}},
-    "evaluation_scope": {"enum": ["nested_selection_procedure", "prespecified_family"]},
+    "evaluation_scope": {"enum": ["nested_selection_procedure", "prespecified_family", "independent_validations"]},
     "best_model": {"type": "string"},
     "best_validation": {"type": "string"},
+    "primary_validation": {"type": ["string", "null"]},
+    "validation_results": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "additionalProperties": false,
+        "properties": {
+          "status": {"enum": ["completed", "failed"]},
+          "result_path": {"type": "string"},
+          "metrics": {"type": "object", "additionalProperties": {"type": "number"}},
+          "error": {"type": "object"}
+        }
+      }
+    },
     "selection_metric": {"type": "string"},
     "best_parameters": {"type": "object"},
     "evaluated_combinations": {"type": "integer", "minimum": 0}

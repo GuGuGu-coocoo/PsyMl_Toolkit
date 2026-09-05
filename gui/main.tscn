@@ -148,6 +148,7 @@ theme_override_constants/separation = 14
 
 [node name="InspectionPanel" type="PanelContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace"]
 layout_mode = 2
+size_flags_vertical = 0
 size_flags_horizontal = 3
 
 [node name="Margin" type="MarginContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/InspectionPanel"]
@@ -168,7 +169,7 @@ theme_override_font_sizes/font_size = 18
 
 [node name="VariableTree" type="Tree" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/InspectionPanel/Margin/Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(460, 205)
+custom_minimum_size = Vector2(340, 205)
 layout_mode = 2
 size_flags_vertical = 3
 columns = 3
@@ -182,18 +183,19 @@ theme_override_font_sizes/font_size = 18
 
 [node name="SampleTree" type="Tree" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/InspectionPanel/Margin/Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(460, 170)
+custom_minimum_size = Vector2(340, 170)
 layout_mode = 2
 size_flags_vertical = 3
 hide_root = true
 
 [node name="PredictorsPanel" type="PanelContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace"]
-custom_minimum_size = Vector2(320, 0)
+custom_minimum_size = Vector2(480, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="Margin" type="MarginContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel"]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 14
 theme_override_constants/margin_right = 16
@@ -202,17 +204,267 @@ theme_override_constants/margin_bottom = 14
 [node name="Content" type="VBoxContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin"]
 layout_mode = 2
 
-[node name="FeaturesLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content"]
+[node name="DesignPanel" type="PanelContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="Content" type="VBoxContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="DesignSectionLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 
-[node name="FeatureList" type="ItemList" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content"]
+[node name="DesignGrid" type="GridContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 12
+columns = 2
+
+[node name="TaskLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 390)
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="TaskOption" type="OptionButton" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 42)
+layout_mode = 2
+fit_to_longest_item = false
+clip_text = true
+size_flags_horizontal = 3
+
+[node name="TargetLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="TargetOption" type="OptionButton" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+clip_text = true
+
+[node name="GroupLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="GroupOption" type="OptionButton" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+clip_text = true
+
+[node name="FeaturesLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+
+[node name="FeatureList" type="ItemList" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 180)
 layout_mode = 2
 size_flags_vertical = 3
-select_mode = 1
+select_mode = 2
+
+[node name="MissingLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="MissingOption" type="OptionButton" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 42)
+layout_mode = 2
+fit_to_longest_item = false
+clip_text = true
+size_flags_horizontal = 3
+
+[node name="ScalingLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="ScalingOption" type="OptionButton" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 42)
+layout_mode = 2
+fit_to_longest_item = false
+clip_text = true
+size_flags_horizontal = 3
+
+[node name="ValidationLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="ValidationList" type="ItemList" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 125)
+layout_mode = 2
+size_flags_horizontal = 3
+select_mode = 2
+
+[node name="FoldsLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="FoldsSpin" type="SpinBox" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 2.0
+max_value = 20.0
+value = 5.0
+
+[node name="ModelLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="ModelList" type="ItemList" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content/DesignGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 145)
+layout_mode = 2
+size_flags_horizontal = 3
+select_mode = 2
+
+[node name="PrimaryValidationHelp" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.34902, 0.396078, 0.478431, 1)
+autowrap_mode = 2
+
+[node name="ParameterPanel" type="PanelContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="Content" type="VBoxContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ParameterSectionLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+
+[node name="ParameterGrid" type="GridContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 12
+columns = 2
+
+[node name="TuningLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content/ParameterGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="TuningOption" type="OptionButton" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content/ParameterGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 42)
+layout_mode = 2
+fit_to_longest_item = false
+clip_text = true
+size_flags_horizontal = 3
+
+[node name="SelectionMetricLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content/ParameterGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="SelectionMetricOption" type="OptionButton" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content/ParameterGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 42)
+layout_mode = 2
+fit_to_longest_item = false
+clip_text = true
+size_flags_horizontal = 3
+
+[node name="InnerFoldsLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content/ParameterGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="InnerFoldsSpin" type="SpinBox" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content/ParameterGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 2.0
+max_value = 10.0
+value = 3.0
+
+[node name="MaxCandidatesLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content/ParameterGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="MaxCandidatesSpin" type="SpinBox" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content/ParameterGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 200.0
+value = 20.0
+
+[node name="ParameterHelpLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.34902, 0.396078, 0.478431, 1)
+autowrap_mode = 2
+
+[node name="ParameterEditor" type="VBoxContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10
+
 
 [node name="Configure" type="ScrollContainer" parent="AppMargin/Page/Tabs"]
 layout_mode = 2
@@ -237,220 +489,6 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.0901961, 0.12549, 0.2, 1)
 theme_override_font_sizes/font_size = 23
-
-[node name="DesignPanel" type="PanelContainer" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent"]
-layout_mode = 2
-
-[node name="Margin" type="MarginContainer" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 14
-
-[node name="Content" type="VBoxContainer" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="DesignSectionLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-
-[node name="DesignGrid" type="GridContainer" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content"]
-layout_mode = 2
-theme_override_constants/h_separation = 24
-theme_override_constants/v_separation = 12
-columns = 2
-
-[node name="TaskLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="TaskOption" type="OptionButton" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="TargetLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="TargetOption" type="OptionButton" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-fit_to_longest_item = false
-clip_text = true
-
-[node name="GroupLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="GroupOption" type="OptionButton" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-fit_to_longest_item = false
-clip_text = true
-
-[node name="MissingLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="MissingOption" type="OptionButton" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="ScalingLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="ScalingOption" type="OptionButton" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="ValidationLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="ValidationList" type="ItemList" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 125)
-layout_mode = 2
-size_flags_horizontal = 3
-select_mode = 1
-
-[node name="FoldsLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="FoldsSpin" type="SpinBox" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 2.0
-max_value = 20.0
-value = 5.0
-
-[node name="ModelLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="ModelList" type="ItemList" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content/DesignGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 145)
-layout_mode = 2
-size_flags_horizontal = 3
-select_mode = 1
-
-[node name="PrimaryValidationHelp" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/DesignPanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.34902, 0.396078, 0.478431, 1)
-autowrap_mode = 2
-
-[node name="ParameterPanel" type="PanelContainer" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent"]
-layout_mode = 2
-
-[node name="Margin" type="MarginContainer" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 14
-
-[node name="Content" type="VBoxContainer" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="ParameterSectionLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-
-[node name="ParameterGrid" type="GridContainer" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content"]
-layout_mode = 2
-theme_override_constants/h_separation = 24
-theme_override_constants/v_separation = 12
-columns = 2
-
-[node name="TuningLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content/ParameterGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="TuningOption" type="OptionButton" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content/ParameterGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="SelectionMetricLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content/ParameterGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="SelectionMetricOption" type="OptionButton" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content/ParameterGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="InnerFoldsLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content/ParameterGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="InnerFoldsSpin" type="SpinBox" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content/ParameterGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 2.0
-max_value = 10.0
-value = 3.0
-
-[node name="MaxCandidatesLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content/ParameterGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-vertical_alignment = 1
-
-[node name="MaxCandidatesSpin" type="SpinBox" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content/ParameterGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(420, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 1.0
-max_value = 200.0
-value = 20.0
-
-[node name="ParameterHelpLabel" type="Label" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.34902, 0.396078, 0.478431, 1)
-autowrap_mode = 2
-
-[node name="ParameterEditor" type="VBoxContainer" parent="AppMargin/Page/Tabs/Configure/Padding/ConfigureContent/ParameterPanel/Margin/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 10
 
 [node name="Review" type="ScrollContainer" parent="AppMargin/Page/Tabs"]
 layout_mode = 2
@@ -676,6 +714,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
 fit_content = true
+scroll_active = false
 
 [node name="MetricsLabel" type="Label" parent="AppMargin/Page/Tabs/Results/Padding/ResultsContent/ResultsBody/DetailsPanel/Margin/Content"]
 unique_name_in_owner = true

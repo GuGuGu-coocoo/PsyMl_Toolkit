@@ -70,6 +70,18 @@ var pending_config_path := ""
 var is_analysis_running := false
 var progress_key := "PROGRESS_WAITING"
 var progress_values: Dictionary = {}
+var primary_validation_option: OptionButton
+var figure_choices: VBoxContainer
+var copy_error_button: Button
+var error_details: TextEdit
+var run_folder_name := ""
+var sample_data_button: Button
+var figure_option: OptionButton
+var validation_result_option: OptionButton
+var validation_result_entries: Dictionary = {}
+var checked_icon: Texture2D
+var unchecked_icon: Texture2D
+
 
 
 func _ready() -> void:
@@ -154,6 +166,9 @@ func _build_theme() -> void:
 	app_theme.set_constant("line_separation", "ItemList", 4)
 	app_theme.set_color("guide_color", "Tree", Color.TRANSPARENT)
 	app_theme.set_color("font_color", "Tree", TEXT)
+	app_theme.set_color("font_selected_color", "Tree", TEXT)
+	app_theme.set_stylebox("selected", "Tree", _style_box(Color("e6e9fc"), RADIUS))
+	app_theme.set_stylebox("selected_focus", "Tree", _style_box(Color("e6e9fc"), RADIUS, ACCENT))
 	app_theme.set_color("title_button_color", "Tree", MUTED)
 	for state in ["normal", "hover", "pressed"]:
 		app_theme.set_stylebox("title_button_" + state, "Tree", _style_box(SURFACE, 0))
@@ -204,6 +219,7 @@ func _bind_scene() -> void:
 	_bind_review_tab()
 	_bind_results_tab()
 	_bind_dialogs()
+	_bind_feedback_controls()
 
 
 func _bind_data_tab() -> void:
@@ -383,6 +399,17 @@ func _apply_language() -> void:
 			node.text = text_value
 		elif node is Button:
 			node.text = text_value
+	for control in find_children("*", "Control", true, false):
+		if control is Label:
+			control.tooltip_text = tr("COPY_TEXT_HINT")
+		elif control is Tree:
+			control.tooltip_text = tr("COPY_ROW_HINT")
+	if figure_choices != null:
+		for child in figure_choices.get_children():
+			if child is Label:
+				child.text = tr("OUTPUT_FIGURES")
+			elif child is CheckBox:
+				child.text = tr("FIGURE_" + str(child.get_meta("figure")).to_upper())
 	_populate_task_options()
 	for option in localized_value_options:
 		for index in range(option.item_count):
@@ -399,8 +426,11 @@ func _apply_language() -> void:
 		)
 	tabs.set_tab_title(0, tr("TAB_DATA"))
 	tabs.set_tab_title(1, tr("TAB_CONFIGURE"))
+	tabs.set_tab_hidden(1, true)
 	tabs.set_tab_title(2, tr("TAB_REVIEW"))
 	tabs.set_tab_title(3, tr("TAB_RESULTS"))
+	_update_primary_validation()
+	_update_checks()
 	_update_tree_titles()
 	if preview_payload.is_empty():
 		data_summary_label.text = tr("NO_DATA")
@@ -490,7 +520,7 @@ func _on_preview_ready(payload: Dictionary) -> void:
 		var row := variable_tree.create_item(root)
 		row.set_text(0, column.name)
 		row.set_text(1, column.dtype)
-		row.set_text(2, str(column.missing_count))
+		row.set_text(2, str(int(column.missing_count)))
 		feature_list.add_item(column.name)
 		feature_list.set_item_metadata(feature_list.item_count - 1, column.name)
 		feature_list.select(feature_list.item_count - 1, false)
@@ -500,7 +530,7 @@ func _on_preview_ready(payload: Dictionary) -> void:
 		group_option.set_item_metadata(group_option.item_count - 1, column.name)
 	_populate_sample(payload.get("sample", []))
 	_on_column_role_changed()
-	tabs.current_tab = 1
+	# Keep the researcher on the combined data/setup page.
 
 
 func _populate_sample(rows: Array) -> void:
@@ -566,6 +596,9 @@ func _populate_models() -> void:
 		selection_metric_option.set_item_metadata(selection_metric_option.item_count - 1, metric)
 	selection_metric_option.select(0)
 	_update_validation_availability()
+	_populate_figures()
+	_update_primary_validation()
+	_update_checks()
 
 
 func _capture_parameter_values() -> void:
@@ -595,6 +628,7 @@ func _populate_parameter_editor() -> void:
 		no_search.text = tr("NO_PARAMETER_SEARCH")
 		no_search.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		parameter_editor.add_child(no_search)
+		_configure_readable_controls(parameter_editor)
 		_refresh_review()
 		return
 	var task: String = task_option.get_item_metadata(task_option.selected)
@@ -633,6 +667,7 @@ func _populate_parameter_editor() -> void:
 			enabled.toggled.connect(func(_pressed): _refresh_review())
 			parameter_grid.add_child(values)
 			parameter_controls[key] = {"enabled": enabled, "values": values}
+	_configure_readable_controls(parameter_editor)
 	_set_parameter_inputs_enabled(not is_analysis_running)
 	_refresh_review()
 
@@ -649,7 +684,13 @@ func _selected_models() -> Array[String]:
 
 
 func _selected_validations() -> Array[String]:
-	return _selected_values(validation_list)
+	var selected := _selected_values(validation_list)
+	if primary_validation_option != null and primary_validation_option.selected >= 0:
+		var primary = primary_validation_option.get_item_metadata(primary_validation_option.selected)
+		if primary != null and primary in selected:
+			selected.erase(primary)
+			selected.push_front(primary)
+	return selected
 
 
 func _update_validation_availability() -> void:
@@ -716,6 +757,13 @@ func _parameter_grid_payload() -> Dictionary:
 		var parts := str(key).split("::", false, 1)
 		if not grids.has(parts[0]):
 			grids[parts[0]] = {}
+		# Godot JSON parses numbers as floats. Serialize integer count candidates
+		# as integers; fractional min_samples candidates below 1 remain fractions.
+		var count_parameters := ["n_neighbors", "n_estimators", "max_depth", "min_samples_leaf", "min_samples_split", "max_leaf_nodes", "max_iter", "random_state", "cv", "n_jobs", "degree", "n_components"]
+		if parts[1] in count_parameters:
+			for index in range(parsed.size()):
+				if parsed[index] is float and is_finite(parsed[index]) and parsed[index] == floor(parsed[index]):
+					parsed[index] = int(parsed[index])
 		grids[parts[0]][parts[1]] = parsed
 	return {"grids": grids}
 
@@ -737,10 +785,9 @@ func _build_config() -> Dictionary:
 	var output_path := output_edit.text.strip_edges()
 	if output_path.is_empty() or not output_path.is_absolute_path():
 		return {"error": tr("SELECT_OUTPUT")}
-	if DirAccess.dir_exists_absolute(output_path):
-		var directory := DirAccess.open(output_path)
-		if directory == null or not directory.get_files().is_empty() or not directory.get_directories().is_empty():
-			return {"error": tr("OUTPUT_NOT_EMPTY")}
+	if run_folder_name.is_empty():
+		run_folder_name = _new_run_folder()
+	output_path = output_path.path_join(run_folder_name)
 	var grid_payload := _parameter_grid_payload()
 	if grid_payload.has("error"):
 		return grid_payload
@@ -752,18 +799,20 @@ func _build_config() -> Dictionary:
 		"model_name": models[0],
 		"model_names": models,
 		"input_path": data_path_edit.text,
-		"output_dir": output_edit.text,
+		"output_dir": output_path,
 		"group_column": group_option.get_item_metadata(group_option.selected),
 		"feature_columns": features,
 		"test_size": 0.2,
 		"random_seed": 42,
 		"validation_strategy": validations[0],
+		"primary_validation": primary_validation_option.get_item_metadata(primary_validation_option.selected),
 		"validation_strategies": validations,
 		"n_splits": int(folds_spin.value),
 		"missing_strategy": missing_option.get_item_metadata(missing_option.selected),
 		"scaling": scaling_option.get_item_metadata(scaling_option.selected),
 		"include_data_hash": true,
 		"model_params": {},
+		"figure_types": _selected_figures(),
 		"tuning_mode": tuning_mode.trim_prefix("tuning_"),
 		"parameter_grids": grid_payload.grids,
 		"selection_metric": selection_metric_option.get_item_metadata(
@@ -776,6 +825,8 @@ func _build_config() -> Dictionary:
 
 
 func _refresh_review() -> void:
+	_update_checks()
+	_update_primary_validation()
 	if review_text == null:
 		return
 	var config := _build_config()
@@ -791,12 +842,14 @@ func _analysis_inputs() -> Array[Control]:
 		data_path_edit,
 		browse_button,
 		preview_button,
+		sample_data_button,
 		feature_list,
 		task_option,
 		target_option,
 		group_option,
 		missing_option,
 		scaling_option,
+		primary_validation_option,
 		validation_list,
 		folds_spin,
 		model_list,
@@ -825,6 +878,9 @@ func _set_control_interactive(control: Control, enabled: bool) -> void:
 
 func _set_parameter_inputs_enabled(enabled: bool) -> void:
 	var tuning_mode: String = tuning_option.get_item_metadata(tuning_option.selected)
+	for child in figure_choices.get_children():
+		if child is CheckBox:
+			child.disabled = not enabled
 	for key in parameter_controls:
 		var controls: Dictionary = parameter_controls[key]
 		controls.enabled.disabled = not enabled or tuning_mode == "tuning_quick"
@@ -859,6 +915,7 @@ func _update_action_states(config_valid: bool) -> void:
 
 
 func _on_run_pressed() -> void:
+	run_folder_name = _new_run_folder()
 	var config := _build_config()
 	if config.has("error"):
 		_show_error(config.error)
@@ -990,47 +1047,83 @@ func _cleanup_pending_config() -> void:
 func _clear_results() -> void:
 	last_result_dir = ""
 	last_result_path = ""
+	validation_result_entries.clear()
+	validation_result_option.clear()
+	validation_result_option.hide()
 	last_warnings = []
 	best_result_label.text = ""
 	warnings_text.text = ""
 	for tree in [comparison_tree, metrics_tree, predictions_tree]:
 		tree.clear()
 	figure_view.texture = null
+	figure_option.clear()
+	figure_option.hide()
 	no_results_label.visible = true
 	open_results_button.disabled = true
 
 
-func _load_results(result_path: String, navigate := true) -> void:
+func _load_results(result_path: String, navigate := true, as_child := false) -> void:
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(result_path))
-	if not parsed is Dictionary or parsed.get("status", "") != "completed" or not parsed.has("metrics") or not parsed.has("artifacts"):
+	if not parsed is Dictionary or parsed.get("status", "") not in ["completed", "completed_with_errors"] or not parsed.has("metrics") or not parsed.has("artifacts"):
 		_clear_results()
 		_show_error("Invalid or incomplete result.json")
 		return
-	last_result_path = result_path
+	var previous_validation = null
+	if last_result_path == result_path and validation_result_option.selected >= 0:
+		previous_validation = validation_result_option.get_item_metadata(validation_result_option.selected)
+	if not as_child:
+		last_result_path = result_path
 	last_result_dir = result_path.get_base_dir()
+	if parsed.get("evaluation_scope", "") == "independent_validations":
+		_load_independent_results(parsed, previous_validation)
+		if navigate:
+			tabs.current_tab = 3
+		return
+	if not as_child:
+		validation_result_entries.clear()
+		validation_result_option.hide()
 	open_results_button.disabled = false
 	no_results_label.visible = false
 	last_warnings = parsed.get("warnings", [])
-	best_result_label.text = tr("BEST_RESULT") % [
+	best_result_label.text = tr("VALIDATION_RESULT" if as_child else "BEST_RESULT") % [
 		_model_display(str(parsed.get("best_model", ""))),
 		_validation_display(str(parsed.get("best_validation", ""))),
 		_metric_display(str(parsed.get("selection_metric", ""))),
 	]
 	best_result_label.text += "\n" + tr("FINAL_PARAMETERS") + JSON.stringify(parsed.get("best_parameters", {}))
-	best_result_label.text += "\n" + tr("NESTED_METRICS" if parsed.get("evaluation_scope", "") == "nested_selection_procedure" else "PRESPECIFIED_METRICS")
+	var nested: bool = parsed.get("evaluation_scope", "") == "nested_selection_procedure"
+	var scope_key := "NESTED_METRICS" if nested else "PRESPECIFIED_METRICS"
+	if as_child:
+		scope_key = "VIEWING_NESTED_METRICS" if nested else "VIEWING_FIXED_METRICS"
+	best_result_label.text += "\n" + tr(scope_key)
 	_render_warnings()
 	metrics_tree.clear()
 	var root := metrics_tree.create_item()
+	var metric_width := 220
 	for metric in parsed.metrics:
 		var item := metrics_tree.create_item(root)
-		item.set_text(0, _metric_display(metric))
+		var metric_name := _metric_display(metric)
+		item.set_text(0, metric_name)
+		item.set_tooltip_text(0, metric_name)
+		metric_width = maxi(metric_width, ceili(metrics_tree.get_theme_font("font").get_string_size(metric_name, HORIZONTAL_ALIGNMENT_LEFT, -1, metrics_tree.get_theme_font_size("font_size")).x) + 24)
 		item.set_text(1, "%.6f" % parsed.metrics[metric])
+	metrics_tree.set_column_custom_minimum_width(0, metric_width)
+	metrics_tree.set_column_custom_minimum_width(1, 100)
 	var artifacts: Dictionary = parsed.artifacts
 	_load_csv_preview(last_result_dir.path_join(artifacts.model_comparison), comparison_tree, 30)
 	_load_predictions(last_result_dir.path_join(artifacts.predictions))
-	var image := Image.load_from_file(last_result_dir.path_join(artifacts.figure))
-	if image != null and not image.is_empty():
-		figure_view.texture = ImageTexture.create_from_image(image)
+	figure_option.clear()
+	figure_view.texture = null
+	for key in artifacts:
+		if str(key).begins_with("figure_"):
+			figure_option.add_item(tr(str(key).to_upper()))
+			figure_option.set_item_metadata(figure_option.item_count - 1, artifacts[key])
+	if figure_option.item_count == 0 and artifacts.has("figure"):
+		figure_option.add_item("Figure")
+		figure_option.set_item_metadata(0, artifacts.figure)
+	figure_option.visible = figure_option.item_count > 0
+	if figure_option.item_count > 0:
+		_show_selected_figure(0)
 	if navigate:
 		tabs.current_tab = 3
 
@@ -1134,6 +1227,10 @@ func _show_error(message: String) -> void:
 	if status_label != null:
 		status_key = "ERROR"
 		status_detail = message
+		if error_details != null:
+			error_details.text = message
+			error_details.show()
+			copy_error_button.show()
 		status_label.text = tr("ERROR") % message
 		status_label.add_theme_color_override("font_color", Color("a12c35"))
 		progress_bar.value = 0.0
@@ -1143,6 +1240,9 @@ func _show_error(message: String) -> void:
 func _set_status(key: String) -> void:
 	status_key = key
 	status_detail = ""
+	if error_details != null:
+		error_details.hide()
+		copy_error_button.hide()
 	status_label.text = tr(key)
 	status_label.add_theme_color_override("font_color", TEXT)
 
@@ -1154,10 +1254,35 @@ func _show_core_error(error: Dictionary) -> void:
 	if localized == key:
 		localized = tr("ERROR_ANALYSIS_FAILED")
 	var detail := str(error.get("message", ""))
+	if TranslationServer.get_locale().begins_with("zh"):
+		if "parameter" in detail.to_lower():
+			localized += "\n参数候选未能完成拟合。请检查下方具体参数名、类型和取值范围；计数参数使用整数，比例参数使用合法小数。"
+			var explanations := {
+				"max_depth": "max_depth：树的最大深度必须为正整数，或用 null 表示不限制。",
+				"min_samples_leaf": "min_samples_leaf：叶节点最少样本数使用正整数；样本比例应为 (0, 1) 内的小数。",
+				"n_neighbors": "n_neighbors：邻居数必须是正整数，且不能超过每个内层训练折的样本数。",
+				"n_estimators": "n_estimators：基学习器数量必须是正整数。",
+			}
+			for parameter in explanations:
+				if parameter in detail:
+					localized += "\n" + explanations[parameter]
+		elif "at least n_splits unique groups" in detail:
+			localized += "\n独立组数少于外层折数。请降低折数，或核对分组列是否选错。"
+		elif "group" in detail.to_lower():
+			localized += "\n请检查分组列是否有缺失、独立组数是否足够，以及每折的类别分布。"
+		elif "class" in detail.to_lower() or "split" in detail.to_lower():
+			localized += "\n请检查目标类别及每类样本数，必要时减少折数。"
+		elif "output" in detail.to_lower():
+			localized += "\n请检查输出路径和写入权限，使用新的结果目录。"
 	_show_error(localized + ("\n" + detail if not detail.is_empty() else ""))
 
 
 func _localized_warning(warning: String) -> String:
+	# Independent-result warnings carry their validation identifier as a prefix.
+	var prefix_end := warning.find("] ")
+	if warning.begins_with("[") and prefix_end > 1:
+		var strategy := warning.substr(1, prefix_end - 1)
+		return "[" + _validation_display(strategy) + "] " + _localized_warning(warning.substr(prefix_end + 2))
 	if warning.begins_with("Primary metrics evaluate the nested"):
 		return tr("WARN_NESTED_SELECTION")
 	if warning.begins_with("Model-family selection"):
@@ -1182,3 +1307,227 @@ func _render_warnings() -> void:
 	for warning in last_warnings:
 		warning_lines.append(_localized_warning(warning))
 	warnings_text.text = tr("NO_WARNINGS") if warning_lines.is_empty() else "\n".join(warning_lines)
+
+
+func _new_run_folder() -> String:
+	return "run_" + Time.get_datetime_string_from_system().replace(":", "-") + "_%d" % Time.get_ticks_usec()
+
+
+func _bind_feedback_controls() -> void:
+	var icon_image := Image.new()
+	icon_image.load_svg_from_string('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect x="2" y="2" width="16" height="16" rx="3" fill="white" stroke="#626977"/></svg>')
+	unchecked_icon = ImageTexture.create_from_image(icon_image)
+	icon_image = Image.new()
+	icon_image.load_svg_from_string('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect x="2" y="2" width="16" height="16" rx="3" fill="#5261c9"/><path d="M5 10 L9 14 L15 6" stroke="white" fill="none" stroke-width="2"/></svg>')
+	checked_icon = ImageTexture.create_from_image(icon_image)
+	var parent := %PrimaryValidationHelp.get_parent()
+	primary_validation_option = OptionButton.new()
+	primary_validation_option.fit_to_longest_item = false
+	primary_validation_option.clip_text = true
+	parent.add_child(primary_validation_option)
+	primary_validation_option.item_selected.connect(func(_index): _refresh_review())
+	figure_choices = VBoxContainer.new()
+	parameter_editor.get_parent().add_child(figure_choices)
+	sample_data_button = Button.new()
+	translated_controls.append({"node": sample_data_button, "key": "SAMPLE_DATA"})
+	browse_button.get_parent().add_child(sample_data_button)
+	sample_data_button.pressed.connect(func():
+		file_dialog.current_dir = ProjectSettings.globalize_path("res://../examples/synthetic")
+		file_dialog.popup_centered_ratio(0.8)
+	)
+	copy_error_button = Button.new()
+	translated_controls.append({"node": copy_error_button, "key": "COPY_ERROR"})
+	status_label.get_parent().get_parent().add_child(copy_error_button)
+	copy_error_button.pressed.connect(func(): DisplayServer.clipboard_set(status_detail))
+	copy_error_button.hide()
+	error_details = TextEdit.new()
+	error_details.editable = false
+	error_details.custom_minimum_size.y = 150
+	error_details.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	copy_error_button.get_parent().add_child(error_details)
+	error_details.hide()
+	figure_option = OptionButton.new()
+	figure_view.get_parent().add_child(figure_option)
+	figure_view.get_parent().move_child(figure_option, figure_view.get_index())
+	figure_option.item_selected.connect(_show_selected_figure)
+	validation_result_option = OptionButton.new()
+	validation_result_option.fit_to_longest_item = false
+	validation_result_option.clip_text = true
+	validation_result_option.custom_minimum_size.y = 42
+	var result_content := best_result_label.get_parent()
+	result_content.add_child(validation_result_option)
+	result_content.move_child(validation_result_option, 0)
+	validation_result_option.item_selected.connect(_on_validation_result_selected)
+	validation_result_option.hide()
+	_configure_readable_controls(self)
+
+
+func _configure_readable_controls(node: Node) -> void:
+	if node is ScrollContainer or node is Tree or node is ItemList or node is TextEdit or (node is RichTextLabel and node.scroll_active):
+		# Consume wheel events even at a nested scroller's boundary.
+		node.mouse_force_pass_scroll_events = false
+	if node is ScrollContainer:
+		node.gui_input.connect(_stop_scroll_chaining.bind(node))
+	if node is RichTextLabel:
+		node.selection_enabled = true
+		if not node.scroll_active:
+			node.mouse_filter = Control.MOUSE_FILTER_PASS
+			node.mouse_force_pass_scroll_events = true
+	if node is Label:
+		node.mouse_filter = Control.MOUSE_FILTER_PASS
+		node.tooltip_text = tr("COPY_TEXT_HINT")
+		node.gui_input.connect(func(event):
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+				DisplayServer.clipboard_set(node.text)
+		)
+	if node is Tree:
+		node.tooltip_text = tr("COPY_ROW_HINT")
+		node.gui_input.connect(func(event):
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+				var row = node.get_selected()
+				if row != null:
+					var values := PackedStringArray()
+					for column in range(node.columns):
+						values.append(row.get_text(column))
+					DisplayServer.clipboard_set("\t".join(values))
+		)
+	for child in node.get_children():
+		_configure_readable_controls(child)
+
+
+func _update_checks() -> void:
+	if checked_icon == null:
+		return
+	for list_control in [feature_list, model_list, validation_list]:
+		for index in range(list_control.item_count):
+			list_control.set_item_icon(index, checked_icon if list_control.is_selected(index) else unchecked_icon)
+
+
+func _update_primary_validation() -> void:
+	if primary_validation_option == null:
+		return
+	var previous = "__initial__"
+	if primary_validation_option.selected >= 0:
+		previous = primary_validation_option.get_item_metadata(primary_validation_option.selected)
+	primary_validation_option.clear()
+	primary_validation_option.add_item(tr("NO_PRIMARY_VALIDATION"))
+	primary_validation_option.set_item_metadata(0, null)
+	for value in _selected_values(validation_list):
+		primary_validation_option.add_item(tr("PRIMARY_VALIDATION") + ": " + _validation_display(value))
+		var index := primary_validation_option.item_count - 1
+		primary_validation_option.set_item_metadata(index, value)
+		if value == previous:
+			primary_validation_option.select(index)
+	if previous != null and primary_validation_option.selected == 0 and primary_validation_option.item_count > 1:
+		primary_validation_option.select(1)
+
+
+func _populate_figures() -> void:
+	if figure_choices == null:
+		return
+	for child in figure_choices.get_children():
+		figure_choices.remove_child(child)
+		child.queue_free()
+	var task: String = task_option.get_item_metadata(task_option.selected)
+	var choices := ["confusion_matrix", "class_distribution"] if task == "classification" else ["observed_vs_predicted", "residuals", "residual_distribution"]
+	var heading := Label.new()
+	heading.text = tr("OUTPUT_FIGURES")
+	figure_choices.add_child(heading)
+	for key in choices:
+		var checkbox := CheckBox.new()
+		checkbox.text = tr("FIGURE_" + str(key).to_upper())
+		checkbox.set_meta("figure", key)
+		checkbox.button_pressed = true
+		figure_choices.add_child(checkbox)
+		checkbox.toggled.connect(func(_value): _refresh_review())
+
+
+func _selected_figures() -> Array[String]:
+	var figures: Array[String] = []
+	if figure_choices != null:
+		for child in figure_choices.get_children():
+			if child is CheckBox and child.button_pressed:
+				figures.append(child.get_meta("figure"))
+	return figures
+
+
+func _show_selected_figure(index: int) -> void:
+	var image := Image.load_from_file(last_result_dir.path_join(figure_option.get_item_metadata(index)))
+	if image != null and not image.is_empty():
+		figure_view.texture = ImageTexture.create_from_image(image)
+
+
+func _stop_scroll_chaining(event: InputEvent, control: Control) -> void:
+	var wheel: bool = event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]
+	if not wheel and not event is InputEventPanGesture:
+		return
+	var point: Vector2 = control.get_global_transform() * event.position
+	# Internal title buttons/scrollbars may still forward events. Only suppress
+	# the ancestor's response; retain native scrolling in the nested widget.
+	for child in control.find_children("*", "Control", true, false):
+		if not (child is Tree or child is ItemList or child is ScrollContainer or child is TextEdit or (child is RichTextLabel and child.scroll_active)):
+			continue
+		if not child.is_visible_in_tree() or not child.get_global_rect().has_point(point):
+			continue
+		var ancestor: Node = child.get_parent()
+		var clipped := false
+		while ancestor is Control and ancestor != control:
+			if ancestor.clip_contents and not ancestor.get_global_rect().has_point(point):
+				clipped = true
+				break
+			ancestor = ancestor.get_parent()
+		if not clipped:
+			control.accept_event()
+			return
+
+
+func _clear_result_tables() -> void:
+	for tree in [comparison_tree, metrics_tree, predictions_tree]:
+		tree.clear()
+	figure_view.texture = null
+	figure_option.clear()
+	figure_option.hide()
+
+
+func _load_independent_results(parsed: Dictionary, previous_validation) -> void:
+	_clear_result_tables()
+	validation_result_entries = parsed.get("validation_results", {})
+	validation_result_option.clear()
+	validation_result_option.add_item(tr("CHOOSE_VALIDATION_RESULT"))
+	validation_result_option.set_item_metadata(0, null)
+	for validation in validation_result_entries:
+		var entry: Dictionary = validation_result_entries[validation]
+		var label := _validation_display(validation)
+		if entry.get("status", "") == "failed":
+			label += " — " + tr("VALIDATION_FAILED")
+		validation_result_option.add_item(label)
+		var index := validation_result_option.item_count - 1
+		validation_result_option.set_item_metadata(index, validation)
+		if validation == previous_validation:
+			validation_result_option.select(index)
+	validation_result_option.show()
+	no_results_label.hide()
+	open_results_button.disabled = false
+	best_result_label.text = tr("INDEPENDENT_RESULTS")
+	if parsed.get("status", "") == "completed_with_errors":
+		best_result_label.text += "\n" + tr("PARTIAL_VALIDATION_RESULTS")
+	last_warnings = parsed.get("warnings", [])
+	_render_warnings()
+	if validation_result_option.selected > 0:
+		_on_validation_result_selected(validation_result_option.selected)
+
+
+func _on_validation_result_selected(index: int) -> void:
+	var validation = validation_result_option.get_item_metadata(index)
+	if validation == null:
+		_load_results(last_result_path, false)
+		return
+	var entry: Dictionary = validation_result_entries[validation]
+	if entry.get("status", "") == "completed":
+		_load_results(last_result_path.get_base_dir().path_join(entry.result_path), false, true)
+	else:
+		_clear_result_tables()
+		last_result_dir = last_result_path.get_base_dir().path_join("validations").path_join(validation)
+		best_result_label.text = _validation_display(validation) + " — " + tr("VALIDATION_FAILED")
+		last_warnings = [str(entry.get("error", {}).get("message", ""))]
+		_render_warnings()

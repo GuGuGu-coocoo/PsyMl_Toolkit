@@ -77,6 +77,10 @@ def result_payload(
     """Build a stable machine-readable result summary."""
     artifacts = {
         "analysis_config": "analysis_config.json",
+        "best_parameters_configure": "best_parameters_configure.json",
+        "configuration_guide": "configuration_guide.md",
+        "methods_summary_zh": "methods_summary_zh.md",
+        "reproducibility_report_zh": "reproducibility_report_zh.md",
         "analysis_manifest": "analysis_manifest.json",
         "fold_metrics": "fold_metrics.csv",
         "methods_summary": "methods_summary.md",
@@ -95,12 +99,18 @@ def result_payload(
     }
     if config.task == "classification":
         artifacts["confusion_matrix"] = "confusion_matrix.csv"
-        artifacts["figure"] = "figures/confusion_matrix.png"
-    else:
-        artifacts["figure"] = "figures/observed_vs_predicted.png"
+
+    figures = config.figure_types if config.figure_types is not None else [
+        "confusion_matrix" if config.task == "classification" else "observed_vs_predicted"
+    ]
+    for name in figures:
+        artifacts["figure_" + name] = f"figures/{name}.png"
+    if figures:
+        artifacts["figure"] = f"figures/{figures[0]}.png"
     payload = {
         "schema_version": SCHEMA_VERSION,
         "status": "completed",
+        "primary_validation": config.resolved_primary_validation(),
         "task": config.task,
         "metrics": metrics,
         "warnings": warnings,
