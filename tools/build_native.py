@@ -21,6 +21,8 @@ def run(*args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--godot", default="godot")
+    parser.add_argument("--reuse-core", action="store_true",
+                        help="Local GUI-only rebuild using the existing frozen runtime")
     args = parser.parse_args()
     args.godot = shutil.which(args.godot) or args.godot
     mac = sys.platform == "darwin"
@@ -43,7 +45,8 @@ def main():
                     "scipy", "pyarrow", "pyreadstat", "openpyxl", "xlrd"]:
         command.extend(["--copy-metadata", package])
     command.append(str(ROOT / "tools/frozen_core.py"))
-    run(*command)
+    if not args.reuse_core:
+        run(*command)
     run(args.godot, "--headless", "--editor", "--path", ROOT / "gui", "--quit")
     if mac:
         app = destination / "PsyML Toolkit.app"
@@ -61,7 +64,8 @@ def main():
         shutil.copytree(ROOT / "examples/synthetic", resource_dir / "examples/synthetic",
                         dirs_exist_ok=True)
     shutil.copy2(ROOT / "LICENSE", destination / "LICENSE")
-    shutil.copy2(ROOT / "README.md", destination / "README.md")
+    shutil.copy2(ROOT / "tools/NATIVE_START_HERE.txt", destination / "START_HERE.txt")
+    shutil.copytree(ROOT / "tools/licenses", destination / "licenses", dirs_exist_ok=True)
     (destination / "BUILD.json").write_text(json.dumps({
         "version": "0.1.1-test", "platform": architecture,
         "python": platform.python_version(),
@@ -94,8 +98,9 @@ def main():
         env=environment, check=True, capture_output=True, text=True, timeout=420)
     if not report_path.exists() or report_path.read_text() != "PSYML_NATIVE_BUNDLE_OK":
         raise RuntimeError(gui_smoke.stdout + gui_smoke.stderr)
+    (destination / "SMOKE_TEST.txt").write_text(report_path.read_text(), encoding="utf-8")
     print(gui_smoke.stdout)
-    archive = destination.with_suffix(".zip")
+    archive = Path(str(destination) + ".zip")
     if mac:
         run("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", destination, archive)
     else:
