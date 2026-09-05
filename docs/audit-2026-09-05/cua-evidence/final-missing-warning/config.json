@@ -1,0 +1,33 @@
+{
+  "feature_columns": [
+    "score",
+    "category"
+  ],
+  "group_column": "participant",
+  "include_data_hash": true,
+  "inner_splits": 2,
+  "input_path": "/tmp/PsyML-cua/研究者测试 - participants repeated measures - très long chemin/合成回归数据 - long variable.csv",
+  "max_candidates": 2,
+  "missing_strategy": "drop",
+  "model_name": "dummy",
+  "model_names": [
+    "dummy"
+  ],
+  "model_params": {},
+  "n_splits": 3,
+  "output_dir": "/tmp/PsyML-cua/final-missing-warning",
+  "parameter_grids": {},
+  "random_seed": 42,
+  "scaling": "standard",
+  "schema_version": "1.0",
+  "selection_metric": "rmse",
+  "selection_protocol": "nested_family_v1",
+  "target_column": "target_长期随访量表总分_用于检验很长的研究变量名称与原始列名是否保持一致",
+  "task": "regression",
+  "test_size": 0.2,
+  "tuning_mode": "none",
+  "validation_strategies": [
+    "group_k_fold"
+  ],
+  "validation_strategy": "group_k_fold"
+}

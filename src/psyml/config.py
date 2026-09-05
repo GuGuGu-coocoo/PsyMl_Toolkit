@@ -47,8 +47,11 @@ class ExperimentConfig:
     selection_metric: str | None = None
     inner_splits: int = 3
     max_candidates: int = 20
+    selection_protocol: str = "nested_family_v1"
 
     def __post_init__(self) -> None:
+        if self.selection_protocol != "nested_family_v1":
+            raise ValueError("Unsupported selection_protocol; expected nested_family_v1")
         if self.task not in {"classification", "regression"}:
             raise ValueError("task must be 'classification' or 'regression'")
         if not self.target_column.strip():

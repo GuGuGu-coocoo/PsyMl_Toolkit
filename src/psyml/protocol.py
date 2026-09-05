@@ -90,6 +90,8 @@ def result_payload(
         "parameter_search": "parameter_search.csv",
         "best_parameters": "best_parameters.json",
         "study_config": "study_config.json",
+        "selection_trace": "selection_trace.csv",
+        "validation_summary": "validation_summary.csv",
     }
     if config.task == "classification":
         artifacts["confusion_matrix"] = "confusion_matrix.csv"

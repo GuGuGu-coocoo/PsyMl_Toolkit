@@ -7,6 +7,7 @@
   "required": ["schema_version", "task", "target_column", "model_name", "input_path", "output_dir"],
   "properties": {
     "schema_version": {"const": "1.0"},
+    "selection_protocol": {"const": "nested_family_v1"},
     "task": {"enum": ["classification", "regression"]},
     "target_column": {"type": "string", "minLength": 1},
     "model_name": {"type": "string", "minLength": 1},

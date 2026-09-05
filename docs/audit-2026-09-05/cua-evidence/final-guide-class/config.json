@@ -1,0 +1,34 @@
+{
+  "feature_columns": [
+    "score",
+    "category"
+  ],
+  "group_column": "participant",
+  "include_data_hash": true,
+  "inner_splits": 2,
+  "input_path": "/tmp/PsyML-cua/classification.csv",
+  "max_candidates": 2,
+  "missing_strategy": "median",
+  "model_name": "decision_tree",
+  "model_names": [
+    "decision_tree",
+    "dummy"
+  ],
+  "model_params": {},
+  "n_splits": 3,
+  "output_dir": "/tmp/PsyML-cua/final-guide-class",
+  "parameter_grids": {},
+  "random_seed": 42,
+  "scaling": "standard",
+  "schema_version": "1.0",
+  "selection_metric": "balanced_accuracy",
+  "selection_protocol": "nested_family_v1",
+  "target_column": "target",
+  "task": "classification",
+  "test_size": 0.2,
+  "tuning_mode": "quick",
+  "validation_strategies": [
+    "group_k_fold"
+  ],
+  "validation_strategy": "group_k_fold"
+}

@@ -1,0 +1,4 @@
+[
+  "A group column was supplied but at least one selected validation strategy does not isolate groups.",
+  "Primary metrics evaluate the nested model-family and parameter selection procedure, not the final full-data model. Family leaderboard ranks are exploratory; choosing from their outer scores introduces selection bias. External validity requires appropriate independent data."
+]

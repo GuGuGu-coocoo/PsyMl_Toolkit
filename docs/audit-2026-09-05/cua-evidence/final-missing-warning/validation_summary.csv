@@ -1,0 +1,2 @@
+validation,role,status,error,n_folds,r2,mae,rmse
+group_k_fold,primary,completed,,3,-0.37398226107857285,1.959312737455197,2.386294355581652

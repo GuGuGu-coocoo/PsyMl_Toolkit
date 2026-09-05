@@ -55,6 +55,8 @@ class ExperimentResult:
     best_model_name: str = ""
     best_validation_strategy: str = ""
     best_params: dict[str, Any] = field(default_factory=dict)
+    selection_trace: pd.DataFrame = field(default_factory=pd.DataFrame)
+    validation_summary: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 @dataclass
@@ -384,7 +386,8 @@ def _make_work_items(
 ) -> tuple[list[_WorkItem], int]:
     work_items: list[_WorkItem] = []
     total_tasks = 1
-    needs_search = any(
+    family_search = len(config.selected_models()) > 1
+    needs_search = family_search or any(
         len(_parameter_candidates(config, name)) > 1 for name in config.selected_models()
     )
     final_inner = _inner_splits(config, features, target, groups, 0) if needs_search else []
@@ -404,8 +407,10 @@ def _make_work_items(
             if model_name not in supported_models(config.task):
                 raise ValueError(f"Unsupported {config.task} model: {model_name}")
             candidates = _parameter_candidates(config, model_name)
-            if len(candidates) > 1:
-                final_tuning_budget = max(final_tuning_budget, len(candidates) * len(final_inner))
+            if validation == config.selected_validations()[0] and (
+                family_search or len(candidates) > 1
+            ):
+                final_tuning_budget += len(candidates) * len(final_inner)
             for fold_number, (train_index, test_index) in enumerate(outer_splits, start=1):
                 train_groups = groups.iloc[train_index] if groups is not None else None
                 inner = (
@@ -416,7 +421,7 @@ def _make_work_items(
                         train_groups,
                         fold_number,
                     )
-                    if len(candidates) > 1
+                    if family_search or len(candidates) > 1
                     else []
                 )
                 work_items.append(
@@ -444,7 +449,7 @@ def _choose_parameters(
     train_groups: pd.Series | None = None,
 ) -> dict[str, Any]:
     metric = config.resolved_selection_metric()
-    if len(work.candidates) == 1:
+    if len(work.candidates) == 1 and len(config.selected_models()) == 1:
         return work.candidates[0]
     if not work.inner_splits:
         raise ValueError("Insufficient rows/classes/groups for inner parameter selection")
@@ -506,6 +511,21 @@ def _choose_parameters(
     return best_params
 
 
+def _inner_winner(rows: list[dict[str, Any]], metric: str) -> dict[str, Any]:
+    """Choose using training-only evidence; stable ties preserve candidate order."""
+    eligible = [row for row in rows if row["status"] == "completed" and math.isfinite(row["score"])]
+    if not eligible:
+        raise ValueError("All model/parameter candidates failed during inner selection")
+    return max(eligible, key=lambda row: _objective(metric, row["score"]))
+
+
+def _selection_record(winner: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: winner[key]
+        for key in ["validation", "outer_fold", "selection_scope", "model", "parameters", "score"]
+    }
+
+
 def run_experiment(
     config: ExperimentConfig,
     frame: pd.DataFrame | None = None,
@@ -532,8 +552,10 @@ def run_experiment(
         warnings.append(f"Dropped {missing_targets} rows with missing target values.")
     if len(config.selected_models()) > 1:
         warnings.append(
-            "Model-family selection used the primary outer scores; the winner's score is not "
-            "an independent estimate after selection. Use prespecified models or independent validation."
+            "Primary metrics evaluate the nested model-family and parameter selection procedure, "
+            "not the final full-data model. Family leaderboard ranks are exploratory; choosing "
+            "from their outer scores introduces selection bias. External validity requires "
+            "appropriate independent data."
         )
     work_items, total_tasks = _make_work_items(config, features, target, groups)
     tracker = _ProgressTracker(total_tasks, progress_callback)
@@ -542,6 +564,7 @@ def run_experiment(
     combo_folds: dict[tuple[str, str], list[dict[str, Any]]] = {}
     combo_predictions: dict[tuple[str, str], list[pd.DataFrame]] = {}
     combo_errors: dict[tuple[str, str], list[str]] = {}
+    outer_results: dict[tuple[str, int, str], tuple[dict, pd.DataFrame]] = {}
 
     for work in work_items:
         key = (work.validation, work.model_name)
@@ -607,6 +630,10 @@ def run_experiment(
                     }
                 )
             )
+            outer_results[(work.validation, work.fold_number, work.model_name)] = (
+                combo_folds[key][-1],
+                combo_predictions[key][-1],
+            )
         except Exception as error:  # noqa: BLE001
             combo_errors.setdefault(key, []).append(f"{type(error).__name__}: {error}")
         tracker.advance(
@@ -660,7 +687,7 @@ def run_experiment(
                 f"Failed combination {row['validation']}/{row['model']}: {row['error']}"
             )
     completed_rows = [row for row in leaderboard_rows if row["status"] == "completed"]
-    if not completed_rows:
+    if not completed_rows and len(config.selected_models()) == 1:
         details = " | ".join(row["error"] for row in leaderboard_rows)
         raise ValueError(f"Every selected model/validation run failed: {details}")
     metric = config.resolved_selection_metric()
@@ -678,41 +705,121 @@ def run_experiment(
     ]
     leaderboard = pd.DataFrame(leaderboard_rows)
     primary_validation = config.selected_validations()[0]
-    primary_rows = [row for row in ranked_rows if row["validation"] == primary_validation]
-    if not primary_rows:
-        raise ValueError(f"Every model failed for the primary validation: {primary_validation}")
-    best = primary_rows[0]
-    best_key = (best["validation"], best["model"])
-    metrics, fold_metrics, predictions = combo_results[best_key]
+    family_search = len(config.selected_models()) > 1
+    selection_rows: list[dict[str, Any]] = []
+    validation_rows: list[dict[str, Any]] = []
+    procedure_results = {}
+    for validation in config.selected_validations():
+        selected_folds, selected_predictions = [], []
+        try:
+            if family_search:
+                fold_numbers = sorted(
+                    {w.fold_number for w in work_items if w.validation == validation}
+                )
+                for fold_number in fold_numbers:
+                    winner = _inner_winner(
+                        [
+                            r
+                            for r in tuning_rows
+                            if r["validation"] == validation and r["outer_fold"] == fold_number
+                        ],
+                        metric,
+                    )
+                    selection_rows.append(_selection_record(winner))
+                    selected_key = (validation, fold_number, winner["model"])
+                    if selected_key not in outer_results:
+                        raise ValueError(
+                            f"Inner-selected model {winner['model']} failed in outer fold {fold_number}; "
+                            "outer scores cannot be used to substitute another family"
+                        )
+                    fold_row, fold_predictions = outer_results[selected_key]
+                    selected_folds.append(fold_row)
+                    selected_predictions.append(fold_predictions.assign(model=winner["model"]))
+                validation_folds = pd.DataFrame(selected_folds)
+                validation_predictions = pd.concat(selected_predictions, ignore_index=True)
+                validation_metrics, _ = _summaries(validation_folds)
+            else:
+                key = (validation, config.selected_models()[0])
+                if key not in combo_results:
+                    raise ValueError("The prespecified model did not complete all outer folds")
+                validation_metrics, validation_folds, validation_predictions = combo_results[key]
+            procedure_results[validation] = (
+                validation_metrics,
+                validation_folds,
+                validation_predictions,
+            )
+            validation_rows.append(
+                {
+                    "validation": validation,
+                    "role": "primary" if validation == primary_validation else "sensitivity",
+                    "status": "completed",
+                    "error": "",
+                    "n_folds": len(validation_folds),
+                    **validation_metrics,
+                }
+            )
+        except ValueError as error:
+            if validation == primary_validation:
+                raise ValueError(f"Primary validation failed ({validation}): {error}") from error
+            warnings.append(
+                f"Selection procedure failed for sensitivity validation {validation}: {error}"
+            )
+            validation_rows.append(
+                {
+                    "validation": validation,
+                    "role": "sensitivity",
+                    "status": "failed",
+                    "error": str(error),
+                    "n_folds": 0,
+                }
+            )
+    metrics, fold_metrics, predictions = procedure_results[primary_validation]
     _, metric_summary = _summaries(fold_metrics)
-    needs_search = any(
+
+    # Final family/parameters are selected afresh using only full-data inner CV.
+    # Neither outer leaderboard ranks nor sensitivity results enter this decision.
+    needs_search = family_search or any(
         len(_parameter_candidates(config, name)) > 1 for name in config.selected_models()
     )
     final_inner = _inner_splits(config, features, target, groups, 0) if needs_search else []
-    final_candidates = _parameter_candidates(config, best["model"])
-    final_candidate_counts = [
-        len(_parameter_candidates(config, model_name)) for model_name in config.selected_models()
-    ]
-    final_tuning_budget = max(
-        (count * len(final_inner) for count in final_candidate_counts if count > 1),
-        default=0,
+    final_parameters = {}
+    for model_name in config.selected_models():
+        final_work = _WorkItem(
+            validation=primary_validation,
+            model_name=model_name,
+            fold_number=0,
+            train_index=list(range(len(features))),
+            test_index=[],
+            inner_splits=final_inner,
+            candidates=_parameter_candidates(config, model_name),
+        )
+        try:
+            final_parameters[model_name] = _choose_parameters(
+                config, final_work, features, target, tracker, tuning_rows, groups
+            )
+        except ValueError as error:
+            if not family_search:
+                raise
+            warnings.append(f"Final inner selection failed for {model_name}: {error}")
+    if family_search:
+        winner = _inner_winner([r for r in tuning_rows if r["outer_fold"] == 0], metric)
+        selection_rows.append(_selection_record(winner))
+        best = {"model": winner["model"], "validation": primary_validation}
+    else:
+        best = {"model": config.selected_models()[0], "validation": primary_validation}
+    best_params = final_parameters[best["model"]]
+    selection_trace = pd.DataFrame(
+        selection_rows,
+        columns=[
+            "validation",
+            "outer_fold",
+            "selection_scope",
+            "model",
+            "parameters",
+            "score",
+        ],
     )
-    final_work = _WorkItem(
-        validation=best["validation"],
-        model_name=best["model"],
-        fold_number=0,
-        train_index=list(range(len(features))),
-        test_index=[],
-        inner_splits=final_inner,
-        candidates=final_candidates,
-    )
-    best_params = _choose_parameters(
-        config, final_work, features, target, tracker, tuning_rows, groups
-    )
-    used_final_tuning_tasks = (
-        len(final_candidates) * len(final_inner) if len(final_candidates) > 1 else 0
-    )
-    tracker.skip(final_tuning_budget - used_final_tuning_tasks)
+    validation_summary = pd.DataFrame(validation_rows)
     final_model = _build_pipeline(config, features, best["model"], best_params, target, groups)
     final_model.fit(features, target)
     tracker.advance(
@@ -761,6 +868,8 @@ def run_experiment(
         ],
     )
     write_study_outputs(output_dir, config, leaderboard, tuning_results, best_params)
+    selection_trace.to_csv(output_dir / "selection_trace.csv", index=False)
+    validation_summary.to_csv(output_dir / "validation_summary.csv", index=False)
     write_research_outputs(
         output_dir,
         executed_config,
@@ -778,6 +887,10 @@ def run_experiment(
         metrics,
         warnings,
         study_summary={
+            "evaluation_scope": "nested_selection_procedure"
+            if family_search
+            else "prespecified_family",
+            "selection_protocol": "nested_family_v1",
             "best_model": best["model"],
             "best_validation": best["validation"],
             "selection_metric": metric,
@@ -798,4 +911,6 @@ def run_experiment(
         best_model_name=best["model"],
         best_validation_strategy=best["validation"],
         best_params=best_params,
+        selection_trace=selection_trace,
+        validation_summary=validation_summary,
     )

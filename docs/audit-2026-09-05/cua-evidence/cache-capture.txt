@@ -1,0 +1,8 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M2 Pro
+
+2026-09-05 13:22:00.052 Godot[56458:17544551] error messaging the mach port for IMKCFRunLoopWakeUpReliable
+2026-09-05 13:22:00.092 Godot[56458:17544551] TSM AdjustCapsLockLEDForKeyTransitionHandling - _ISSetPhysicalKeyboardCapsLockLED Inhibit
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-cache/01-zh_CN-page2.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-cache/02-zh_CN-page2.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-cache/03-zh_CN-page2.png

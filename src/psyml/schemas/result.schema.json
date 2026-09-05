@@ -7,15 +7,17 @@
   "required": ["schema_version", "status", "task", "metrics", "warnings", "artifacts"],
   "properties": {
     "schema_version": {"const": "1.0"},
+    "selection_protocol": {"const": "nested_family_v1"},
     "status": {"const": "completed"},
     "task": {"enum": ["classification", "regression"]},
     "metrics": {"type": "object", "additionalProperties": {"type": "number"}},
     "warnings": {"type": "array", "items": {"type": "string"}},
     "artifacts": {"type": "object", "additionalProperties": {"type": "string"}},
+    "evaluation_scope": {"enum": ["nested_selection_procedure", "prespecified_family"]},
     "best_model": {"type": "string"},
     "best_validation": {"type": "string"},
     "selection_metric": {"type": "string"},
     "best_parameters": {"type": "object"},
-    "evaluated_combinations": {"type": "integer", "minimum": 1}
+    "evaluated_combinations": {"type": "integer", "minimum": 0}
   }
 }

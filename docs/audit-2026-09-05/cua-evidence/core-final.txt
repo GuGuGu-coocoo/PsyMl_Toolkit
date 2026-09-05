@@ -1,0 +1,11 @@
+........................................................................ [ 72%]
+...........................                                              [100%]
+=============================== warnings summary ===============================
+tests/test_scientific_audit.py::test_tiny_r2_primary_has_clear_failure
+tests/test_scientific_audit.py::test_tiny_r2_primary_has_clear_failure
+tests/test_scientific_audit.py::test_tiny_r2_primary_has_clear_failure
+  /Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/.venv/lib/python3.12/site-packages/sklearn/metrics/_regression.py:1295: UndefinedMetricWarning: R^2 score is not well-defined with less than two samples.
+    warnings.warn(msg, UndefinedMetricWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+99 passed, 3 warnings in 12.98s

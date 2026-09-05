@@ -158,7 +158,8 @@ def test_family_selection_warning_and_report(tmp_path):
     cfg = replace(config(tmp_path, feature_columns=["x"]), model_names=["dummy", "decision_tree"])
     result = run_experiment(cfg, frame())
     assert any("selection" in w and "independent" in w for w in result.warnings)
-    assert "model-family selection" in (cfg.output_dir / "methods_summary.md").read_text()
+    methods = (cfg.output_dir / "methods_summary.md").read_text().lower()
+    assert "model-family selection and parameter selection were jointly nested" in methods
 
 
 def test_inner_tuning_preserves_outer_group_isolation(tmp_path):
@@ -273,7 +274,7 @@ def test_primary_failure_cannot_be_replaced_by_successful_sensitivity(tmp_path):
         model_name="knn",
         model_params={"n_neighbors": 5},
     )
-    with pytest.raises(ValueError, match="primary validation"):
+    with pytest.raises(ValueError, match="[Pp]rimary validation"):
         run_experiment(cfg, frame())
     assert not (cfg.output_dir / "result.json").exists()
 

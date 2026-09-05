@@ -1,0 +1,4 @@
+fold,model,validation,accuracy,balanced_accuracy,precision_weighted,recall_weighted,f1_weighted,precision_macro,recall_macro,f1_macro,roc_auc
+1,qda,group_k_fold,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0
+2,qda,group_k_fold,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0
+3,qda,group_k_fold,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0

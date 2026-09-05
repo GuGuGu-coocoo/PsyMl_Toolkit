@@ -269,7 +269,8 @@ def test_multi_model_multi_validation_nested_search_and_progress(tmp_path):
         "final_full_data",
     }
     assert set(result.tuning_results.loc[result.tuning_results["outer_fold"] == 0, "model"]) == {
-        result.best_model_name
+        "decision_tree",
+        "dummy",
     }
     assert (
         json.loads((config.output_dir / "best_parameters.json").read_text(encoding="utf-8"))

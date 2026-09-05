@@ -1,0 +1,46 @@
+{
+  "feature_columns": [
+    "score",
+    "category"
+  ],
+  "group_column": "participant",
+  "include_data_hash": true,
+  "inner_splits": 2,
+  "input_path": "/tmp/PsyML-cua/regression.csv",
+  "max_candidates": 2,
+  "missing_strategy": "mode",
+  "model_name": "decision_tree",
+  "model_names": [
+    "decision_tree",
+    "dummy",
+    "elastic_net",
+    "gradient_boosting",
+    "knn",
+    "lasso",
+    "linear_regression",
+    "mlp",
+    "random_forest",
+    "ridge",
+    "svr"
+  ],
+  "model_params": {},
+  "n_splits": 3,
+  "output_dir": "/tmp/PsyML-cua/nested-reg-all",
+  "parameter_grids": {},
+  "random_seed": 42,
+  "scaling": "none",
+  "schema_version": "1.0",
+  "selection_metric": "rmse",
+  "selection_protocol": "nested_family_v1",
+  "target_column": "target",
+  "task": "regression",
+  "test_size": 0.2,
+  "tuning_mode": "none",
+  "validation_strategies": [
+    "holdout",
+    "k_fold",
+    "group_k_fold",
+    "leave_one_group_out"
+  ],
+  "validation_strategy": "holdout"
+}

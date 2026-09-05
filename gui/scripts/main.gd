@@ -40,6 +40,8 @@ var max_candidates_spin: SpinBox
 var parameter_editor: VBoxContainer
 var parameter_controls: Dictionary = {}
 var saved_parameter_values: Dictionary = {}
+var parameter_editor_task := ""
+var parameter_editor_mode := ""
 var choose_folder_button: Button
 var refresh_review_button: Button
 var output_edit: LineEdit
@@ -567,9 +569,11 @@ func _populate_models() -> void:
 
 
 func _capture_parameter_values() -> void:
+	if parameter_editor_mode != "tuning_custom":
+		return
 	for key in parameter_controls:
 		var controls: Dictionary = parameter_controls[key]
-		saved_parameter_values[key] = {
+		saved_parameter_values[parameter_editor_task + "::" + str(key)] = {
 			"enabled": controls.enabled.button_pressed,
 			"values": controls.values.text,
 		}
@@ -579,15 +583,19 @@ func _populate_parameter_editor() -> void:
 	if parameter_editor == null or capabilities.is_empty() or capabilities.has("error"):
 		return
 	_capture_parameter_values()
+	parameter_editor_task = task_option.get_item_metadata(task_option.selected)
 	for child in parameter_editor.get_children():
 		parameter_editor.remove_child(child)
 		child.queue_free()
 	parameter_controls.clear()
 	var tuning_mode: String = tuning_option.get_item_metadata(tuning_option.selected)
+	parameter_editor_mode = tuning_mode
 	if tuning_mode == "tuning_none":
 		var no_search := Label.new()
 		no_search.text = tr("NO_PARAMETER_SEARCH")
+		no_search.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		parameter_editor.add_child(no_search)
+		_refresh_review()
 		return
 	var task: String = task_option.get_item_metadata(task_option.selected)
 	for model_name in _selected_models():
@@ -617,9 +625,10 @@ func _populate_parameter_editor() -> void:
 			values.text = JSON.stringify(model_grid[parameter])
 			values.editable = tuning_mode == "tuning_custom"
 			var key := "%s::%s" % [model_name, parameter]
-			if tuning_mode == "tuning_custom" and saved_parameter_values.has(key):
-				enabled.button_pressed = saved_parameter_values[key].enabled
-				values.text = saved_parameter_values[key].values
+			var saved_key := parameter_editor_task + "::" + key
+			if tuning_mode == "tuning_custom" and saved_parameter_values.has(saved_key):
+				enabled.button_pressed = saved_parameter_values[saved_key].enabled
+				values.text = saved_parameter_values[saved_key].values
 			values.text_changed.connect(func(_text): _refresh_review())
 			enabled.toggled.connect(func(_pressed): _refresh_review())
 			parameter_grid.add_child(values)
@@ -761,6 +770,7 @@ func _build_config() -> Dictionary:
 			selection_metric_option.selected
 		),
 		"inner_splits": int(inner_folds_spin.value),
+		"selection_protocol": "nested_family_v1",
 		"max_candidates": int(max_candidates_spin.value),
 	}
 
@@ -1007,6 +1017,7 @@ func _load_results(result_path: String, navigate := true) -> void:
 		_metric_display(str(parsed.get("selection_metric", ""))),
 	]
 	best_result_label.text += "\n" + tr("FINAL_PARAMETERS") + JSON.stringify(parsed.get("best_parameters", {}))
+	best_result_label.text += "\n" + tr("NESTED_METRICS" if parsed.get("evaluation_scope", "") == "nested_selection_procedure" else "PRESPECIFIED_METRICS")
 	_render_warnings()
 	metrics_tree.clear()
 	var root := metrics_tree.create_item()
@@ -1059,6 +1070,8 @@ func _load_csv_preview(path: String, tree: Tree, maximum_rows: int) -> void:
 				value = _metric_display(value)
 			elif header == "status":
 				value = _status_display(value)
+			elif header == "rank" and value.is_valid_float():
+				value = str(int(value.to_float()))
 			item.set_text(index, value)
 		shown += 1
 
@@ -1145,10 +1158,16 @@ func _show_core_error(error: Dictionary) -> void:
 
 
 func _localized_warning(warning: String) -> String:
+	if warning.begins_with("Primary metrics evaluate the nested"):
+		return tr("WARN_NESTED_SELECTION")
 	if warning.begins_with("Model-family selection"):
 		return tr("WARN_MODEL_SELECTION")
 	if warning.begins_with("Dropped "):
-		return tr("WARN_DROPPED")
+		var count := warning.get_slice(" ", 1).to_int()
+		if warning.contains("with missing target values"):
+			return tr("WARN_TARGET_DROPPED") % count
+		if warning.contains("because missing_strategy='drop'"):
+			return tr("WARN_DROPPED") % count
 	if warning.begins_with("A group column was supplied"):
 		return tr("WARN_GROUP_NOT_ISOLATED")
 	if warning.begins_with("The target classes are imbalanced"):

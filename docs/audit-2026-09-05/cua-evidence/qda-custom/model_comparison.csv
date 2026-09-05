@@ -1,0 +1,2 @@
+rank,model,validation,selection_metric,selection_score,status,error,accuracy,balanced_accuracy,precision_weighted,recall_weighted,f1_weighted,precision_macro,recall_macro,f1_macro,roc_auc
+1,qda,group_k_fold,f1_macro,1.0,completed,,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0

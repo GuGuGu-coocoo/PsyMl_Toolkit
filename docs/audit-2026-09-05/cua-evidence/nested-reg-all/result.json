@@ -1,0 +1,40 @@
+{
+  "artifacts": {
+    "analysis_config": "analysis_config.json",
+    "analysis_manifest": "analysis_manifest.json",
+    "best_parameters": "best_parameters.json",
+    "figure": "figures/observed_vs_predicted.png",
+    "fold_metrics": "fold_metrics.csv",
+    "methods_summary": "methods_summary.md",
+    "metrics": "metrics.csv",
+    "metrics_summary": "metrics_summary.csv",
+    "model_comparison": "model_comparison.csv",
+    "parameter_search": "parameter_search.csv",
+    "predictions": "predictions.csv",
+    "reproducibility_report": "reproducibility_report.md",
+    "result": "result.json",
+    "selection_trace": "selection_trace.csv",
+    "study_config": "study_config.json",
+    "validation_summary": "validation_summary.csv",
+    "warnings": "warnings.json"
+  },
+  "best_model": "linear_regression",
+  "best_parameters": {},
+  "best_validation": "holdout",
+  "evaluated_combinations": 44,
+  "evaluation_scope": "nested_selection_procedure",
+  "metrics": {
+    "mae": 0.4305215635849535,
+    "r2": 0.9579102363354475,
+    "rmse": 0.4855869148534085
+  },
+  "schema_version": "1.0",
+  "selection_metric": "rmse",
+  "selection_protocol": "nested_family_v1",
+  "status": "completed",
+  "task": "regression",
+  "warnings": [
+    "A group column was supplied but at least one selected validation strategy does not isolate groups.",
+    "Primary metrics evaluate the nested model-family and parameter selection procedure, not the final full-data model. Family leaderboard ranks are exploratory; choosing from their outer scores introduces selection bias. External validity requires appropriate independent data."
+  ]
+}

@@ -136,36 +136,43 @@ def _methods_summary(
     metrics = ", ".join(metric_names)
     selected_models = ", ".join(f"`{name}`" for name in config.selected_models())
     selected_validations = ", ".join(f"`{name}`" for name in config.selected_validations())
+    family_search = len(config.selected_models()) > 1
     selection_text = (
-        f"Candidate models ({selected_models}) and validation strategies "
-        f"({selected_validations}) were compared using `{config.resolved_selection_metric()}`. "
-        f"Parameter mode was `{config.tuning_mode}` with at most {config.max_candidates} "
-        f"candidates per model. When multiple parameter candidates were present, selection used "
-        f"up to {config.inner_splits}-fold cross-validation restricted to each outer training partition. "
-        "The per-family reported performance comes from outer partitions not used to select "
-        "the parameters. After model comparison, parameters for the final fitted model were "
-        "selected by inner cross-validation across all analyzed rows when multiple candidates existed; this did not change the "
-        "outer performance estimate. A single candidate is fitted without a search. "
-        "The first validation in the configured list is primary; other validations are sensitivity "
-        "analyses. "
+        f"Candidate models ({selected_models}) and validation strategies ({selected_validations}) "
+        f"used `{config.resolved_selection_metric()}`. Parameter mode was `{config.tuning_mode}` "
+        f"with at most {config.max_candidates} candidates per model. "
+        f"Inner selection used up to {config.inner_splits} folds restricted to each outer training partition; "
+        "groups were isolated in inner splits whenever a group column was configured. "
         + (
-            "Model-family selection uses primary outer scores: the winning score is NOT an "
-            "independent estimate after model-family selection. Independent validation or a further "
-            "outer layer is required to evaluate that selection procedure."
-            if len(config.selected_models()) > 1
-            else "The model family was prespecified."
+            "Model-family selection and parameter selection were jointly nested: even in no-parameter-search "
+            "mode, all families were compared within inner CV. Each outer test fold evaluated only the "
+            "family/parameters selected without that test fold. Primary metrics evaluate this complete "
+            "selection procedure, whose chosen family can differ by fold; they do NOT evaluate the final "
+            "full-data fitted model. `selection_trace.csv` records these choices. Final family and parameters "
+            "were selected afresh by inner CV on all analyzed data, without using outer scores. "
+            "`model_comparison.csv` is an exploratory per-family leaderboard; selecting its top score and "
+            "reporting that score as independent performance still introduces selection bias. "
+            if family_search else
+            "The model family was prespecified. Parameters were selected within inner CV when multiple "
+            "candidates existed, and reselected on all analyzed rows for the final fit. A single fixed "
+            "candidate requires no inner search. "
         )
-        if len(config.selected_models()) > 1
-        or len(config.selected_validations()) > 1
-        or config.tuning_mode != "none"
-        else "No model or hyperparameter search was performed."
+        + "The first configured validation is primary; others are sensitivity analyses, summarized "
+        "separately in `validation_summary.csv`. Neither sensitivity results nor outer family ranks "
+        "select the final model. Ties follow configured family/candidate order. Candidates with any "
+        "failed inner fold are ineligible; if the inner-selected family fails outer evaluation, the "
+        "procedure fails that validation rather than substituting a family using test outcomes. "
+        "Nested evaluation is internal validation at the outer training sample size, not proof of "
+        "transportability to new populations, centres or times. It also does not protect against "
+        "researchers revising the design after inspecting results."
     )
+    evaluated_subject = "complete model-family/parameter selection procedure" if family_search else f"`{config.model_name}` model"
     stacking_text = (
         "Stacking cross-fits complete base pipelines, including preprocessing, using group-aware "
         "splits when groups are configured. Its internal fold count is up to cv (default 5), "
         "subject to available classes/groups; its split seed is the configured seed. "
         "With passthrough, original features are preprocessed within the meta-estimator fit."
-        if config.model_name == "stacking"
+        if "stacking" in config.selected_models()
         else ""
     )
     return f"""# Methods Summary
@@ -174,7 +181,7 @@ PsyML analyzed {analyzed_rows} rows with {feature_columns} predictor columns for
 
 Missing predictor values used the `{config.missing_strategy}` strategy. Numeric scaling was `{config.scaling}`, and categorical predictors were one-hot encoded. All learned preprocessing steps were fitted within each training partition only.
 
-The `{config.model_name}` model was evaluated using {_validation_description(config)} with random seed {config.random_seed}. Final full-data parameter overrides were `{parameters}`; outer folds may use different parameters recorded in `parameter_search.csv`. Performance was calculated only from held-out predictions using: {metrics}.
+The {evaluated_subject} was evaluated using {_validation_description(config)} with random seed {config.random_seed}. The final full-data family was `{config.model_name}`. Final full-data parameter overrides were `{parameters}`; outer folds may use different families/parameters recorded in `selection_trace.csv` and `parameter_search.csv`. Performance was calculated only from held-out predictions using: {metrics}.
 
 {selection_text}
 

@@ -1,0 +1,23 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API 4.1 Metal - 90.5 - Compatibility - Using Device: Apple - Apple M2 Pro
+
+2026-09-05 13:06:20.180 Godot[55530:17530279] error messaging the mach port for IMKCFRunLoopWakeUpReliable
+2026-09-05 13:08:32.448 Godot[55530:17530279] TSM AdjustCapsLockLEDForKeyTransitionHandling - _ISSetPhysicalKeyboardCapsLockLED Inhibit
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/01-zh_CN-page1.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/02-zh_CN-page2.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/03-zh_CN-page2.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/04-zh_CN-page3.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/05-en-page3.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/06-en-page1.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/07-en-page2.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/08-fr-page2.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/09-fr-page1.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/10-fr-page3.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/11-zh_CN-page4.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/12-en-page4.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/13-fr-page4.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/14-fr-page4.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/15-zh_CN-page1.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/16-zh_CN-page4.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/17-en-page4.png
+PSYML_MANUAL_CAPTURE=/Users/gugu/workspace/00_projects/02_PsyMl_Toolkit/docs/audit-2026-09-05/cua-final/18-fr-page4.png

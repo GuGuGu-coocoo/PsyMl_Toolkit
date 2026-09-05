@@ -1,0 +1,29 @@
+{
+  "data": {
+    "analyzed_rows": 48,
+    "feature_columns": 2,
+    "hash_basis": "source_file_bytes",
+    "input_columns": 5,
+    "input_rows": 48,
+    "sha256": "6cf581f9c5a4b2ce060697d68eb40d97b10285dc9cff1760ba524ff602286af7",
+    "source_kind": "file"
+  },
+  "dependencies": {
+    "matplotlib": "3.11.1",
+    "numpy": "2.5.2",
+    "pandas": "3.0.5",
+    "scikit-learn": "1.9.0"
+  },
+  "generated_at_utc": "2026-09-05T01:16:55.090434+00:00",
+  "operating_system": {
+    "machine": "arm64",
+    "release": "25.6.0",
+    "system": "Darwin"
+  },
+  "psyml_version": "0.1.0",
+  "python": {
+    "implementation": "CPython",
+    "version": "3.12.13"
+  },
+  "schema_version": "1.0"
+}
