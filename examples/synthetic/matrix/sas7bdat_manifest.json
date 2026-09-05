@@ -1,0 +1,37 @@
+{
+  "writer": "ReadStat C API embedded in pyreadstat",
+  "pyreadstat": "1.3.6",
+  "source": "tools/generate_matrix_data.py:make_frame; seed 20260905",
+  "verification": [
+    "pyreadstat.read_sas7bdat",
+    "pandas.read_sas"
+  ],
+  "sas_application_verified": false,
+  "upstream_limitation": "https://github.com/WizardMac/ReadStat#readstat-read-and-write-data-sets-from-sas-stata-and-spss",
+  "files": [
+    {
+      "file": "binary.sas7bdat",
+      "config": "binary_sas7bdat_config.json",
+      "task": "classification",
+      "rows": 48,
+      "bytes": 16384,
+      "sha256": "c0b84f0e083205bae02fe1acb975a4f65446fa0f9b4133d39389b039eff68e44"
+    },
+    {
+      "file": "multiclass.sas7bdat",
+      "config": "multiclass_sas7bdat_config.json",
+      "task": "classification",
+      "rows": 48,
+      "bytes": 16384,
+      "sha256": "e83776d716e599e717957643e0237f170223067230e9acb0e2dd1e9b7b092d41"
+    },
+    {
+      "file": "regression.sas7bdat",
+      "config": "regression_sas7bdat_config.json",
+      "task": "regression",
+      "rows": 48,
+      "bytes": 16384,
+      "sha256": "cfb85f409659a7d0568574b1e2f38d8c7e058d45bd47960529ebd0c792a5fa4f"
+    }
+  ]
+}

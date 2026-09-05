@@ -91,7 +91,7 @@ def test_dispatches_sas7bdat_reader(tmp_path, research_frame, monkeypatch):
 
     loaded = load_dataframe(path)
 
-    assert loaded is research_frame
+    pd.testing.assert_frame_equal(loaded, research_frame)
     assert calls == [path]
 
 

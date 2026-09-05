@@ -27,13 +27,13 @@ def load_dataframe(path: Path | str) -> pd.DataFrame:
         if suffix in {".xlsx", ".xls"}:
             return pd.read_excel(input_path)
         if suffix == ".sav":
-            return pyreadstat.read_sav(input_path)[0]
+            return _statistical_missing_values(pyreadstat.read_sav(input_path)[0])
         if suffix == ".dta":
-            return pyreadstat.read_dta(input_path)[0]
+            return _statistical_missing_values(pyreadstat.read_dta(input_path)[0])
         if suffix == ".sas7bdat":
-            return pyreadstat.read_sas7bdat(input_path)[0]
+            return _statistical_missing_values(pyreadstat.read_sas7bdat(input_path)[0])
         if suffix == ".xpt":
-            return pyreadstat.read_xport(input_path)[0]
+            return _statistical_missing_values(pyreadstat.read_xport(input_path)[0])
         return pd.read_parquet(input_path)
     except ImportError as error:
         raise ImportError(
@@ -41,6 +41,11 @@ def load_dataframe(path: Path | str) -> pd.DataFrame:
         ) from error
     except Exception as error:
         raise ValueError(f"Failed to read '{suffix}' file '{input_path.name}': {error}") from error
+
+
+def _statistical_missing_values(frame: pd.DataFrame) -> pd.DataFrame:
+    """Statistical formats encode missing strings as empty strings, unlike CSV/Excel."""
+    return frame.replace("", float("nan"))
 
 
 def validate_dataset(

@@ -1,10 +1,18 @@
 """Column-aware preprocessing for leakage-safe model pipelines."""
 
+import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler, OneHotEncoder, StandardScaler
+from sklearn.preprocessing import FunctionTransformer, MinMaxScaler, OneHotEncoder, StandardScaler
+
+
+def _categorical_missing_values(features):
+    """Give sklearn a consistent missing sentinel for nullable pandas columns."""
+    if isinstance(features, pd.DataFrame):
+        return features.astype(object).where(pd.notna(features), np.nan)
+    return np.where(pd.isna(features), np.nan, np.asarray(features, dtype=object))
 
 
 def build_preprocessor(
@@ -33,7 +41,11 @@ def build_preprocessor(
             )
         )
     if categorical_columns:
-        categorical_steps = []
+        categorical_steps = [
+            ("normalize_missing", FunctionTransformer(
+                _categorical_missing_values, feature_names_out="one-to-one"
+            )),
+        ]
         if missing_strategy != "drop":
             categorical_steps.append(("impute", SimpleImputer(strategy="most_frequent")))
         categorical_steps.append(

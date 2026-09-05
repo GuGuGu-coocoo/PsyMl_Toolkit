@@ -74,3 +74,13 @@ Developer checks: `tests/test_gui_config.py` and `gui/tests/test_config_import.g
 English: Open data, configuration import/save and folder selection and verify OS-native dialogs, the JSON import filter and cancellation without state changes. Inspect hover, focus, selected numbers/options and disabled contrast in all three UI languages. OS dialogs follow the system’s language. Headless tests cannot replace this visual check.
 
 Français : vérifiez les dialogues natifs pour les données, l’importation/sauvegarde JSON et les dossiers, le filtre JSON et l’annulation sans changement des réglages. Inspectez survol, focus, nombres/options sélectionnés et contraste des contrôles désactivés dans les trois langues. Les dialogues système suivent la langue du système. Les tests sans fenêtre ne remplacent pas cette vérification.
+
+## 小数据参数组合矩阵
+
+[合成数据与覆盖说明](../examples/synthetic/matrix/README.md)提供 27 份、每份 48 行的九格式测试数据及可直接导入 GUI 的配置。快速运行所有模型、推荐参数网格、预处理、验证方法、嵌套调参和失败路径：
+
+```bash
+uv run pytest tests/test_parameter_matrix.py -q --durations=10
+```
+
+它随默认核心测试自动运行，无需额外服务或网络。可添加 `--junitxml=output/parameter-matrix.xml` 保存逐项结果。不要把这组兼容性检查当作模型效能验证，也不要为避免失败而静默改变研究者的参数；对数据与模型不兼容的组合，验证明确报错或保留失败候选记录。

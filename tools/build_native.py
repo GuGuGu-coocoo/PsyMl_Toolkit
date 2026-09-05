@@ -40,11 +40,14 @@ def main():
         shutil.rmtree(destination)
     destination.mkdir(parents=True, exist_ok=True)
     frozen = ROOT / "tmp" / "native" / "frozen"
+    # Keep transitive dependency versions and bundled license files, too
+    # (for example joblib, threadpoolctl, Pillow and python-dateutil).
     command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir",
                "--name", "psyml-core", "--distpath", str(frozen),
                "--workpath", str(ROOT / "tmp/native/build"),
                "--specpath", str(ROOT / "tmp/native"), "--paths", str(ROOT / "src"),
                "--collect-submodules", "psyml", "--collect-data", "psyml",
+               "--recursive-copy-metadata", "psyml-toolkit",
                "--collect-all", "pyreadstat", "--hidden-import", "openpyxl",
                "--hidden-import", "xlrd", "--hidden-import", "pyarrow.parquet"]
     for package in ["psyml-toolkit", "numpy", "pandas", "matplotlib", "scikit-learn",

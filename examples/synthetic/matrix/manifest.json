@@ -1,0 +1,170 @@
+[
+  {
+    "file": "binary.csv",
+    "config": "binary_csv_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 1594
+  },
+  {
+    "file": "binary.tsv",
+    "config": "binary_tsv_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 1594
+  },
+  {
+    "file": "binary.xlsx",
+    "config": "binary_xlsx_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 6487
+  },
+  {
+    "file": "binary.xls",
+    "config": "binary_xls_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 9728
+  },
+  {
+    "file": "binary.sav",
+    "config": "binary_sav_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 3002
+  },
+  {
+    "file": "binary.dta",
+    "config": "binary_dta_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 6379
+  },
+  {
+    "file": "binary.xpt",
+    "config": "binary_xpt_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 3600
+  },
+  {
+    "file": "binary.parquet",
+    "config": "binary_parquet_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 4741
+  },
+  {
+    "file": "multiclass.csv",
+    "config": "multiclass_csv_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 1586
+  },
+  {
+    "file": "multiclass.tsv",
+    "config": "multiclass_tsv_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 1586
+  },
+  {
+    "file": "multiclass.xlsx",
+    "config": "multiclass_xlsx_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 6523
+  },
+  {
+    "file": "multiclass.xls",
+    "config": "multiclass_xls_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 9728
+  },
+  {
+    "file": "multiclass.sav",
+    "config": "multiclass_sav_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 3002
+  },
+  {
+    "file": "multiclass.dta",
+    "config": "multiclass_dta_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 6379
+  },
+  {
+    "file": "multiclass.xpt",
+    "config": "multiclass_xpt_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 3600
+  },
+  {
+    "file": "multiclass.parquet",
+    "config": "multiclass_parquet_config.json",
+    "task": "classification",
+    "rows": 48,
+    "bytes": 4746
+  },
+  {
+    "file": "regression.csv",
+    "config": "regression_csv_config.json",
+    "task": "regression",
+    "rows": 48,
+    "bytes": 1809
+  },
+  {
+    "file": "regression.tsv",
+    "config": "regression_tsv_config.json",
+    "task": "regression",
+    "rows": 48,
+    "bytes": 1809
+  },
+  {
+    "file": "regression.xlsx",
+    "config": "regression_xlsx_config.json",
+    "task": "regression",
+    "rows": 48,
+    "bytes": 6704
+  },
+  {
+    "file": "regression.xls",
+    "config": "regression_xls_config.json",
+    "task": "regression",
+    "rows": 48,
+    "bytes": 9728
+  },
+  {
+    "file": "regression.sav",
+    "config": "regression_sav_config.json",
+    "task": "regression",
+    "rows": 48,
+    "bytes": 3002
+  },
+  {
+    "file": "regression.dta",
+    "config": "regression_dta_config.json",
+    "task": "regression",
+    "rows": 48,
+    "bytes": 6379
+  },
+  {
+    "file": "regression.xpt",
+    "config": "regression_xpt_config.json",
+    "task": "regression",
+    "rows": 48,
+    "bytes": 3600
+  },
+  {
+    "file": "regression.parquet",
+    "config": "regression_parquet_config.json",
+    "task": "regression",
+    "rows": 48,
+    "bytes": 5144
+  }
+]

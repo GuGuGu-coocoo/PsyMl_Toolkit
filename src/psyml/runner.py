@@ -178,7 +178,10 @@ def _build_stacking_pipeline(config, features, target, groups, params) -> Pipeli
         # Stacking concatenates numeric out-of-fold predictions with the original columns.
         # Fit this meta-level preprocessor only when fitting the meta-estimator.
         n_classes = target.nunique()
-        n_outputs = len(model.estimators) * (1 if n_classes == 2 else n_classes)
+        # predict emits one label column even for multiclass targets; auto uses
+        # probabilities/decision scores from the built-in base estimators.
+        outputs_per_estimator = 1 if model.stack_method == "predict" or n_classes == 2 else n_classes
+        n_outputs = len(model.estimators) * outputs_per_estimator
         template = pd.concat(
             [
                 pd.DataFrame(

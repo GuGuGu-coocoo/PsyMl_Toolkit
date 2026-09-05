@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "task": "regression",
+  "input_path": "regression.xls",
+  "target_column": "target",
+  "feature_columns": [
+    "signal",
+    "noise",
+    "category"
+  ],
+  "group_column": "participant",
+  "model_name": "decision_tree",
+  "model_params": {
+    "max_depth": 3
+  },
+  "validation_strategy": "group_k_fold",
+  "n_splits": 2,
+  "inner_splits": 2,
+  "figure_types": [],
+  "output_dir": "results/regression_xls"
+}
