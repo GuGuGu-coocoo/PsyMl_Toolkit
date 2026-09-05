@@ -70,5 +70,30 @@ func _capture_walkthrough() -> void:
 			main.validation_result_option.select(i)
 			main._on_validation_result_selected(i)
 	await _save(main, 3, directory.path_join("05-selected-result.png"))
+	# Use a fresh window so the quick-start images contain no prior-run status.
+	main.queue_free()
+	await process_frame
+	main = load("res://main.tscn").instantiate()
+	root.add_child(main)
+	await process_frame
+	main._on_language_selected(locale)
+	main.output_edit.text = sample_dir.path_join("outputs")
+	# A second sequence shows the exact bundled configuration used by the quick start.
+	var example: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://../examples/synthetic/classification_config.json"))
+	example.input_path = input_path
+	var config_path := sample_dir.path_join("classification_config.json")
+	file = FileAccess.open(config_path, FileAccess.WRITE)
+	file.store_string(JSON.stringify(example, "  "))
+	file.close()
+	assert(main.configuration_io.import_file(config_path), main.status_detail)
+	main.tabs.get_tab_control(0).scroll_vertical = 0
+	await _save(main, 0, directory.path_join("06-import-config.png"))
+	await _save(main, 2, directory.path_join("07-reproduce-run.png"))
+	main._on_run_pressed()
+	deadline = Time.get_ticks_msec() + 45000
+	while main.is_analysis_running and Time.get_ticks_msec() < deadline:
+		await create_timer(.05).timeout
+	assert(main.status_key == "COMPLETED", main.status_detail)
+	await _save(main, 3, directory.path_join("08-reproduced-result.png"))
 	print("PSYML_RELEASE_CAPTURE_OK ", directory)
 	quit(0)

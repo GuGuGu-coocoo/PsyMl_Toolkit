@@ -108,6 +108,7 @@ func _dialog(mode: FileDialog.FileMode, filters: PackedStringArray) -> FileDialo
 	dialog.access = FileDialog.ACCESS_FILESYSTEM
 	dialog.file_mode = mode
 	dialog.filters = filters
+	dialog.use_native_dialog = true
 	main.add_child(dialog)
 	return dialog
 

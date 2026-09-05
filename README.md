@@ -1,6 +1,6 @@
 # PsyML Toolkit
 
-**v0.1.1-rc1 · 测试中 / Testing / En test** · [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) · [Tests / 测试 / Tests](docs/TESTING.md)
+**v0.1.1-rc1** · [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) · [开发者指南](docs/DEVELOPMENT_ZH.md) · [Developer guide](docs/DEVELOPMENT_EN.md) · [Guide de développement](docs/DEVELOPMENT_FR.md)
 
 <p align="center">
   <a href="#chinese">中文</a> · <a href="#english">English</a> · <a href="#french">Français</a>
@@ -19,21 +19,43 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 界面截图由 v0.1.1-rc1 当前三页布局生成，每种语言对应自己的截图。模型名称和配置键保留英文；中文常用指标显示中文加英文名称或缩写。导出的科学图形轴、类别占位标签与底层错误原文使用英文，界面语言切换不会重绘这些 PNG。自动报告提供中文和英文，暂不生成法文报告。
 
-### 测试数据与快速复现入口
+### 打开应用（研究者）
 
-无需在线下载：点击界面顶部 **“测试数据”** 可直接打开内置样例目录。
+GUI 已可用于数据导入、配置复现、分析和结果查看，无需研究者输入命令。**新版独立应用包待重新打包和发布，旧测试包已撤回**；现有 v0.1.0 ZIP 为源码包。以下为新版应用发布后的打开方式。
+
+- **macOS（Apple 芯片）**：完整解压对应应用包，双击 `PsyML Toolkit.app`。
+- **Windows（Intel/AMD x64）**：完整解压对应应用包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
+- 应用内含 Python、分析依赖和界面运行时；使用时无需命令行、额外安装或联网下载。合成数据和快速复现配置在 `examples/synthetic/`，也可从 GUI 的“测试数据”或“导入配置…”打开。
+- 应用尚未使用商业开发者证书签名/公证。首次打开时系统可能显示安全确认；macOS 可在“系统设置 → 隐私与安全性”确认打开，Windows 可核对来源后在安全提示中确认。请遵守所在机构的电脑管理要求。
+
+供研究者转发的独立分享压缩包，将另行制作，包含两平台应用、样例、配置及中文使用说明和术语指南 PDF；不作为 release 附件。
+
+### 测试数据与快速复现（全程 GUI）
+
+内置样例无需在线下载，全部为合成数据，不用于提出真实研究结论。
 
 - [分类数据](examples/synthetic/classification.csv) · [分类配置](examples/synthetic/classification_config.json)
 - [回归数据](examples/synthetic/regression.csv) · [回归配置](examples/synthetic/regression_config.json)
 
-这些是合成测试数据，不用于提出真实研究结论。无需命令行：
+**第一步：导入配置。** 在 **“1 数据与分析设置”** 点击 **“导入配置…”**，在系统文件选择窗口中选中 `classification_config.json` 并打开。默认会定位到内置样例目录；如果选择自己的配置，也使用同一个按钮。**“测试数据”只用于选择数据文件，不会恢复分析设置。**
 
-1. 在“1 数据与分析设置”点击 **导入配置…**，选择 `classification_config.json` 或 `regression_config.json`。应用包内已附带这些文件。
-2. 数据和设置会一起恢复。相对数据路径优先相对于配置所在目录查找，也兼容示例的仓库目录路径；找不到时会弹出窗口，让您重新选择对应的数据文件。缺少配置要求的列会报错，不会自动换目标或变量。
-3. 检查目标、分组、预测变量、模型与验证，在“2 检查与运行”选择本机输出文件夹，然后点击运行。每次自动创建新子文件夹，GUI 不沿用导入配置的 `output_dir`，不覆盖旧结果。
-4. 点击 **保存配置…** 可保存当前设置。数据和配置在同一目录时保存相对数据文件名；否则保留完整路径。分享时同时提供数据和配置，必要时通过弹窗重新关联数据。
+数据和配置会一起恢复，无需另外逐项设置。分类示例应显示目标 `target`、分组 `participant`、预测变量 `score` 和 `category`，模型为 Decision Tree，验证为分组 K 折。导入配置不会自动运行分析。
 
-复现自己的一次分析：导入结果目录的 `config.json`，检查设置后运行。也可导入 `best_parameters_configure.json` 固定最终模型与参数；它不重新搜索，不重现原嵌套搜索的性能估计，其分数不能作为所选参数的独立验证。导入不会自动开始分析。
+![中文：配置导入按钮与恢复后的分类样例](docs/images/zh/06-import-config.png)
+
+**第二步：检查并运行。** 打开 **“2 检查与运行”**，核对配置。在输出文件夹旁点击 **“选择…”**，用系统窗口选择本机保存位置，然后点击 **“运行分析”**。每次自动创建新的结果子文件夹，不用手动修改配置中的输出路径，也不会覆盖旧结果。
+
+![中文：检查导入的配置、选择结果保存位置并运行](docs/images/zh/07-reproduce-run.png)
+
+**第三步：查看结果。** 分析完成后进入 **“3 结果”**，查看指标、预测和图形；点击 **“打开完整结果文件夹”** 查看报告、环境与第三方库版本记录，以及可复现配置。如果选择了“不指定主要验证”，先在结果页选择要查看的验证方法。
+
+![中文：分类复现完成后的结果与文件夹入口](docs/images/zh/08-reproduced-result.png)
+
+**保存与再次复现。** 回到第 1 页点击 **“保存配置…”**，用系统窗口保存当前设置。以后通过 **“导入配置…”** 重新打开它，或打开某次结果目录中的 `config.json`。要试回归任务，导入 `regression_config.json` 后按相同步骤运行。
+
+**找不到数据时。** 配置移到另一台电脑后，旧路径可能失效；软件会弹出系统窗口，请重新选择对应数据文件。无需编辑 JSON 路径或输入命令。数据缺少所需列时会报错；取消选择会保留当前设置。分享时同时提供配置和对应数据。保存的配置仅在数据与配置同目录时使用相对文件名，其他情况保留完整路径。GUI 始终使用本机选择的输出目录。
+
+`best_parameters_configure.json` 也可通过同一按钮导入，但它固定最终模型与参数、不重新搜索；其分数不重现原嵌套搜索的性能估计，也不能作为所选参数的独立验证。
 
 ### 工作流程总览
 
@@ -45,30 +67,6 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 6. **选择参数策略**：使用默认参数、内置快速搜索，或输入自定义候选值。
 7. **检查并运行**：运行前查看完整配置和任务规模；运行时查看当前工作和预计剩余时间，也可终止。
 8. **解释与导出**：先看风险提示和主要验证指标，再看逐折结果、预测、探索性排行榜和复现文件。
-
-### 打开应用（研究者）
-
-当前独立应用是 **v0.1.1-rc1 测试包，尚未上传 Releases**。旧 v0.1.0 的 ZIP 是源码包，不具备以下免安装能力。
-
-- **macOS（Apple 芯片）**：完整解压对应测试包，双击 `PsyML Toolkit.app`。
-- **Windows（Intel/AMD x64）**：完整解压对应测试包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
-- 应用内含 Python、分析依赖和界面运行时；使用时无需命令行、额外安装或联网下载。合成数据和快速复现配置在 `examples/synthetic/`，也可从 GUI 的“测试数据”或“导入配置…”打开。
-- 测试包尚未使用商业开发者证书签名/公证。首次打开时系统可能显示安全确认；macOS 可在“系统设置 → 隐私与安全性”确认打开，Windows 可核对来源后在安全提示中确认。请遵守所在机构的电脑管理要求。
-
-供研究者转发的独立分享压缩包，将在测试通过后另行制作，包含两平台应用、样例、配置及中文使用说明和术语指南 PDF；不作为 release 附件。
-
-<details>
-<summary>开发者：从源码安装与启动</summary>
-
-需要 Python 3.10–3.12、[uv](https://docs.astral.sh/uv/) 和 [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/)。在仓库根目录运行：
-
-```bash
-uv sync --locked --group dev
-uv run python tools/launch_gui.py
-```
-
-macOS 配置好开发环境后，也可双击 [Launch PsyML.command](<Launch PsyML.command>)。若 Godot 不在系统路径中，设置 `PSYML_GODOT` 为完整可执行文件路径。更新源码后重新启动。
-</details>
 
 ### GUI 详细操作
 
@@ -206,23 +204,15 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 除另行标注的第三方内容外，项目代码与文档采用 [Apache License 2.0](LICENSE)，允许使用、修改和分发，并包含明确的专利授权。第三方依赖与数据仍遵循各自许可证。
 
-### 脚本接口与配置范围
-
-```bash
-uv run psyml capabilities
-uv run psyml preview --input examples/synthetic/classification.csv
-uv run psyml schema analysis_config
-```
-
-`capabilities` 列出实际支持的模型、格式、指标与验证；`preview` 默认返回元数据，加 `--include-sample` 才输出样本行；`schema` 可查看 `analysis_config`、`event`、`result` 三种结构。`run --events` 输出 JSONL 进度事件。Python 可使用 `from psyml import ExperimentConfig, run_experiment`，或通过 `psyml.protocol.load_config` 读取 JSON 再交给 `run_experiment`。
+### 配置与功能边界
 
 配置还可设置 `test_size`、`random_seed`、`model_params`、`parameter_grids` 和 `include_data_hash`；以 [配置 schema](src/psyml/schemas/analysis_config.schema.json) 为准。关闭数据指纹不等于匿名化；预测文件仍包含目标值和预测值。GUI 支持导入和保存配置，并提供留出比例、随机种子、数据指纹、固定参数及额外搜索参数设置；高级参数使用界面内的 JSON 字段，无需命令行。当前不支持加载已拟合模型进行新数据预测、调整正类/阈值或时间序列专用验证。
 
-压缩包的两份中文 PDF 位于 `docs/pdf/README_ZH.pdf` 和 `docs/pdf/RESEARCHER_GUIDE_ZH.pdf`，分别对应本节和中文研究者指南。请下载带项目名称的 ZIP 附件；GitHub 自动生成的 Source code 压缩包不含这些额外 PDF。
+两份中文 PDF（使用说明和术语指南）将随单独制作的研究者分享包提供，不作为新版 release 附件。
 
 ### 开发与参与
 
-核心测试位于根目录下一层 `tests/`，GUI 测试在 `gui/tests/`，合成数据及相邻配置在 `examples/synthetic/`。见[测试说明](docs/TESTING.md)。`legacy/` 仅保留历史代码及已替换为合成内容的旧夹具，不是当前使用入口，也不包含在 release 完整包中。
+[开发者指南](docs/DEVELOPMENT_ZH.md)：项目结构、开发环境、核心接口、贡献流程、测试和打包说明。普通 GUI 使用不需要执行开发者测试。
 
 机器学习核心由项目作者编写；Godot GUI 在 AI 协助下开发。作者参与了项目设计、功能与隐私边界制定、代码审查和完整测试，并继续对项目发布与研究使用承担责任。这里所说的 AI 协助不改变作者对已有代码的权属，也不替代人工审查。
 
@@ -241,21 +231,43 @@ It supports classification and regression, 23 task-specific model choices, 9 tab
 
 Screenshots show the current three-page v0.1.1-rc1 UI in the corresponding language. Model names and configuration keys remain English. Exported plot axes, class placeholders and raw backend errors remain English; changing UI language does not redraw PNGs. Automatic reports are provided in Chinese and English, not French.
 
-### Sample data and quick reproduction
+### Open the application (researchers)
 
-After installation, no data download is required for the synthetic examples. **Sample data** opens their directory in the GUI.
+The GUI supports data import, configuration-based reproduction, analysis and result review without terminal commands. **Updated standalone apps await repackaging and release; the previous test builds have been withdrawn.** The existing v0.1.0 ZIP contains source code. The following instructions apply to the updated apps once released.
+
+- **macOS (Apple Silicon)**: fully extract the matching application archive and double-click `PsyML Toolkit.app`.
+- **Windows (Intel/AMD x64)**: fully extract the matching archive and double-click `PsyML Toolkit.exe`. Keep the adjacent `core` folder; do not move the EXE alone.
+- Python, analysis dependencies and the GUI runtime are bundled. No terminal, additional installation or internet download is required to use the app. Synthetic examples and reproduction configurations are in `examples/synthetic/`, also accessible through **Sample data** and **Import configuration…**.
+- The apps do not yet have commercial developer signing/notarization. Your OS may request confirmation on first launch: macOS offers confirmation under **System Settings → Privacy & Security**; Windows may show a security prompt. Verify the source and follow your institution’s device policy.
+
+A separate researcher-sharing archive will contain both apps, examples, configurations and the Chinese usage and terminology PDFs. It will not be a release attachment.
+
+### Sample data and quick reproduction (GUI only)
+
+The synthetic examples are included; no online data download is needed. They demonstrate the workflow and support no real-world research conclusions.
 
 - [Classification data](examples/synthetic/classification.csv) · [Configuration](examples/synthetic/classification_config.json)
 - [Regression data](examples/synthetic/regression.csv) · [Configuration](examples/synthetic/regression_config.json)
 
-No terminal is needed:
+**Step 1 — Import a configuration.** On **1 Data & analysis setup**, click **Import configuration…**, select `classification_config.json` in the system file dialog and open it. The dialog starts in the bundled examples directory; use the same button for your own configuration. **Sample data selects data only; it does not restore analysis settings.**
 
-1. On **1 Data and analysis settings**, click **Import configuration…** and select `classification_config.json` or `regression_config.json`, included with the application.
-2. Data and settings are restored together. Relative data paths are checked beside the configuration first; repository-style example paths are also supported. If data cannot be found, select the matching file in the dialog. Missing required columns produce an error instead of changing variable roles.
-3. Review variables, models and validation. On **2 Review and run**, choose a local output folder and run. Each run creates a new subfolder; the GUI replaces imported `output_dir` with this local destination and never overwrites previous results.
-4. **Save configuration…** saves the current settings. Data in the same directory use a relative filename; other data retain their full path. Share data together with the configuration and use the relink dialog when necessary.
+Data and settings are restored together. The classification example uses target `target`, group `participant`, predictors `score` and `category`, Decision Tree and Group K Fold. Importing does not start the analysis automatically.
 
-To reproduce an analysis, import its `config.json`, review and run. Importing `best_parameters_configure.json` instead fixes the final model and parameters without searching. It does not reproduce the original nested-search estimate or independently validate parameters chosen on these data. Importing never starts an analysis automatically. Synthetic examples support no real-world research conclusions.
+![English: configuration import and restored classification example](docs/images/en/06-import-config.png)
+
+**Step 2 — Review and run.** Open **2 Review & run** and check the configuration. Click **Choose…** beside the output folder, select a local destination in the system dialog, then click **Run analysis**. Each run creates a fresh subfolder; no JSON output-path editing is needed and previous results are not overwritten.
+
+![English: review the imported configuration, choose an output folder and run](docs/images/en/07-reproduce-run.png)
+
+**Step 3 — Inspect results.** After completion, open **3 Results** for metrics, predictions and figures. **Open complete result folder** gives access to reports, recorded environment/library versions and reproduction configurations. With no primary validation, first select the validation result to inspect.
+
+![English: completed classification reproduction and result-folder access](docs/images/en/08-reproduced-result.png)
+
+**Save and reproduce again.** On page 1, click **Save configuration…** and save the current settings in the system dialog. Later, use **Import configuration…** to reopen that file or a previous result’s `config.json`. Import `regression_config.json` to try regression using the same steps.
+
+**If data cannot be found.** Paths may become invalid on another computer. Select the corresponding data file when the system dialog appears; no JSON path editing or terminal commands are needed. Missing required columns produce an error; cancelling preserves the current settings. Share data and configuration together. Saved data paths use a relative filename only when data and configuration share a folder; otherwise the full path is retained. GUI output always uses the chosen local destination.
+
+You can also import `best_parameters_configure.json` using the same button. It fixes the final model and parameters without searching; it neither reproduces the original nested-search estimate nor provides independent validation of the selected parameters.
 
 ### Workflow at a glance
 
@@ -267,30 +279,6 @@ To reproduce an analysis, import its `config.json`, review and run. Importing `b
 6. Use default parameters, the bounded quick search, or a custom value grid.
 7. Review the design and workload, run it, monitor progress and stop it if necessary.
 8. Interpret within-validation rankings, fold variability, predictions, warnings and exported evidence.
-
-### Open the application (researchers)
-
-The standalone applications are **v0.1.1-rc1 test builds, not yet uploaded to Releases**. The old v0.1.0 ZIP is a source package and does not offer the bundled runtime described here.
-
-- **macOS (Apple Silicon)**: fully extract the matching test archive and double-click `PsyML Toolkit.app`.
-- **Windows (Intel/AMD x64)**: fully extract the matching archive and double-click `PsyML Toolkit.exe`. Keep the adjacent `core` folder; do not move the EXE alone.
-- Python, analysis dependencies and the GUI runtime are bundled. No terminal, additional installation or internet download is required to use the app. Synthetic examples and reproduction configurations are in `examples/synthetic/`, also accessible through **Sample data** and **Import configuration…**.
-- Test builds do not yet have commercial developer signing/notarization. Your OS may request confirmation on first launch: macOS offers confirmation under **System Settings → Privacy & Security**; Windows may show a security prompt. Verify the source and follow your institution’s device policy.
-
-After testing, a separate researcher-sharing archive will contain both apps, examples, configurations and the Chinese usage and terminology PDFs. It will not be a release attachment.
-
-<details>
-<summary>Developers: install and launch from source</summary>
-
-Install Python 3.10–3.12, [uv](https://docs.astral.sh/uv/) and [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/), then run from the repository root:
-
-```bash
-uv sync --locked --group dev
-uv run python tools/launch_gui.py
-```
-
-On macOS, after development setup, you can also double-click [Launch PsyML.command](<Launch PsyML.command>). If Godot is not on `PATH`, set `PSYML_GODOT` to its full path. Restart after source updates.
-</details>
 
 ### Detailed GUI guide
 
@@ -393,23 +381,15 @@ Screenshots and test fixtures use random synthetic data. Public examples use UCI
 
 Except for separately identified third-party material, the project is licensed under the [Apache License 2.0](LICENSE), permitting use, modification and distribution and including an express patent grant. Dependencies and datasets retain their own licenses.
 
-### Script interfaces and configuration scope
-
-```bash
-uv run psyml capabilities
-uv run psyml preview --input examples/synthetic/classification.csv
-uv run psyml schema analysis_config
-```
-
-`capabilities` lists supported models, formats, metrics and validations. `preview` returns metadata by default; `--include-sample` also returns sample rows. `schema` accepts `analysis_config`, `event` or `result`. `run --events` emits JSONL progress. The Python API exposes `ExperimentConfig` and `run_experiment` from `psyml`; `psyml.protocol.load_config` loads JSON for `run_experiment`.
+### Configuration and feature boundaries
 
 Configurations also control `test_size`, `random_seed`, `model_params`, `parameter_grids` and `include_data_hash`; consult the [configuration schema](src/psyml/schemas/analysis_config.schema.json). Disabling fingerprints does not anonymize outputs: predictions still contain outcomes and predictions. The GUI imports and saves JSON configurations and exposes test fraction, seed, data fingerprint, fixed parameters and additional search grids through its forms and advanced JSON fields. No terminal is needed. It does not offer saved-model inference, positive-class/threshold selector or dedicated time-series validation.
 
-The named ZIP asset includes `docs/pdf/README_ZH.pdf` and `docs/pdf/RESEARCHER_GUIDE_ZH.pdf`, matching the Chinese README and guide. GitHub's automatically generated Source code archives do not contain these extra PDFs.
+The two Chinese PDFs (usage instructions and terminology guide) will accompany the separate researcher-sharing archive, not the updated release attachments.
 
 ### Development and participation
 
-Core tests are one level below the root in `tests/`; GUI tests are in `gui/tests/`; synthetic data and adjacent configurations are in `examples/synthetic/`. See [testing instructions](docs/TESTING.md). `legacy/` is an archive of old code and fixtures replaced with synthetic contents, not the current entry point; it is omitted from the complete release archive.
+[Developer guide](docs/DEVELOPMENT_EN.md): architecture, setup, core interfaces, contribution workflow, testing and packaging. GUI users do not need to run developer tests.
 
 The machine-learning core was written by the project author; the Godot GUI was developed with AI assistance. The author participated in project design, definition of functional and privacy boundaries, code review and complete testing, and remains responsible for the project’s release and research use. AI assistance does not change ownership of the existing code or replace human review.
 
@@ -428,21 +408,43 @@ Il prend en charge la classification et la régression, 23 choix de modèles sel
 
 Les captures montrent les trois pages actuelles de v0.1.1-rc1 dans la langue correspondante. Les noms de modèles et les clés restent en anglais. Axes des figures exportées, libellés Class et erreurs brutes restent en anglais ; changer la langue ne redessine pas les PNG. Les rapports automatiques existent en chinois et anglais, pas encore en français.
 
-### Données de test et reproduction rapide
+### Ouvrir l’application (chercheurs)
 
-Après installation, les exemples synthétiques ne nécessitent aucun téléchargement de données. **Données de test** ouvre leur dossier dans l’interface.
+L’interface permet l’importation des données, la reproduction par configuration, l’analyse et la consultation des résultats sans terminal. **Les applications autonomes mises à jour restent à empaqueter et à publier ; les anciennes versions de test ont été retirées.** Le ZIP v0.1.0 existant contient les sources. Les instructions suivantes concernent les nouvelles applications après publication.
+
+- **macOS (puce Apple)** : décompressez entièrement l’archive correspondante puis double-cliquez sur `PsyML Toolkit.app`.
+- **Windows (Intel/AMD x64)** : décompressez entièrement l’archive puis double-cliquez sur `PsyML Toolkit.exe`. Conservez le dossier `core` adjacent ; ne déplacez pas seulement l’EXE.
+- Python, dépendances scientifiques et moteur de l’interface sont intégrés. Aucun terminal, installation supplémentaire ou téléchargement Internet n’est requis. Les exemples et configurations sont dans `examples/synthetic/`, accessibles aussi par **Données de test** et **Importer une configuration…**.
+- Les applications n’ont pas encore de signature commerciale ni de notarisation. Le système peut demander une confirmation au premier lancement : **Réglages Système → Confidentialité et sécurité** sous macOS, ou une alerte de sécurité sous Windows. Vérifiez la provenance et respectez la politique informatique de votre établissement.
+
+Une archive distincte destinée aux chercheurs contiendra les deux applications, exemples, configurations et PDF chinois d’utilisation et de terminologie. Elle ne sera pas jointe à la release.
+
+### Données de test et reproduction rapide (interface uniquement)
+
+Les exemples synthétiques sont fournis, sans téléchargement de données. Ils illustrent le parcours et ne permettent pas de conclusions de recherche réelles.
 
 - [Données de classification](examples/synthetic/classification.csv) · [Configuration](examples/synthetic/classification_config.json)
 - [Données de régression](examples/synthetic/regression.csv) · [Configuration](examples/synthetic/regression_config.json)
 
-Aucun terminal nécessaire :
+**Étape 1 — Importer une configuration.** Dans **1 Données et analyse**, cliquez sur **Importer une configuration…**, sélectionnez `classification_config.json` dans le dialogue système puis ouvrez-le. Le dialogue commence dans le dossier des exemples fournis ; le même bouton ouvre vos propres configurations. **Données de test sélectionne seulement un fichier de données, sans restaurer les réglages d’analyse.**
 
-1. Dans **1 Données et réglages**, cliquez sur **Importer une configuration…** et choisissez `classification_config.json` ou `regression_config.json`, fournis avec l’application.
-2. Données et réglages sont restaurés ensemble. Les chemins relatifs sont recherchés d’abord près du JSON ; les chemins des exemples du dépôt sont également reconnus. Si les données sont introuvables, sélectionnez le fichier correspondant dans la boîte de dialogue. Une colonne requise manquante produit une erreur sans modifier les rôles des variables.
-3. Vérifiez variables, modèles et validation. Dans **2 Vérifier et lancer**, choisissez le dossier local de sortie puis lancez. Chaque exécution crée un sous-dossier ; l’interface remplace le `output_dir` importé par cette destination locale, sans écraser les anciens résultats.
-4. **Enregistrer la configuration…** sauvegarde les réglages. Si les données sont dans le même dossier, leur nom est relatif ; sinon leur chemin complet est conservé. Partagez données et JSON ensemble et réassociez le fichier dans la boîte de dialogue si nécessaire.
+Données et réglages sont restaurés ensemble. L’exemple de classification utilise la cible `target`, le groupe `participant`, les prédicteurs `score` et `category`, Decision Tree et K plis par groupes. L’importation ne lance pas automatiquement l’analyse.
 
-Pour reproduire une analyse, importez son `config.json`, vérifiez et lancez. `best_parameters_configure.json` fixe plutôt le modèle et les paramètres finaux, sans recherche. Il ne reproduit pas l’estimation imbriquée originale et ne valide pas indépendamment les paramètres choisis sur ces données. L’importation ne lance jamais l’analyse automatiquement. Les exemples synthétiques ne permettent aucune conclusion de recherche réelle.
+![Français : importation et réglages restaurés de l’exemple de classification](docs/images/fr/06-import-config.png)
+
+**Étape 2 — Vérifier et lancer.** Ouvrez **2 Vérification** et examinez la configuration. Cliquez sur **Choisir…** près du dossier de sortie, sélectionnez une destination locale dans le dialogue système, puis cliquez sur **Exécuter l’analyse**. Chaque exécution crée un nouveau sous-dossier ; aucun chemin JSON à modifier et aucun ancien résultat écrasé.
+
+![Français : vérifier la configuration, choisir la destination et lancer](docs/images/fr/07-reproduce-run.png)
+
+**Étape 3 — Consulter les résultats.** Après exécution, ouvrez **3 Résultats** pour les métriques, prédictions et figures. **Ouvrir le dossier complet des résultats** donne accès aux rapports, aux versions enregistrées de l’environnement et des bibliothèques, et aux configurations de reproduction. Sans validation principale, sélectionnez d’abord la validation à consulter.
+
+![Français : résultats de classification et accès au dossier complet](docs/images/fr/08-reproduced-result.png)
+
+**Enregistrer et reproduire.** À la page 1, cliquez sur **Enregistrer la configuration…** puis sauvegardez les réglages dans le dialogue système. Réouvrez ce fichier, ou le `config.json` d’un ancien résultat, avec **Importer une configuration…**. Pour essayer la régression, importez `regression_config.json` puis suivez les mêmes étapes.
+
+**Si les données sont introuvables.** Sur un autre ordinateur, les chemins peuvent devenir invalides. Sélectionnez les données correspondantes dans le dialogue système, sans modifier les chemins JSON ni saisir de commande. Une colonne requise manquante produit une erreur ; annuler conserve les réglages actuels. Partagez données et configuration ensemble. Le chemin sauvegardé est relatif uniquement si les deux fichiers partagent un dossier ; sinon le chemin complet est conservé. Les sorties GUI utilisent toujours la destination locale choisie.
+
+Le même bouton accepte `best_parameters_configure.json`. Ce fichier fixe le modèle et les paramètres finaux sans recherche ; il ne reproduit pas l’estimation imbriquée originale et ne constitue pas une validation indépendante des paramètres sélectionnés.
 
 ### Vue d’ensemble du parcours
 
@@ -454,30 +456,6 @@ Pour reproduire une analyse, importez son `config.json`, vérifiez et lancez. `b
 6. Utiliser les paramètres par défaut, la recherche rapide bornée ou une grille personnalisée.
 7. Vérifier la conception et la charge, lancer, suivre la progression et arrêter si nécessaire.
 8. Interpréter les classements par validation, la variabilité entre plis, les prédictions et les avertissements.
-
-### Ouvrir l’application (chercheurs)
-
-Les applications autonomes sont des **versions de test v0.1.1-rc1, pas encore publiées dans Releases**. L’ancien ZIP v0.1.0 contient les sources et ne fournit pas l’environnement intégré décrit ici.
-
-- **macOS (puce Apple)** : décompressez entièrement l’archive correspondante puis double-cliquez sur `PsyML Toolkit.app`.
-- **Windows (Intel/AMD x64)** : décompressez entièrement l’archive puis double-cliquez sur `PsyML Toolkit.exe`. Conservez le dossier `core` adjacent ; ne déplacez pas seulement l’EXE.
-- Python, dépendances scientifiques et moteur de l’interface sont intégrés. Aucun terminal, installation supplémentaire ou téléchargement Internet n’est requis. Les exemples et configurations sont dans `examples/synthetic/`, accessibles aussi par **Données de test** et **Importer une configuration…**.
-- Les versions de test n’ont pas encore de signature commerciale ni de notarisation. Le système peut demander une confirmation au premier lancement : **Réglages Système → Confidentialité et sécurité** sous macOS, ou une alerte de sécurité sous Windows. Vérifiez la provenance et respectez la politique informatique de votre établissement.
-
-Après validation, une archive distincte destinée aux chercheurs contiendra les deux applications, exemples, configurations et PDF chinois d’utilisation et de terminologie. Elle ne sera pas jointe à la release.
-
-<details>
-<summary>Développeurs : installation depuis les sources</summary>
-
-Installez Python 3.10–3.12, [uv](https://docs.astral.sh/uv/) et [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/), puis lancez depuis la racine du dépôt :
-
-```bash
-uv sync --locked --group dev
-uv run python tools/launch_gui.py
-```
-
-Sous macOS, une fois l’environnement de développement installé, vous pouvez aussi double-cliquer sur [Launch PsyML.command](<Launch PsyML.command>). Si Godot est absent du `PATH`, définissez son chemin complet avec `PSYML_GODOT`. Redémarrez après mise à jour des sources.
-</details>
 
 ### Guide détaillé de l’interface
 
@@ -580,23 +558,15 @@ Les captures et jeux de test sont synthétiques et aléatoires. Les exemples pub
 
 Sauf éléments tiers signalés séparément, le projet est sous [licence Apache 2.0](LICENSE), qui autorise l’utilisation, la modification et la distribution et inclut une concession explicite de brevets. Les dépendances et données conservent leurs propres licences.
 
-### Interfaces de script et configuration
-
-```bash
-uv run psyml capabilities
-uv run psyml preview --input examples/synthetic/classification.csv
-uv run psyml schema analysis_config
-```
-
-`capabilities` liste modèles, formats, métriques et validations. `preview` renvoie les métadonnées ; `--include-sample` ajoute les lignes d’aperçu. `schema` accepte `analysis_config`, `event` ou `result`. `run --events` émet une progression JSONL. L’API Python expose `ExperimentConfig` et `run_experiment` depuis `psyml` ; `psyml.protocol.load_config` charge un JSON pour `run_experiment`.
+### Configuration et limites fonctionnelles
 
 Les configurations contrôlent aussi `test_size`, `random_seed`, `model_params`, `parameter_grids` et `include_data_hash` ; voir le [schéma](src/psyml/schemas/analysis_config.schema.json). Désactiver l’empreinte n’anonymise pas les sorties : les prédictions contiennent encore valeurs observées et prédites. L’interface importe et enregistre les JSON et permet de régler proportion de test, graine, empreinte, paramètres fixes et grilles supplémentaires dans ses champs, dont des champs JSON avancés. Aucun terminal requis. Elle ne propose pas d’inférence par modèle sauvegardé, de choix de classe positive/seuil ou de validation temporelle dédiée.
 
-L’archive ZIP nommée contient `docs/pdf/README_ZH.pdf` et `docs/pdf/RESEARCHER_GUIDE_ZH.pdf`, correspondant au README et au guide chinois. Les archives Source code automatiques de GitHub ne contiennent pas ces PDF supplémentaires.
+Les deux PDF chinois (utilisation et terminologie) accompagneront l’archive de partage destinée aux chercheurs, séparément des pièces jointes de la nouvelle release.
 
 ### Développement et participation
 
-Les tests du noyau sont dans `tests/`, ceux de l’interface dans `gui/tests/`, les données synthétiques et configurations voisines dans `examples/synthetic/`. Voir les [instructions de test](docs/TESTING.md). `legacy/` conserve du code ancien et des jeux remplacés par des données synthétiques ; ce n’est pas le point d’entrée actuel et il est exclu de l’archive complète.
+[Guide de développement](docs/DEVELOPMENT_FR.md) : architecture, environnement, interfaces, contributions, tests et empaquetage. Les utilisateurs de l’interface n’ont pas à exécuter les tests de développement.
 
 Le noyau d’apprentissage automatique a été écrit par l’auteur du projet ; l’interface Godot a été développée avec l’aide de l’IA. L’auteur a participé à la conception du projet, à la définition des limites fonctionnelles et de confidentialité, à la revue du code et aux tests complets, et reste responsable de la publication du projet et de son usage en recherche. L’aide de l’IA ne modifie pas la propriété du code existant et ne remplace pas la revue humaine.
 

@@ -188,6 +188,7 @@ func _build_theme() -> void:
 	app_theme.set_color("font_selected_color", "TabContainer", TEXT)
 	app_theme.set_color("font_unselected_color", "TabContainer", MUTED)
 	app_theme.set_color("font_hovered_color", "TabContainer", TEXT)
+	preload("res://scripts/light_theme.gd").apply_to(app_theme, TEXT, MUTED, SURFACE, BORDER, ACCENT)
 	theme = app_theme
 
 
