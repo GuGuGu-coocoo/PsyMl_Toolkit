@@ -24,7 +24,9 @@ def main():
     parser.add_argument("--reuse-core", action="store_true",
                         help="Local GUI-only rebuild using the existing frozen runtime")
     args = parser.parse_args()
-    args.godot = shutil.which(args.godot) or args.godot
+    candidate = os.environ.get("GODOT", args.godot) if args.godot == "godot" else args.godot
+    args.godot = str(Path(shutil.which(candidate) or candidate).resolve())
+    run(args.godot, "--version")
     mac = sys.platform == "darwin"
     if not mac and sys.platform != "win32":
         raise SystemExit("Build on Apple Silicon macOS or Windows x64")
