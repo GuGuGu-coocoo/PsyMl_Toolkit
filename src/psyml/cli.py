@@ -19,7 +19,7 @@ from psyml.protocol import (
     schema_text,
 )
 
-COMMANDS = {"capabilities", "preview", "run", "schema"}
+COMMANDS = {"capabilities", "preview", "run", "schema", "import-config"}
 
 
 class CancellationRequested(BaseException):
@@ -83,6 +83,10 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the stable command-oriented CLI parser."""
     parser = argparse.ArgumentParser(description="PsyML local analysis interface.")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    import_parser = commands.add_parser("import-config", help="Validate a desktop configuration")
+    import_parser.add_argument("--config", required=True, type=Path)
+    import_parser.add_argument("--input", type=Path)
 
     run_parser = commands.add_parser("run", help="Run a versioned analysis configuration")
     run_parser.add_argument("--config", required=True, type=Path)
@@ -197,7 +201,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "run":
         return _run_versioned(args)
     try:
-        if args.command == "capabilities":
+        if args.command == "import-config":
+            from psyml.gui_config import import_configuration
+
+            _print_json(import_configuration(args.config, args.input))
+        elif args.command == "capabilities":
             _print_json(capabilities_payload())
         elif args.command == "preview":
             _print_json(

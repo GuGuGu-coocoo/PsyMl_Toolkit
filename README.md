@@ -1,6 +1,6 @@
 # PsyML Toolkit
 
-**v0.1.0** · [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) · [Tests / 测试 / Tests](docs/TESTING.md)
+**v0.1.1-rc1 · 测试中 / Testing / En test** · [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) · [Tests / 测试 / Tests](docs/TESTING.md)
 
 <p align="center">
   <a href="#chinese">中文</a> · <a href="#english">English</a> · <a href="#french">Français</a>
@@ -17,7 +17,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 当前支持分类与回归、23 个按任务划分的模型选项、9 种表格格式、6 种验证策略、多模型与多验证比较、训练集内部参数搜索、动态剩余时间、长任务终止，以及预测、图形、Methods 说明和复现报告导出。界面支持中文、英文和法文。
 
 
-界面截图由 v0.1.0 当前三页布局生成，每种语言对应自己的截图。模型名称和配置键保留英文；中文常用指标显示中文加英文名称或缩写。导出的科学图形轴、类别占位标签与底层错误原文使用英文，界面语言切换不会重绘这些 PNG。自动报告提供中文和英文，暂不生成法文报告。
+界面截图由 v0.1.1-rc1 当前三页布局生成，每种语言对应自己的截图。模型名称和配置键保留英文；中文常用指标显示中文加英文名称或缩写。导出的科学图形轴、类别占位标签与底层错误原文使用英文，界面语言切换不会重绘这些 PNG。自动报告提供中文和英文，暂不生成法文报告。
 
 ### 测试数据与快速复现入口
 
@@ -26,18 +26,14 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 - [分类数据](examples/synthetic/classification.csv) · [分类配置](examples/synthetic/classification_config.json)
 - [回归数据](examples/synthetic/regression.csv) · [回归配置](examples/synthetic/regression_config.json)
 
-这些是合成测试数据，不用于提出真实研究结论。使用配置复现时，在仓库根目录运行：
+这些是合成测试数据，不用于提出真实研究结论。无需命令行：
 
-```bash
-uv run psyml run --config examples/synthetic/classification_config.json
-uv run psyml run --config examples/synthetic/regression_config.json
-```
+1. 在“1 数据与分析设置”点击 **导入配置…**，选择 `classification_config.json` 或 `regression_config.json`。应用包内已附带这些文件。
+2. 数据和设置会一起恢复。相对数据路径优先相对于配置所在目录查找，也兼容示例的仓库目录路径；找不到时会弹出窗口，让您重新选择对应的数据文件。缺少配置要求的列会报错，不会自动换目标或变量。
+3. 检查目标、分组、预测变量、模型与验证，在“2 检查与运行”选择本机输出文件夹，然后点击运行。每次自动创建新子文件夹，GUI 不沿用导入配置的 `output_dir`，不覆盖旧结果。
+4. 点击 **保存配置…** 可保存当前设置。数据和配置在同一目录时保存相对数据文件名；否则保留完整路径。分享时同时提供数据和配置，必要时通过弹窗重新关联数据。
 
-两份配置分别写入 `results/example_classification/` 和 `results/example_regression/`。再次运行前，将配置中的 `output_dir` 改成新空目录。配置里的相对数据路径基于运行命令时的目录；移到其他电脑时可改为绝对路径。图形界面会自动建立每次运行的子目录；命令行按配置中的确切目录写入，拒绝覆盖已有结果。
-
-配置文件通过命令行运行；当前 GUI 没有导入 JSON 配置的按钮。
-
-复现自己的一次分析：复制结果目录中的 `config.json`，核对 `input_path`，修改 `output_dir`，运行 `uv run psyml run --config 配置文件路径`。若仅想固定最终最佳模型及参数运行，改用 `best_parameters_configure.json`；默认写入原结果目录下 `best_parameters_run/`，重复运行也需换空目录。该文件不重新搜索，也不重现原嵌套搜索的性能估计；由于参数已使用这些数据选择，其新分数不能作为独立验证。
+复现自己的一次分析：导入结果目录的 `config.json`，检查设置后运行。也可导入 `best_parameters_configure.json` 固定最终模型与参数；它不重新搜索，不重现原嵌套搜索的性能估计，其分数不能作为所选参数的独立验证。导入不会自动开始分析。
 
 ### 工作流程总览
 
@@ -50,11 +46,19 @@ uv run psyml run --config examples/synthetic/regression_config.json
 7. **检查并运行**：运行前查看完整配置和任务规模；运行时查看当前工作和预计剩余时间，也可终止。
 8. **解释与导出**：先看风险提示和主要验证指标，再看逐折结果、预测、探索性排行榜和复现文件。
 
-### 安装与启动
+### 打开应用（研究者）
 
-macOS 完成安装后，在 Finder 中双击仓库根目录的 [Launch PsyML.command](<Launch PsyML.command>) 即可打开软件。更新代码后请关闭旧窗口，再启动一次。首次使用仍需完成下面的安装步骤。
+当前独立应用是 **v0.1.1-rc1 测试包，尚未上传 Releases**。旧 v0.1.0 的 ZIP 是源码包，不具备以下免安装能力。
 
-下载 release 的 `PsyML-Toolkit-v0.1.0.zip` 并完整解压，或克隆仓库。压缩包是源码发行包，包含 GUI、测试、配置和两份中文 PDF；不包含 Python/Godot 安装程序。终端进入解压后的项目根目录（可看到 `pyproject.toml`），再执行下列命令。首次安装需要联网，依赖安装完成后，本地分析、图形和报告可离线生成。仅使用命令行时不需要 Godot。
+- **macOS（Apple 芯片）**：完整解压对应测试包，双击 `PsyML Toolkit.app`。
+- **Windows（Intel/AMD x64）**：完整解压对应测试包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
+- 应用内含 Python、分析依赖和界面运行时；使用时无需命令行、额外安装或联网下载。合成数据和快速复现配置在 `examples/synthetic/`，也可从 GUI 的“测试数据”或“导入配置…”打开。
+- 测试包尚未使用商业开发者证书签名/公证。首次打开时系统可能显示安全确认；macOS 可在“系统设置 → 隐私与安全性”确认打开，Windows 可核对来源后在安全提示中确认。请遵守所在机构的电脑管理要求。
+
+供研究者转发的独立分享压缩包，将在测试通过后另行制作，包含两平台应用、样例、配置及中文使用说明和术语指南 PDF；不作为 release 附件。
+
+<details>
+<summary>开发者：从源码安装与启动</summary>
 
 需要 Python 3.10–3.12、[uv](https://docs.astral.sh/uv/) 和 [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/)。在仓库根目录运行：
 
@@ -63,7 +67,8 @@ uv sync --locked --group dev
 uv run python tools/launch_gui.py
 ```
 
-也可使用命令行：`uv run psyml --help`。若 Godot 不在系统路径中，请将 `PSYML_GODOT` 设为 Godot 可执行文件的完整路径。
+macOS 配置好开发环境后，也可双击 [Launch PsyML.command](<Launch PsyML.command>)。若 Godot 不在系统路径中，设置 `PSYML_GODOT` 为完整可执行文件路径。更新源码后重新启动。
+</details>
 
 ### GUI 详细操作
 
@@ -211,7 +216,7 @@ uv run psyml schema analysis_config
 
 `capabilities` 列出实际支持的模型、格式、指标与验证；`preview` 默认返回元数据，加 `--include-sample` 才输出样本行；`schema` 可查看 `analysis_config`、`event`、`result` 三种结构。`run --events` 输出 JSONL 进度事件。Python 可使用 `from psyml import ExperimentConfig, run_experiment`，或通过 `psyml.protocol.load_config` 读取 JSON 再交给 `run_experiment`。
 
-配置还可设置 `test_size`、`random_seed`、`model_params`、`parameter_grids` 和 `include_data_hash`；以 [配置 schema](src/psyml/schemas/analysis_config.schema.json) 为准。关闭数据指纹不等于匿名化；预测文件仍包含目标值和预测值。当前 GUI 不支持导入配置、加载已拟合模型进行新数据预测、调整正类/阈值或时间序列专用验证。
+配置还可设置 `test_size`、`random_seed`、`model_params`、`parameter_grids` 和 `include_data_hash`；以 [配置 schema](src/psyml/schemas/analysis_config.schema.json) 为准。关闭数据指纹不等于匿名化；预测文件仍包含目标值和预测值。GUI 支持导入和保存配置，并提供留出比例、随机种子、数据指纹、固定参数及额外搜索参数设置；高级参数使用界面内的 JSON 字段，无需命令行。当前不支持加载已拟合模型进行新数据预测、调整正类/阈值或时间序列专用验证。
 
 压缩包的两份中文 PDF 位于 `docs/pdf/README_ZH.pdf` 和 `docs/pdf/RESEARCHER_GUIDE_ZH.pdf`，分别对应本节和中文研究者指南。请下载带项目名称的 ZIP 附件；GitHub 自动生成的 Source code 压缩包不含这些额外 PDF。
 
@@ -234,7 +239,7 @@ PsyML Toolkit is a local machine-learning tool for researchers. It joins data re
 It supports classification and regression, 23 task-specific model choices, 9 tabular formats, 6 validation strategies, multi-model and multi-validation studies, training-only parameter search, dynamic time estimates, cancellation of long jobs, predictions, figures, Methods text and reproducibility reports. The GUI is available in Chinese, English and French.
 
 
-Screenshots show the current three-page v0.1.0 UI in the corresponding language. Model names and configuration keys remain English. Exported plot axes, class placeholders and raw backend errors remain English; changing UI language does not redraw PNGs. Automatic reports are provided in Chinese and English, not French.
+Screenshots show the current three-page v0.1.1-rc1 UI in the corresponding language. Model names and configuration keys remain English. Exported plot axes, class placeholders and raw backend errors remain English; changing UI language does not redraw PNGs. Automatic reports are provided in Chinese and English, not French.
 
 ### Sample data and quick reproduction
 
@@ -243,16 +248,14 @@ After installation, no data download is required for the synthetic examples. **S
 - [Classification data](examples/synthetic/classification.csv) · [Configuration](examples/synthetic/classification_config.json)
 - [Regression data](examples/synthetic/regression.csv) · [Configuration](examples/synthetic/regression_config.json)
 
-From the project root:
+No terminal is needed:
 
-```bash
-uv run psyml run --config examples/synthetic/classification_config.json
-uv run psyml run --config examples/synthetic/regression_config.json
-```
+1. On **1 Data and analysis settings**, click **Import configuration…** and select `classification_config.json` or `regression_config.json`, included with the application.
+2. Data and settings are restored together. Relative data paths are checked beside the configuration first; repository-style example paths are also supported. If data cannot be found, select the matching file in the dialog. Missing required columns produce an error instead of changing variable roles.
+3. Review variables, models and validation. On **2 Review and run**, choose a local output folder and run. Each run creates a new subfolder; the GUI replaces imported `output_dir` with this local destination and never overwrites previous results.
+4. **Save configuration…** saves the current settings. Data in the same directory use a relative filename; other data retain their full path. Share data together with the configuration and use the relink dialog when necessary.
 
-Outputs go to `results/example_classification/` and `results/example_regression/`. Before repeating, edit `output_dir` to a new empty directory. Relative paths resolve from the command's working directory, not the JSON file's location. Synthetic data demonstrate the workflow and support no real-world research conclusions.
-
-To reproduce your analysis, copy its `config.json`, check `input_path`, change `output_dir`, then run `uv run psyml run --config path/to/config.json`. JSON configurations run through the CLI; this GUI has no configuration-import button. `best_parameters_configure.json` instead fixes the final model/parameters and disables search; its default destination is `best_parameters_run/` under the original output. Change it for repeat runs. This recipe retrains and does not reproduce the original nested-search estimate or provide independent validation of parameters selected on these data.
+To reproduce an analysis, import its `config.json`, review and run. Importing `best_parameters_configure.json` instead fixes the final model and parameters without searching. It does not reproduce the original nested-search estimate or independently validate parameters chosen on these data. Importing never starts an analysis automatically. Synthetic examples support no real-world research conclusions.
 
 ### Workflow at a glance
 
@@ -265,11 +268,19 @@ To reproduce your analysis, copy its `config.json`, check `input_path`, change `
 7. Review the design and workload, run it, monitor progress and stop it if necessary.
 8. Interpret within-validation rankings, fold variability, predictions, warnings and exported evidence.
 
-### Install and launch
+### Open the application (researchers)
 
-On macOS, after setup, double-click [Launch PsyML.command](<Launch PsyML.command>) in Finder. Restart the GUI after code updates. First-time setup is described below.
+The standalone applications are **v0.1.1-rc1 test builds, not yet uploaded to Releases**. The old v0.1.0 ZIP is a source package and does not offer the bundled runtime described here.
 
-Download and extract `PsyML-Toolkit-v0.1.0.zip` from Releases, or clone the repository. This is a source distribution containing the GUI, tests, configurations and two Chinese PDFs; it does not bundle Python/Godot installers. Open a terminal in the extracted project root (containing `pyproject.toml`). Initial dependency installation needs internet; analysis, figures and reports then work offline. CLI-only use does not require Godot.
+- **macOS (Apple Silicon)**: fully extract the matching test archive and double-click `PsyML Toolkit.app`.
+- **Windows (Intel/AMD x64)**: fully extract the matching archive and double-click `PsyML Toolkit.exe`. Keep the adjacent `core` folder; do not move the EXE alone.
+- Python, analysis dependencies and the GUI runtime are bundled. No terminal, additional installation or internet download is required to use the app. Synthetic examples and reproduction configurations are in `examples/synthetic/`, also accessible through **Sample data** and **Import configuration…**.
+- Test builds do not yet have commercial developer signing/notarization. Your OS may request confirmation on first launch: macOS offers confirmation under **System Settings → Privacy & Security**; Windows may show a security prompt. Verify the source and follow your institution’s device policy.
+
+After testing, a separate researcher-sharing archive will contain both apps, examples, configurations and the Chinese usage and terminology PDFs. It will not be a release attachment.
+
+<details>
+<summary>Developers: install and launch from source</summary>
 
 Install Python 3.10–3.12, [uv](https://docs.astral.sh/uv/) and [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/), then run from the repository root:
 
@@ -278,7 +289,8 @@ uv sync --locked --group dev
 uv run python tools/launch_gui.py
 ```
 
-For the command line, run `uv run psyml --help`. If Godot is not on `PATH`, set `PSYML_GODOT` to its full executable path.
+On macOS, after development setup, you can also double-click [Launch PsyML.command](<Launch PsyML.command>). If Godot is not on `PATH`, set `PSYML_GODOT` to its full path. Restart after source updates.
+</details>
 
 ### Detailed GUI guide
 
@@ -391,7 +403,7 @@ uv run psyml schema analysis_config
 
 `capabilities` lists supported models, formats, metrics and validations. `preview` returns metadata by default; `--include-sample` also returns sample rows. `schema` accepts `analysis_config`, `event` or `result`. `run --events` emits JSONL progress. The Python API exposes `ExperimentConfig` and `run_experiment` from `psyml`; `psyml.protocol.load_config` loads JSON for `run_experiment`.
 
-Configurations also control `test_size`, `random_seed`, `model_params`, `parameter_grids` and `include_data_hash`; consult the [configuration schema](src/psyml/schemas/analysis_config.schema.json). Disabling fingerprints does not anonymize outputs: predictions still contain outcomes and predictions. The GUI has no JSON import, saved-model inference, positive-class/threshold selector or dedicated time-series validation.
+Configurations also control `test_size`, `random_seed`, `model_params`, `parameter_grids` and `include_data_hash`; consult the [configuration schema](src/psyml/schemas/analysis_config.schema.json). Disabling fingerprints does not anonymize outputs: predictions still contain outcomes and predictions. The GUI imports and saves JSON configurations and exposes test fraction, seed, data fingerprint, fixed parameters and additional search grids through its forms and advanced JSON fields. No terminal is needed. It does not offer saved-model inference, positive-class/threshold selector or dedicated time-series validation.
 
 The named ZIP asset includes `docs/pdf/README_ZH.pdf` and `docs/pdf/RESEARCHER_GUIDE_ZH.pdf`, matching the Chinese README and guide. GitHub's automatically generated Source code archives do not contain these extra PDFs.
 
@@ -414,7 +426,7 @@ PsyML Toolkit est un outil local d’apprentissage automatique destiné à la re
 Il prend en charge la classification et la régression, 23 choix de modèles selon la tâche, 9 formats tabulaires, 6 stratégies de validation, plusieurs modèles et validations par étude, la recherche de paramètres dans les données d’entraînement, l’estimation dynamique du temps restant, l’arrêt des tâches longues, ainsi que les prédictions, figures, méthodes et rapports de reproductibilité. L’interface existe en chinois, anglais et français.
 
 
-Les captures montrent les trois pages actuelles de v0.1.0 dans la langue correspondante. Les noms de modèles et les clés restent en anglais. Axes des figures exportées, libellés Class et erreurs brutes restent en anglais ; changer la langue ne redessine pas les PNG. Les rapports automatiques existent en chinois et anglais, pas encore en français.
+Les captures montrent les trois pages actuelles de v0.1.1-rc1 dans la langue correspondante. Les noms de modèles et les clés restent en anglais. Axes des figures exportées, libellés Class et erreurs brutes restent en anglais ; changer la langue ne redessine pas les PNG. Les rapports automatiques existent en chinois et anglais, pas encore en français.
 
 ### Données de test et reproduction rapide
 
@@ -423,16 +435,14 @@ Après installation, les exemples synthétiques ne nécessitent aucun téléchar
 - [Données de classification](examples/synthetic/classification.csv) · [Configuration](examples/synthetic/classification_config.json)
 - [Données de régression](examples/synthetic/regression.csv) · [Configuration](examples/synthetic/regression_config.json)
 
-Depuis la racine du projet :
+Aucun terminal nécessaire :
 
-```bash
-uv run psyml run --config examples/synthetic/classification_config.json
-uv run psyml run --config examples/synthetic/regression_config.json
-```
+1. Dans **1 Données et réglages**, cliquez sur **Importer une configuration…** et choisissez `classification_config.json` ou `regression_config.json`, fournis avec l’application.
+2. Données et réglages sont restaurés ensemble. Les chemins relatifs sont recherchés d’abord près du JSON ; les chemins des exemples du dépôt sont également reconnus. Si les données sont introuvables, sélectionnez le fichier correspondant dans la boîte de dialogue. Une colonne requise manquante produit une erreur sans modifier les rôles des variables.
+3. Vérifiez variables, modèles et validation. Dans **2 Vérifier et lancer**, choisissez le dossier local de sortie puis lancez. Chaque exécution crée un sous-dossier ; l’interface remplace le `output_dir` importé par cette destination locale, sans écraser les anciens résultats.
+4. **Enregistrer la configuration…** sauvegarde les réglages. Si les données sont dans le même dossier, leur nom est relatif ; sinon leur chemin complet est conservé. Partagez données et JSON ensemble et réassociez le fichier dans la boîte de dialogue si nécessaire.
 
-Les sorties vont dans `results/example_classification/` et `results/example_regression/`. Avant de répéter, modifier `output_dir` pour utiliser un nouveau dossier vide. Les chemins relatifs dépendent du dossier de travail de la commande, pas de l’emplacement du JSON. Ces données synthétiques illustrent le parcours sans permettre de conclusions de recherche réelles.
-
-Pour reproduire une analyse, copier son `config.json`, vérifier `input_path`, changer `output_dir`, puis lancer `uv run psyml run --config path/to/config.json`. Les JSON s’exécutent en ligne de commande ; l’interface n’a pas de bouton d’importation de configuration. `best_parameters_configure.json` fixe plutôt le modèle et les paramètres finaux et désactive la recherche ; sa destination par défaut est `best_parameters_run/` dans la sortie originale. La changer pour répéter. Cette recette réentraîne le modèle, sans reproduire l’estimation imbriquée originale ni fournir une validation indépendante des paramètres choisis sur ces données.
+Pour reproduire une analyse, importez son `config.json`, vérifiez et lancez. `best_parameters_configure.json` fixe plutôt le modèle et les paramètres finaux, sans recherche. Il ne reproduit pas l’estimation imbriquée originale et ne valide pas indépendamment les paramètres choisis sur ces données. L’importation ne lance jamais l’analyse automatiquement. Les exemples synthétiques ne permettent aucune conclusion de recherche réelle.
 
 ### Vue d’ensemble du parcours
 
@@ -445,11 +455,19 @@ Pour reproduire une analyse, copier son `config.json`, vérifier `input_path`, c
 7. Vérifier la conception et la charge, lancer, suivre la progression et arrêter si nécessaire.
 8. Interpréter les classements par validation, la variabilité entre plis, les prédictions et les avertissements.
 
-### Installation et lancement
+### Ouvrir l’application (chercheurs)
 
-Sous macOS, après installation, double-cliquez sur [Launch PsyML.command](<Launch PsyML.command>) dans le Finder. Redémarrez l’interface après une mise à jour du code.
+Les applications autonomes sont des **versions de test v0.1.1-rc1, pas encore publiées dans Releases**. L’ancien ZIP v0.1.0 contient les sources et ne fournit pas l’environnement intégré décrit ici.
 
-Téléchargez et décompressez `PsyML-Toolkit-v0.1.0.zip` depuis Releases, ou clonez le dépôt. Cette distribution source contient interface, tests, configurations et deux PDF chinois ; elle ne contient pas les installateurs Python/Godot. Ouvrez un terminal à la racine extraite (avec `pyproject.toml`). L’installation initiale nécessite Internet ; analyses, figures et rapports fonctionnent ensuite hors ligne. Godot est inutile pour la ligne de commande seule.
+- **macOS (puce Apple)** : décompressez entièrement l’archive correspondante puis double-cliquez sur `PsyML Toolkit.app`.
+- **Windows (Intel/AMD x64)** : décompressez entièrement l’archive puis double-cliquez sur `PsyML Toolkit.exe`. Conservez le dossier `core` adjacent ; ne déplacez pas seulement l’EXE.
+- Python, dépendances scientifiques et moteur de l’interface sont intégrés. Aucun terminal, installation supplémentaire ou téléchargement Internet n’est requis. Les exemples et configurations sont dans `examples/synthetic/`, accessibles aussi par **Données de test** et **Importer une configuration…**.
+- Les versions de test n’ont pas encore de signature commerciale ni de notarisation. Le système peut demander une confirmation au premier lancement : **Réglages Système → Confidentialité et sécurité** sous macOS, ou une alerte de sécurité sous Windows. Vérifiez la provenance et respectez la politique informatique de votre établissement.
+
+Après validation, une archive distincte destinée aux chercheurs contiendra les deux applications, exemples, configurations et PDF chinois d’utilisation et de terminologie. Elle ne sera pas jointe à la release.
+
+<details>
+<summary>Développeurs : installation depuis les sources</summary>
 
 Installez Python 3.10–3.12, [uv](https://docs.astral.sh/uv/) et [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/), puis lancez depuis la racine du dépôt :
 
@@ -458,7 +476,8 @@ uv sync --locked --group dev
 uv run python tools/launch_gui.py
 ```
 
-Pour la ligne de commande, utilisez `uv run psyml --help`. Si Godot n’est pas dans le `PATH`, définissez `PSYML_GODOT` avec le chemin complet de l’exécutable.
+Sous macOS, une fois l’environnement de développement installé, vous pouvez aussi double-cliquer sur [Launch PsyML.command](<Launch PsyML.command>). Si Godot est absent du `PATH`, définissez son chemin complet avec `PSYML_GODOT`. Redémarrez après mise à jour des sources.
+</details>
 
 ### Guide détaillé de l’interface
 
@@ -571,7 +590,7 @@ uv run psyml schema analysis_config
 
 `capabilities` liste modèles, formats, métriques et validations. `preview` renvoie les métadonnées ; `--include-sample` ajoute les lignes d’aperçu. `schema` accepte `analysis_config`, `event` ou `result`. `run --events` émet une progression JSONL. L’API Python expose `ExperimentConfig` et `run_experiment` depuis `psyml` ; `psyml.protocol.load_config` charge un JSON pour `run_experiment`.
 
-Les configurations contrôlent aussi `test_size`, `random_seed`, `model_params`, `parameter_grids` et `include_data_hash` ; voir le [schéma](src/psyml/schemas/analysis_config.schema.json). Désactiver l’empreinte n’anonymise pas les sorties : les prédictions contiennent encore valeurs observées et prédites. L’interface ne propose pas d’import JSON, d’inférence par modèle sauvegardé, de choix de classe positive/seuil ou de validation temporelle dédiée.
+Les configurations contrôlent aussi `test_size`, `random_seed`, `model_params`, `parameter_grids` et `include_data_hash` ; voir le [schéma](src/psyml/schemas/analysis_config.schema.json). Désactiver l’empreinte n’anonymise pas les sorties : les prédictions contiennent encore valeurs observées et prédites. L’interface importe et enregistre les JSON et permet de régler proportion de test, graine, empreinte, paramètres fixes et grilles supplémentaires dans ses champs, dont des champs JSON avancés. Aucun terminal requis. Elle ne propose pas d’inférence par modèle sauvegardé, de choix de classe positive/seuil ou de validation temporelle dédiée.
 
 L’archive ZIP nommée contient `docs/pdf/README_ZH.pdf` et `docs/pdf/RESEARCHER_GUIDE_ZH.pdf`, correspondant au README et au guide chinois. Les archives Source code automatiques de GitHub ne contiennent pas ces PDF supplémentaires.
 

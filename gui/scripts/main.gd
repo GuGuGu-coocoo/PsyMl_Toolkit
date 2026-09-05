@@ -66,6 +66,7 @@ var last_result_path := ""
 var status_key := "READY"
 var status_detail := ""
 var last_warnings: Array = []
+var configuration_io
 var pending_config_path := ""
 var is_analysis_running := false
 var progress_key := "PROGRESS_WAITING"
@@ -220,6 +221,7 @@ func _bind_scene() -> void:
 	_bind_results_tab()
 	_bind_dialogs()
 	_bind_feedback_controls()
+	configuration_io = preload("res://scripts/configuration_io.gd").new(self)
 
 
 func _bind_data_tab() -> void:
@@ -792,7 +794,7 @@ func _build_config() -> Dictionary:
 	if grid_payload.has("error"):
 		return grid_payload
 	var tuning_mode: String = tuning_option.get_item_metadata(tuning_option.selected)
-	return {
+	var config := {
 		"schema_version": "1.0",
 		"task": task_option.get_item_metadata(task_option.selected),
 		"target_column": target_option.get_item_metadata(target_option.selected),
@@ -822,6 +824,8 @@ func _build_config() -> Dictionary:
 		"selection_protocol": "nested_family_v1",
 		"max_candidates": int(max_candidates_spin.value),
 	}
+
+	return configuration_io.enrich(config) if configuration_io != null else config
 
 
 func _refresh_review() -> void:
@@ -889,6 +893,7 @@ func _set_parameter_inputs_enabled(enabled: bool) -> void:
 
 func _set_running_state(running: bool) -> void:
 	is_analysis_running = running
+	configuration_io.set_enabled(not running)
 	for control in _analysis_inputs():
 		_set_control_interactive(control, not running)
 	_set_parameter_inputs_enabled(not running)
@@ -1332,7 +1337,7 @@ func _bind_feedback_controls() -> void:
 	translated_controls.append({"node": sample_data_button, "key": "SAMPLE_DATA"})
 	browse_button.get_parent().add_child(sample_data_button)
 	sample_data_button.pressed.connect(func():
-		file_dialog.current_dir = ProjectSettings.globalize_path("res://../examples/synthetic")
+		file_dialog.current_dir = CoreBridge.examples_directory()
 		file_dialog.popup_centered_ratio(0.8)
 	)
 	copy_error_button = Button.new()

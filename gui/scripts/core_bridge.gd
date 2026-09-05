@@ -11,7 +11,29 @@ var _saw_terminal_event := false
 var _pending_terminal_event: Dictionary = {}
 
 
+static func bundle_directory() -> String:
+	var directory := OS.get_executable_path().get_base_dir()
+	return directory.path_join("../Resources") if OS.get_name() == "macOS" else directory
+
+
+static func examples_directory() -> String:
+	var bundled := bundle_directory().path_join("examples/synthetic")
+	if DirAccess.dir_exists_absolute(bundled):
+		return bundled
+	return ProjectSettings.globalize_path("res://../examples/synthetic")
+
+
+func _command_prefix() -> PackedStringArray:
+	return PackedStringArray([]) if FileAccess.file_exists(_bundled_core()) else PackedStringArray(["-m", "psyml"])
+
+
+func _bundled_core() -> String:
+	return bundle_directory().path_join("core/psyml-core.exe" if OS.get_name() == "Windows" else "core/psyml-core")
+
+
 func python_executable() -> String:
+	if FileAccess.file_exists(_bundled_core()):
+		return _bundled_core()
 	if OS.has_environment("PSYML_PYTHON"):
 		return OS.get_environment("PSYML_PYTHON")
 	return "python" if OS.get_name() == "Windows" else "python3"
@@ -19,7 +41,7 @@ func python_executable() -> String:
 
 func execute_json_sync(arguments: PackedStringArray) -> Dictionary:
 	var output: Array = []
-	var command := PackedStringArray(["-m", "psyml"])
+	var command := _command_prefix()
 	command.append_array(arguments)
 	var exit_code := OS.execute(python_executable(), command, output, true)
 	var combined := "\n".join(output)
@@ -61,9 +83,8 @@ func _finish_preview(payload: Dictionary) -> void:
 func start_analysis(config_path: String) -> bool:
 	if is_running():
 		return false
-	var arguments := PackedStringArray(
-		["-m", "psyml", "run", "--config", config_path, "--events"]
-	)
+	var arguments := _command_prefix()
+	arguments.append_array(["run", "--config", config_path, "--events"])
 	_process_data = OS.execute_with_pipe(python_executable(), arguments, false)
 	if _process_data.is_empty():
 		event_received.emit(

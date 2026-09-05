@@ -76,3 +76,6 @@ jobs:
 
       - name: Test independent validation result switching
         run: godot --headless --path gui --script res://tests/test_independent_results.gd
+
+      - name: Test GUI configuration import and save
+        run: godot --headless --path gui --script res://tests/test_config_import.gd

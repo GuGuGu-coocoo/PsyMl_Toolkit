@@ -1,0 +1,38 @@
+name: Standalone test builds
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [desktop-test]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - run: uv sync --locked --group dev --group build
+      - uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+      - name: Build and smoke-test offline application
+        run: uv run --group build python tools/build_native.py
+      - name: Keep test files as workflow artifacts only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PsyML-Windows-x64-test
+          path: |
+            dist/*.zip
+            dist/*.sha256
+          retention-days: 14

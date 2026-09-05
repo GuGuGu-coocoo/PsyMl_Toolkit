@@ -1,0 +1,109 @@
+"""Build a self-contained desktop app on its target OS; never publish a release."""
+
+import argparse
+import hashlib
+import json
+import os
+import platform
+import shutil
+import subprocess
+import sys
+import zipfile
+from pathlib import Path
+
+ROOT = Path(__file__).absolute().parents[1]
+
+
+def run(*args):
+    subprocess.run([str(arg) for arg in args], cwd=ROOT, check=True)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--godot", default="godot")
+    args = parser.parse_args()
+    mac = sys.platform == "darwin"
+    if not mac and sys.platform != "win32":
+        raise SystemExit("Build on Apple Silicon macOS or Windows x64")
+    architecture = "macOS-arm64" if mac else "Windows-x64"
+    destination = ROOT / "dist" / f"PsyML-Toolkit-0.1.1-test-{architecture}"
+    if destination.exists():
+        shutil.rmtree(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    frozen = ROOT / "tmp" / "native" / "frozen"
+    command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir",
+               "--name", "psyml-core", "--distpath", str(frozen),
+               "--workpath", str(ROOT / "tmp/native/build"),
+               "--specpath", str(ROOT / "tmp/native"), "--paths", str(ROOT / "src"),
+               "--collect-submodules", "psyml", "--collect-data", "psyml",
+               "--collect-all", "pyreadstat", "--hidden-import", "openpyxl",
+               "--hidden-import", "xlrd", "--hidden-import", "pyarrow.parquet"]
+    for package in ["psyml-toolkit", "numpy", "pandas", "matplotlib", "scikit-learn",
+                    "scipy", "pyarrow", "pyreadstat", "openpyxl", "xlrd"]:
+        command.extend(["--copy-metadata", package])
+    command.append(str(ROOT / "tools/frozen_core.py"))
+    run(*command)
+    run(args.godot, "--headless", "--editor", "--path", ROOT / "gui", "--quit")
+    if mac:
+        app = destination / "PsyML Toolkit.app"
+        run(args.godot, "--headless", "--path", ROOT / "gui", "--export-release", "macOS", app)
+        binary_dir = app / "Contents/MacOS"
+    else:
+        binary_dir = destination
+        run(args.godot, "--headless", "--path", ROOT / "gui", "--export-release", "Windows",
+            destination / "PsyML Toolkit.exe")
+    resource_dir = app / "Contents/Resources" if mac else binary_dir
+    shutil.copytree(frozen / "psyml-core", resource_dir / "core", dirs_exist_ok=True)
+    shutil.copytree(ROOT / "examples/synthetic", destination / "examples/synthetic",
+                    dirs_exist_ok=True)
+    if mac:
+        shutil.copytree(ROOT / "examples/synthetic", resource_dir / "examples/synthetic",
+                        dirs_exist_ok=True)
+    shutil.copy2(ROOT / "LICENSE", destination / "LICENSE")
+    shutil.copy2(ROOT / "README.md", destination / "README.md")
+    (destination / "BUILD.json").write_text(json.dumps({
+        "version": "0.1.1-test", "platform": architecture,
+        "python": platform.python_version(),
+        "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                                           text=True).strip(),
+        "working_tree_modified": bool(subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=ROOT, text=True).strip()),
+    }, indent=2), encoding="utf-8")
+    if mac:
+        run("codesign", "--force", "--deep", "--sign", "-", app)
+        run("codesign", "--verify", "--deep", "--strict", app)
+    core = resource_dir / "core" / ("psyml-core" if mac else "psyml-core.exe")
+    # Clear development configuration: this must run with the embedded interpreter.
+    environment = dict(os.environ)
+    for key in ["PYTHONPATH", "PYTHONHOME", "PSYML_PYTHON"]:
+        environment.pop(key, None)
+    smoke = subprocess.run([str(core), "import-config", "--config",
+                            str(destination / "examples/synthetic/classification_config.json")],
+                           cwd=destination, env=environment, check=True, capture_output=True,
+                           text=True, timeout=300)
+    assert json.loads(smoke.stdout)["needs_data"] is False
+    executable = next(path for path in binary_dir.iterdir()
+                      if path.is_file() and (path.suffix == ".exe" if not mac
+                                             else os.access(path, os.X_OK)))
+    gui_smoke = subprocess.run(
+        [str(executable), "--headless", "--script",
+         str(ROOT / "gui/tests/test_native_bundle.gd")], cwd=destination,
+        env=environment, check=True, capture_output=True, text=True, timeout=420)
+    if "PSYML_NATIVE_BUNDLE_OK" not in gui_smoke.stdout or "SCRIPT ERROR" in gui_smoke.stderr:
+        raise RuntimeError(gui_smoke.stdout + gui_smoke.stderr)
+    print(gui_smoke.stdout)
+    archive = destination.with_suffix(".zip")
+    if mac:
+        run("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", destination, archive)
+    else:
+        with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as output:
+            for file in destination.rglob("*"):
+                if file.is_file():
+                    output.write(file, file.relative_to(destination.parent))
+    archive.with_suffix(".zip.sha256").write_text(
+        hashlib.sha256(archive.read_bytes()).hexdigest() + "  " + archive.name + "\n")
+    print(archive)
+
+
+if __name__ == "__main__":
+    main()

@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from psyml.runner import ExperimentResult
 
 __all__ = ["ExperimentConfig", "ExperimentResult", "run_experiment"]
-__version__ = "0.1.0"
+__version__ = "0.1.1rc1"
 
 
 def __getattr__(name: str) -> Any:
