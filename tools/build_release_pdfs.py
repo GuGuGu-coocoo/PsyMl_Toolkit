@@ -97,7 +97,10 @@ def render(source: Path, text: str, target: Path, title: str) -> None:
             "4. 导入 regression_config.json 可试回归。两份配置的 CSV 均与配置放在同一文件夹；"
             "找不到数据时按提示选择对应 CSV。<br/>"
             "应用内含运行环境，样例分析无需下载内容。首次启动可能需要操作系统安全确认。"
-            "样例均为合成数据，仅用于熟悉流程。", body))
+            "样例均为合成数据，仅用于熟悉流程。<br/>"
+            "更多快速测试：examples/synthetic/matrix 内含 27 份小数据（每份 48 行，9 种格式），"
+            "覆盖二分类、多分类和回归，导入同名的配置 JSON 即可运行。"
+            "其中 SAS7BDAT 为真实二进制格式的合成样例，用于本软件读取测试，未经 SAS 软件认证。", body))
     story.append(Spacer(1, 12))
     lines = text.splitlines()
     i = 0
@@ -196,7 +199,7 @@ def main() -> None:
     guide_text = guide.read_text(encoding="utf-8").split("\n", 1)[1]
     render(guide, guide_text, ROOT / "output/pdf/RESEARCHER_GUIDE_ZH.pdf", "模型、指标、结果与术语")
     manifest = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                for p in [readme, guide, *sorted((ROOT / "docs/images/zh").glob("*.png"))]}
+                for p in [Path(__file__), readme, guide, *sorted((ROOT / "docs/images/zh").glob("*.png"))]}
     (ROOT / "output/pdf/sources.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("PSYML_RELEASE_PDFS_OK")
 
