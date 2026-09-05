@@ -179,10 +179,10 @@ def main() -> None:
     pdfmetrics.registerFontFamily("PsyMLCJK", normal="PsyMLCJK", bold="PsyMLCJK")
     readme = ROOT / "README.md"
     guide = ROOT / "docs/RESEARCHER_GUIDE_ZH.md"
-    chinese = readme.read_text().split('<a id="chinese"></a>')[1]
+    chinese = readme.read_text(encoding="utf-8").split('<a id="chinese"></a>')[1]
     chinese = chinese.split('<a id="english"></a>')[0].replace("## 中文", "", 1)
     render(readme, chinese, ROOT / "output/pdf/README_ZH.pdf", "中文版使用说明")
-    guide_text = guide.read_text().split("\n", 1)[1]
+    guide_text = guide.read_text(encoding="utf-8").split("\n", 1)[1]
     render(guide, guide_text, ROOT / "output/pdf/RESEARCHER_GUIDE_ZH.pdf", "模型、指标、结果与术语")
     manifest = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in [readme, guide, *sorted((ROOT / "docs/images/zh").glob("*.png"))]}

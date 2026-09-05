@@ -24,7 +24,7 @@ def main() -> None:
     if git("status", "--porcelain").strip():
         raise SystemExit("Commit release sources before packaging; working tree is not clean.")
     commit = git("rev-parse", "HEAD").decode().strip()
-    source_hashes = json.loads((ROOT / "output/pdf/sources.json").read_text())
+    source_hashes = json.loads((ROOT / "output/pdf/sources.json").read_text(encoding="utf-8"))
     for name, expected in source_hashes.items():
         if hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != expected:
             raise SystemExit(f"PDF source changed; regenerate PDFs: {name}")

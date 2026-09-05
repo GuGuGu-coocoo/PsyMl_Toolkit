@@ -24,7 +24,7 @@ def test_reported_godot_float_grid_and_fixed_parameter_recipe(tmp_path):
         }}, figure_types=["confusion_matrix", "class_distribution"],
     )
     run_experiment(config)
-    result = json.loads((config.output_dir / "result.json").read_text())
+    result = json.loads((config.output_dir / "result.json").read_text(encoding="utf-8"))
     recipe = load_config(config.output_dir / "best_parameters_configure.json")
     assert recipe.model_params == result["best_parameters"]
     assert recipe.model_names == [result["best_model"]]
@@ -35,8 +35,8 @@ def test_reported_godot_float_grid_and_fixed_parameter_recipe(tmp_path):
     assert (recipe.output_dir / "result.json").is_file()
     for key, value in result["artifacts"].items():
         assert (config.output_dir / value).is_file(), key
-    assert "best_parameters" in (config.output_dir / "reproducibility_report.md").read_text()
-    assert "不保证绝对正确" in (config.output_dir / "methods_summary_zh.md").read_text()
+    assert "best_parameters" in (config.output_dir / "reproducibility_report.md").read_text(encoding="utf-8")
+    assert "不保证绝对正确" in (config.output_dir / "methods_summary_zh.md").read_text(encoding="utf-8")
     assert config.parameter_grids["decision_tree"]["min_samples_leaf"][0] == 1.0
     assert isinstance(config.parameter_grids["decision_tree"]["min_samples_leaf"][0], float)
     assert isinstance(config.parameter_grids["decision_tree"]["min_samples_leaf"][1], int)
@@ -50,7 +50,7 @@ def test_plot_selection_and_empty_selection(tmp_path):
     config = replace(config, output_dir=tmp_path / "no_plots", figure_types=[])
     run_experiment(config)
     assert not list((config.output_dir / "figures").glob("*.png"))
-    result = json.loads((config.output_dir / "result.json").read_text())
+    result = json.loads((config.output_dir / "result.json").read_text(encoding="utf-8"))
     assert "figure" not in result["artifacts"]
     assert config_from_dict(config_to_dict(config)) == config
     with pytest.raises(ValueError, match="figure_types"):
