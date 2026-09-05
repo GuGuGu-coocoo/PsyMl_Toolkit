@@ -120,8 +120,9 @@ def _legacy_config(args: argparse.Namespace) -> ExperimentConfig:
 
 
 def _print_json(payload: object, *, stream=None) -> None:
+    # Escaped JSON preserves Unicode through non-UTF-8 consoles and GUI pipes.
     print(
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str),
+        json.dumps(payload, ensure_ascii=True, sort_keys=True, default=str),
         file=stream or sys.stdout,
         flush=True,
     )
