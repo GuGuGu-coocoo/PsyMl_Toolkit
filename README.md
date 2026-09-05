@@ -1,6 +1,6 @@
 # PsyML Toolkit
 
-**v0.1.1-rc1** · [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) · [开发者指南](docs/DEVELOPMENT_ZH.md) · [Developer guide](docs/DEVELOPMENT_EN.md) · [Guide de développement](docs/DEVELOPMENT_FR.md)
+[Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases)
 
 <p align="center">
   <a href="#chinese">中文</a> · <a href="#english">English</a> · <a href="#french">Français</a>
@@ -14,23 +14,20 @@
 
 PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查、变量角色、预处理、模型比较、参数选择、验证、结果解释和可复现性材料放进同一流程。Godot 图形界面与命令行共用同一套 Python 分析核心。输入数据只在本机处理。
 
-当前支持分类与回归、23 个按任务划分的模型选项、9 种表格格式、6 种验证策略、多模型与多验证比较、训练集内部参数搜索、动态剩余时间、长任务终止，以及预测、图形、Methods 说明和复现报告导出。界面支持中文、英文和法文。
+支持分类与回归、23 个按任务划分的模型选项、9 种表格格式、6 种验证策略、多模型与多验证比较、训练集内部参数搜索、动态剩余时间、长任务终止，以及预测、图形、Methods 说明和复现报告导出。界面支持中文、英文和法文。
 
+自动报告提供中文和英文版本。导出图形的坐标轴、类别占位标签及底层错误信息使用英文，不随界面语言切换。
 
-界面截图由 v0.1.1-rc1 当前三页布局生成，每种语言对应自己的截图。模型名称和配置键保留英文；中文常用指标显示中文加英文名称或缩写。导出的科学图形轴、类别占位标签与底层错误原文使用英文，界面语言切换不会重绘这些 PNG。自动报告提供中文和英文，暂不生成法文报告。
+### 打开应用
 
-### 打开应用（研究者）
-
-GUI 已可用于数据导入、配置复现、分析和结果查看，无需研究者输入命令。**新版独立应用包待重新打包和发布，旧测试包已撤回**；现有 v0.1.0 ZIP 为源码包。以下为新版应用发布后的打开方式。
+请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。v0.1.0 提供的是源码包，环境配置见[开发者指南](docs/DEVELOPMENT_ZH.md)。以下打开步骤适用于包含运行环境的独立应用包。
 
 - **macOS（Apple 芯片）**：完整解压对应应用包，双击 `PsyML Toolkit.app`。
 - **Windows（Intel/AMD x64）**：完整解压对应应用包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
 - 应用内含 Python、分析依赖和界面运行时；使用时无需命令行、额外安装或联网下载。合成数据和快速复现配置在 `examples/synthetic/`，也可从 GUI 的“测试数据”或“导入配置…”打开。
 - 应用尚未使用商业开发者证书签名/公证。首次打开时系统可能显示安全确认；macOS 可在“系统设置 → 隐私与安全性”确认打开，Windows 可核对来源后在安全提示中确认。请遵守所在机构的电脑管理要求。
 
-供研究者转发的独立分享压缩包，将另行制作，包含两平台应用、样例、配置及中文使用说明和术语指南 PDF；不作为 release 附件。
-
-### 测试数据与快速复现（全程 GUI）
+### 测试数据与快速复现
 
 内置样例无需在线下载，全部为合成数据，不用于提出真实研究结论。
 
@@ -68,11 +65,11 @@ GUI 已可用于数据导入、配置复现、分析和结果查看，无需研�
 7. **检查并运行**：运行前查看完整配置和任务规模；运行时查看当前工作和预计剩余时间，也可终止。
 8. **解释与导出**：先看风险提示和主要验证指标，再看逐折结果、预测、探索性排行榜和复现文件。
 
-### GUI 详细操作
+### 数据分析操作
 
 #### 1. 数据与分析设置
 
-点击“浏览…”，支持 CSV、TSV、XLSX、XLS、SPSS SAV、Stata DTA、SAS7BDAT、XPT 和 Parquet。选择文件后会自动读取预览；直接编辑路径时点击“读取预览”。导入后保持在当前页面。左侧检查数据，右侧选择变量与分析设置，无需来回切换。预览后：
+点击“浏览…”，支持 CSV、TSV、XLSX、XLS、SPSS SAV、Stata DTA、SAS7BDAT、XPT 和 Parquet。选择文件后会自动读取预览；直接编辑路径时点击“读取预览”。在左侧检查数据，在右侧选择变量和分析设置。预览后：
 
 - 核对行数、列数、变量类型和缺失值数量；
 - 在预览表中确认分隔、表头和字符编码没有被误读；
@@ -173,7 +170,6 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 中英文摘要、报告和建议均由本地确定性规则生成，可离线运行。**summary 不保证绝对正确，请研究者自己检查一遍**，特别是研究设计、分组、泄漏风险、参数和指标解释。JSON 标准不支持注释，简短中英文解释单独保存在 `configuration_guide.md`，不影响配置直接运行。
 
-
 | 文件或目录 | 意义、作用与优先检查内容 |
 | --- | --- |
 | `warnings.json` | 首先检查数据删除、分组、拟合和指标风险，判断分析是否可信 |
@@ -194,7 +190,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 | `configuration_guide.md` | 每个配置字段的简短中英文解释 |
 | `analysis_manifest.json` | 数据指纹、输入及分析规模、Python/系统/依赖版本，用于检查复现条件 |
 
-表格点选颜色已调整。多选列表可以直接点选勾选框，无需 Ctrl/Shift。预测变量位于研究设计内，设置模块随整页滚动。结果摘要的文字与边距也支持整页滚动；小列表和小表格保持独立滚动，到边界不会带动整页。报错可点击“复制完整报错”；详细报错和警告支持选取复制，普通说明可右键复制文字，表格可右键复制选中行。分类和回归切换后只显示该任务支持的模型及图形。
+操作提示：直接点击勾选框即可多选，无需按住 Ctrl/Shift。滚动页面可查看其余设置和结果，小表格可单独滚动。需要反馈问题时，点击“复制完整报错”；警告文字可选取复制，说明文字和选中的表格行可右键复制。
 
 ### 方法边界、隐私与许可
 
@@ -206,15 +202,13 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 ### 配置与功能边界
 
-配置还可设置 `test_size`、`random_seed`、`model_params`、`parameter_grids` 和 `include_data_hash`；以 [配置 schema](src/psyml/schemas/analysis_config.schema.json) 为准。关闭数据指纹不等于匿名化；预测文件仍包含目标值和预测值。GUI 支持导入和保存配置，并提供留出比例、随机种子、数据指纹、固定参数及额外搜索参数设置；高级参数使用界面内的 JSON 字段，无需命令行。当前不支持加载已拟合模型进行新数据预测、调整正类/阈值或时间序列专用验证。
-
-两份中文 PDF（使用说明和术语指南）将随单独制作的研究者分享包提供，不作为新版 release 附件。
+配置文件中的留出比例、随机种子、固定参数、搜索候选和数据指纹选项分别对应 `test_size`、`random_seed`、`model_params`、`parameter_grids` 和 `include_data_hash`，完整字段见[配置说明](src/psyml/schemas/analysis_config.schema.json)。关闭数据指纹不等于匿名化；预测文件仍包含目标值和预测值。GUI 支持导入和保存配置，并提供留出比例、随机种子、数据指纹、固定参数及额外搜索参数设置；高级参数使用界面内的 JSON 字段，无需命令行。当前不支持加载已拟合模型进行新数据预测、调整正类/阈值或时间序列专用验证。
 
 ### 开发与参与
 
 [开发者指南](docs/DEVELOPMENT_ZH.md)：项目结构、开发环境、核心接口、贡献流程、测试和打包说明。普通 GUI 使用不需要执行开发者测试。
 
-机器学习核心由项目作者编写；Godot GUI 在 AI 协助下开发。作者参与了项目设计、功能与隐私边界制定、代码审查和完整测试，并继续对项目发布与研究使用承担责任。这里所说的 AI 协助不改变作者对已有代码的权属，也不替代人工审查。
+机器学习核心由项目作者编写，Godot 图形界面在 AI 辅助下开发。AI 辅助不替代人工代码审查与科研判断。
 
 欢迎研究者通过 GitHub Issue 反馈可复现的问题、方法建议和使用体验。请使用仓库中的随机合成测试数据或能够公开分享的最小示例，切勿上传真实参与者数据、未公开研究资料、访问凭据或其他敏感内容。
 
@@ -228,21 +222,18 @@ PsyML Toolkit is a local machine-learning tool for researchers. It joins data re
 
 It supports classification and regression, 23 task-specific model choices, 9 tabular formats, 6 validation strategies, multi-model and multi-validation studies, training-only parameter search, dynamic time estimates, cancellation of long jobs, predictions, figures, Methods text and reproducibility reports. The GUI is available in Chinese, English and French.
 
+Automatic reports are available in Chinese and English. Exported plot axes, class placeholders and raw backend errors use English regardless of the interface language.
 
-Screenshots show the current three-page v0.1.1-rc1 UI in the corresponding language. Model names and configuration keys remain English. Exported plot axes, class placeholders and raw backend errors remain English; changing UI language does not redraw PNGs. Automatic reports are provided in Chinese and English, not French.
+### Open the application
 
-### Open the application (researchers)
-
-The GUI supports data import, configuration-based reproduction, analysis and result review without terminal commands. **Updated standalone apps await repackaging and release; the previous test builds have been withdrawn.** The existing v0.1.0 ZIP contains source code. The following instructions apply to the updated apps once released.
+Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for available versions and platforms. v0.1.0 is a source distribution; environment setup is covered in the [developer guide](docs/DEVELOPMENT_EN.md). The steps below apply to standalone application packages with a bundled runtime.
 
 - **macOS (Apple Silicon)**: fully extract the matching application archive and double-click `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)**: fully extract the matching archive and double-click `PsyML Toolkit.exe`. Keep the adjacent `core` folder; do not move the EXE alone.
 - Python, analysis dependencies and the GUI runtime are bundled. No terminal, additional installation or internet download is required to use the app. Synthetic examples and reproduction configurations are in `examples/synthetic/`, also accessible through **Sample data** and **Import configuration…**.
 - The apps do not yet have commercial developer signing/notarization. Your OS may request confirmation on first launch: macOS offers confirmation under **System Settings → Privacy & Security**; Windows may show a security prompt. Verify the source and follow your institution’s device policy.
 
-A separate researcher-sharing archive will contain both apps, examples, configurations and the Chinese usage and terminology PDFs. It will not be a release attachment.
-
-### Sample data and quick reproduction (GUI only)
+### Sample data and quick reproduction
 
 The synthetic examples are included; no online data download is needed. They demonstrate the workflow and support no real-world research conclusions.
 
@@ -280,7 +271,7 @@ You can also import `best_parameters_configure.json` using the same button. It f
 7. Review the design and workload, run it, monitor progress and stop it if necessary.
 8. Interpret within-validation rankings, fold variability, predictions, warnings and exported evidence.
 
-### Detailed GUI guide
+### Data analysis workflow
 
 #### 1. Data and variables
 
@@ -371,7 +362,7 @@ Reports and recommendations use deterministic local rules and work offline. **Au
 | `configuration_guide.md` | Brief Chinese/English field explanations outside comment-free JSON. |
 | `analysis_manifest.json` | Input fingerprint, row/feature counts and Python/system/dependency versions. |
 
-Checkbox lists need no Ctrl/Shift. Predictors belong to Research design and settings scroll with the page. Result-summary text and margins scroll the results page; small tables/lists scroll independently. Use **Copy full error**, select warning/error text, or right-click ordinary labels/selected table rows to copy. Task changes filter models and figures automatically.
+Interaction tips: click checkboxes to select multiple items without Ctrl/Shift. Scroll the page for additional settings and results; small tables scroll independently. To report a problem, use **Copy full error**. Select warning text to copy it, or right-click labels and selected table rows.
 
 ### Methodological scope, privacy and license
 
@@ -383,15 +374,13 @@ Except for separately identified third-party material, the project is licensed u
 
 ### Configuration and feature boundaries
 
-Configurations also control `test_size`, `random_seed`, `model_params`, `parameter_grids` and `include_data_hash`; consult the [configuration schema](src/psyml/schemas/analysis_config.schema.json). Disabling fingerprints does not anonymize outputs: predictions still contain outcomes and predictions. The GUI imports and saves JSON configurations and exposes test fraction, seed, data fingerprint, fixed parameters and additional search grids through its forms and advanced JSON fields. No terminal is needed. It does not offer saved-model inference, positive-class/threshold selector or dedicated time-series validation.
-
-The two Chinese PDFs (usage instructions and terminology guide) will accompany the separate researcher-sharing archive, not the updated release attachments.
+Configurations control `test_size`, `random_seed`, `model_params`, `parameter_grids` and `include_data_hash`; consult the [configuration schema](src/psyml/schemas/analysis_config.schema.json). Disabling fingerprints does not anonymize outputs: predictions still contain outcomes and predictions. The GUI imports and saves JSON configurations and exposes test fraction, seed, data fingerprint, fixed parameters and additional search grids through its forms and advanced JSON fields. No terminal is needed. It does not offer saved-model inference, positive-class/threshold selector or dedicated time-series validation.
 
 ### Development and participation
 
 [Developer guide](docs/DEVELOPMENT_EN.md): architecture, setup, core interfaces, contribution workflow, testing and packaging. GUI users do not need to run developer tests.
 
-The machine-learning core was written by the project author; the Godot GUI was developed with AI assistance. The author participated in project design, definition of functional and privacy boundaries, code review and complete testing, and remains responsible for the project’s release and research use. AI assistance does not change ownership of the existing code or replace human review.
+The machine-learning core was written by the project author; the Godot GUI was developed with AI assistance. AI assistance does not replace human code review or scientific judgment.
 
 Researchers are welcome to report reproducible problems, methodological suggestions and usability feedback through GitHub Issues. Use the repository’s random synthetic fixture or a minimal example that can be shared publicly; never upload real participant data, unpublished research material, credentials or other sensitive information.
 
@@ -405,21 +394,18 @@ PsyML Toolkit est un outil local d’apprentissage automatique destiné à la re
 
 Il prend en charge la classification et la régression, 23 choix de modèles selon la tâche, 9 formats tabulaires, 6 stratégies de validation, plusieurs modèles et validations par étude, la recherche de paramètres dans les données d’entraînement, l’estimation dynamique du temps restant, l’arrêt des tâches longues, ainsi que les prédictions, figures, méthodes et rapports de reproductibilité. L’interface existe en chinois, anglais et français.
 
+Les rapports automatiques sont disponibles en chinois et en anglais. Les axes des figures exportées, les libellés de classes et les erreurs brutes restent en anglais, quelle que soit la langue de l’interface.
 
-Les captures montrent les trois pages actuelles de v0.1.1-rc1 dans la langue correspondante. Les noms de modèles et les clés restent en anglais. Axes des figures exportées, libellés Class et erreurs brutes restent en anglais ; changer la langue ne redessine pas les PNG. Les rapports automatiques existent en chinois et anglais, pas encore en français.
+### Ouvrir l’application
 
-### Ouvrir l’application (chercheurs)
-
-L’interface permet l’importation des données, la reproduction par configuration, l’analyse et la consultation des résultats sans terminal. **Les applications autonomes mises à jour restent à empaqueter et à publier ; les anciennes versions de test ont été retirées.** Le ZIP v0.1.0 existant contient les sources. Les instructions suivantes concernent les nouvelles applications après publication.
+Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) pour les versions et plateformes disponibles. v0.1.0 contient les sources ; l’installation de l’environnement est décrite dans le [guide de développement](docs/DEVELOPMENT_FR.md). Les étapes suivantes concernent les applications autonomes avec environnement intégré.
 
 - **macOS (puce Apple)** : décompressez entièrement l’archive correspondante puis double-cliquez sur `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)** : décompressez entièrement l’archive puis double-cliquez sur `PsyML Toolkit.exe`. Conservez le dossier `core` adjacent ; ne déplacez pas seulement l’EXE.
 - Python, dépendances scientifiques et moteur de l’interface sont intégrés. Aucun terminal, installation supplémentaire ou téléchargement Internet n’est requis. Les exemples et configurations sont dans `examples/synthetic/`, accessibles aussi par **Données de test** et **Importer une configuration…**.
 - Les applications n’ont pas encore de signature commerciale ni de notarisation. Le système peut demander une confirmation au premier lancement : **Réglages Système → Confidentialité et sécurité** sous macOS, ou une alerte de sécurité sous Windows. Vérifiez la provenance et respectez la politique informatique de votre établissement.
 
-Une archive distincte destinée aux chercheurs contiendra les deux applications, exemples, configurations et PDF chinois d’utilisation et de terminologie. Elle ne sera pas jointe à la release.
-
-### Données de test et reproduction rapide (interface uniquement)
+### Données de test et reproduction rapide
 
 Les exemples synthétiques sont fournis, sans téléchargement de données. Ils illustrent le parcours et ne permettent pas de conclusions de recherche réelles.
 
@@ -457,7 +443,7 @@ Le même bouton accepte `best_parameters_configure.json`. Ce fichier fixe le mod
 7. Vérifier la conception et la charge, lancer, suivre la progression et arrêter si nécessaire.
 8. Interpréter les classements par validation, la variabilité entre plis, les prédictions et les avertissements.
 
-### Guide détaillé de l’interface
+### Procédure d’analyse des données
 
 #### 1. Données et variables
 
@@ -548,7 +534,7 @@ Rapports et conseils utilisent des règles locales déterministes et fonctionnen
 | `configuration_guide.md` | Explications courtes chinois/anglais, séparées du JSON sans commentaires. |
 | `analysis_manifest.json` | Empreinte des données, effectifs/caractéristiques et versions Python/système/dépendances. |
 
-Les cases se sélectionnent sans Ctrl/Maj. Les prédicteurs sont dans Plan de recherche et les réglages défilent avec la page. Texte et marges du résumé font défiler les résultats ; petits tableaux/listes défilent indépendamment. Utiliser **Copier l’erreur complète**, sélectionner les avertissements/erreurs, ou faire un clic droit sur une étiquette/ligne sélectionnée pour copier. La tâche filtre automatiquement modèles et figures.
+Conseils d’utilisation : cliquez sur les cases pour sélectionner plusieurs éléments sans Ctrl/Maj. Faites défiler la page pour consulter les autres réglages et résultats ; les petits tableaux défilent séparément. Pour signaler un problème, utilisez **Copier l’erreur complète**. Sélectionnez le texte des avertissements pour le copier, ou faites un clic droit sur les libellés et lignes sélectionnées.
 
 ### Portée méthodologique, confidentialité et licence
 
@@ -560,14 +546,12 @@ Sauf éléments tiers signalés séparément, le projet est sous [licence Apache
 
 ### Configuration et limites fonctionnelles
 
-Les configurations contrôlent aussi `test_size`, `random_seed`, `model_params`, `parameter_grids` et `include_data_hash` ; voir le [schéma](src/psyml/schemas/analysis_config.schema.json). Désactiver l’empreinte n’anonymise pas les sorties : les prédictions contiennent encore valeurs observées et prédites. L’interface importe et enregistre les JSON et permet de régler proportion de test, graine, empreinte, paramètres fixes et grilles supplémentaires dans ses champs, dont des champs JSON avancés. Aucun terminal requis. Elle ne propose pas d’inférence par modèle sauvegardé, de choix de classe positive/seuil ou de validation temporelle dédiée.
-
-Les deux PDF chinois (utilisation et terminologie) accompagneront l’archive de partage destinée aux chercheurs, séparément des pièces jointes de la nouvelle release.
+Les configurations contrôlent `test_size`, `random_seed`, `model_params`, `parameter_grids` et `include_data_hash` ; voir le [schéma](src/psyml/schemas/analysis_config.schema.json). Désactiver l’empreinte n’anonymise pas les sorties : les prédictions contiennent encore valeurs observées et prédites. L’interface importe et enregistre les JSON et permet de régler proportion de test, graine, empreinte, paramètres fixes et grilles supplémentaires dans ses champs, dont des champs JSON avancés. Aucun terminal requis. Elle ne propose pas d’inférence par modèle sauvegardé, de choix de classe positive/seuil ou de validation temporelle dédiée.
 
 ### Développement et participation
 
 [Guide de développement](docs/DEVELOPMENT_FR.md) : architecture, environnement, interfaces, contributions, tests et empaquetage. Les utilisateurs de l’interface n’ont pas à exécuter les tests de développement.
 
-Le noyau d’apprentissage automatique a été écrit par l’auteur du projet ; l’interface Godot a été développée avec l’aide de l’IA. L’auteur a participé à la conception du projet, à la définition des limites fonctionnelles et de confidentialité, à la revue du code et aux tests complets, et reste responsable de la publication du projet et de son usage en recherche. L’aide de l’IA ne modifie pas la propriété du code existant et ne remplace pas la revue humaine.
+Le noyau d’apprentissage automatique a été écrit par l’auteur du projet ; l’interface Godot a été développée avec l’aide de l’IA. Cette aide ne remplace ni la revue humaine du code ni le jugement scientifique.
 
 Les chercheurs sont invités à signaler, via les issues GitHub, les problèmes reproductibles, suggestions méthodologiques et retours d’utilisation. Utilisez le jeu synthétique aléatoire du dépôt ou un exemple minimal publiable ; ne téléversez jamais de données réelles de participants, de documents de recherche non publiés, d’identifiants d’accès ou d’autres informations sensibles.
