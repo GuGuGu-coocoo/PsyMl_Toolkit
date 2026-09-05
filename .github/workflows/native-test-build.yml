@@ -28,6 +28,13 @@ jobs:
           include-templates: true
       - name: Build and smoke-test offline application
         run: uv run --group build python tools/build_native.py
+      - name: Inspect generated build metadata
+        if: always()
+        shell: bash
+        run: |
+          git status --short
+          git diff --stat
+          git diff -- gui/project.godot gui/export_presets.cfg gui/assets
       - name: Keep test files as workflow artifacts only
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

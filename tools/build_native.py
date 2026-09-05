@@ -24,6 +24,10 @@ def main():
     parser.add_argument("--reuse-core", action="store_true",
                         help="Local GUI-only rebuild using the existing frozen runtime")
     args = parser.parse_args()
+    source_commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    source_changes = subprocess.check_output(
+        ["git", "status", "--porcelain"], cwd=ROOT, text=True).splitlines()
     candidate = os.environ.get("GODOT", args.godot) if args.godot == "godot" else args.godot
     args.godot = str(Path(shutil.which(candidate) or candidate).resolve())
     run(args.godot, "--version")
@@ -71,10 +75,11 @@ def main():
     (destination / "BUILD.json").write_text(json.dumps({
         "version": "0.1.1", "platform": architecture,
         "python": platform.python_version(),
-        "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT,
-                                           text=True).strip(),
-        "working_tree_modified": bool(subprocess.check_output(
-            ["git", "status", "--porcelain"], cwd=ROOT, text=True).strip()),
+        "commit": source_commit,
+        "working_tree_modified": bool(source_changes),
+        "source_changes": source_changes,
+        "post_build_changes": subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=ROOT, text=True).splitlines(),
     }, indent=2), encoding="utf-8")
     if mac:
         run("codesign", "--force", "--deep", "--sign", "-", app)
