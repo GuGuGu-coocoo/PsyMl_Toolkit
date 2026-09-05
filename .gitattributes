@@ -1,0 +1,16 @@
+# Keep text fixtures and their recorded byte sizes identical on every platform.
+* text=auto eol=lf
+*.csv text eol=lf
+*.tsv text eol=lf
+*.json text eol=lf
+*.sav binary
+*.sas7bdat binary
+*.dta binary
+*.xpt binary
+*.xls binary
+*.xlsx binary
+*.parquet binary
+*.png binary
+*.ico binary
+*.icns binary
+*.pdf binary

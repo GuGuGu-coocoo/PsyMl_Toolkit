@@ -10,6 +10,7 @@ import hashlib
 import json
 import subprocess
 import zipfile
+from importlib.metadata import version as package_version
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,7 +21,7 @@ def git(*args: str) -> bytes:
 
 
 def main() -> None:
-    version = "0.1.0"
+    version = package_version("psyml-toolkit")
     if git("status", "--porcelain").strip():
         raise SystemExit("Commit release sources before packaging; working tree is not clean.")
     commit = git("rev-parse", "HEAD").decode().strip()
