@@ -1,8 +1,5 @@
-# Keep text fixtures and their recorded byte sizes identical on every platform.
-* text=auto eol=lf
-*.csv text eol=lf
-*.tsv text eol=lf
-*.json text eol=lf
+# Keep synthetic fixtures identical across platforms without rewriting legacy files.
+examples/synthetic/** text=auto eol=lf
 *.sav binary
 *.sas7bdat binary
 *.dta binary
