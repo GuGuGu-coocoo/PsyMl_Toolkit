@@ -14,6 +14,8 @@
 
 PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查、变量角色、预处理、模型比较、参数选择、验证、结果解释和可复现性材料放进同一流程。Godot 图形界面与命令行共用同一套 Python 分析核心。输入数据只在本机处理。
 
+当前分析核心以 **scikit-learn 1.9.0** 为机器学习库，使用其分类与回归估计器、预处理组件、验证切分和评价指标；PsyML 在此基础上组织嵌套模型／参数选择与研究报告流程。**NumPy 2.5.2** 和 **pandas 3.0.5** 支持数值与表格处理，**Matplotlib 3.11.1** 用于结果绘图。以上为当前 Python 3.12 环境在 [uv.lock](uv.lock) 中锁定的版本；其他 Python 版本对应的依赖可能不同。兼容范围见 [pyproject.toml](pyproject.toml)，每次运行实际使用的库版本随结果导出。
+
 支持分类与回归、23 个按任务划分的模型选项、9 种表格格式、6 种验证策略、多模型与多验证比较、训练集内部参数搜索、动态剩余时间、长任务终止，以及预测、图形、Methods 说明和复现报告导出。界面支持中文、英文和法文。
 
 自动报告提供中文和英文版本。导出图形的坐标轴、类别占位标签及底层错误信息使用英文，不随界面语言切换。
@@ -220,6 +222,8 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 PsyML Toolkit is a local machine-learning tool for researchers. It joins data review, variable roles, preprocessing, model comparison, parameter selection, validation, interpretation and reproducibility outputs in one workflow. The Godot GUI and CLI use the same Python analysis core. Input data stay on the local computer.
 
+The current analysis core uses **scikit-learn 1.9.0** for classification and regression estimators, preprocessing components, validation splits and evaluation metrics. PsyML builds its nested model/parameter selection and research reporting workflow on these components. **NumPy 2.5.2** and **pandas 3.0.5** support numerical and tabular processing, while **Matplotlib 3.11.1** produces result figures. These are the versions locked in [uv.lock](uv.lock) for the current Python 3.12 environment; dependencies may differ for other Python versions. Compatible ranges are listed in [pyproject.toml](pyproject.toml), and the actual library versions used for each run are exported with its results.
+
 It supports classification and regression, 23 task-specific model choices, 9 tabular formats, 6 validation strategies, multi-model and multi-validation studies, training-only parameter search, dynamic time estimates, cancellation of long jobs, predictions, figures, Methods text and reproducibility reports. The GUI is available in Chinese, English and French.
 
 Automatic reports are available in Chinese and English. Exported plot axes, class placeholders and raw backend errors use English regardless of the interface language.
@@ -391,6 +395,8 @@ Researchers are welcome to report reproducible problems, methodological suggesti
 📖 [Guide de référence : modèles, métriques, résultats et terminologie](docs/RESEARCHER_GUIDE_FR.md) — Formules courtes, exemples et limites d’interprétation. Autres versions : [中文](docs/RESEARCHER_GUIDE_ZH.md) · [English](docs/RESEARCHER_GUIDE_EN.md)
 
 PsyML Toolkit est un outil local d’apprentissage automatique destiné à la recherche. Il réunit l’examen des données, les rôles des variables, le prétraitement, la comparaison des modèles, le choix des paramètres, la validation, l’interprétation et les éléments de reproductibilité. L’interface Godot et la ligne de commande utilisent le même noyau Python. Les données restent sur l’ordinateur local.
+
+Le noyau d’analyse actuel utilise **scikit-learn 1.9.0** pour les estimateurs de classification et de régression, les composants de prétraitement, les partitions de validation et les métriques d’évaluation. PsyML s’appuie sur ces composants pour organiser la sélection imbriquée des modèles et paramètres ainsi que les rapports de recherche. **NumPy 2.5.2** et **pandas 3.0.5** assurent le traitement numérique et tabulaire, tandis que **Matplotlib 3.11.1** produit les figures. Ces versions sont verrouillées dans [uv.lock](uv.lock) pour l’environnement Python 3.12 actuel ; les dépendances peuvent différer avec d’autres versions de Python. Les plages compatibles figurent dans [pyproject.toml](pyproject.toml), et les versions effectivement utilisées pour chaque analyse sont exportées avec ses résultats.
 
 Il prend en charge la classification et la régression, 23 choix de modèles selon la tâche, 9 formats tabulaires, 6 stratégies de validation, plusieurs modèles et validations par étude, la recherche de paramètres dans les données d’entraînement, l’estimation dynamique du temps restant, l’arrêt des tâches longues, ainsi que les prédictions, figures, méthodes et rapports de reproductibilité. L’interface existe en chinois, anglais et français.
 
