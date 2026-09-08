@@ -32,6 +32,7 @@
       }
     },
     "selection_metric": {"type": "string"},
+    "effective_parameters": {"type": "object"},
     "best_parameters": {"type": "object"},
     "evaluated_combinations": {"type": "integer", "minimum": 0}
   }

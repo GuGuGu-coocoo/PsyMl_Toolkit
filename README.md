@@ -181,7 +181,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 | `methods_summary_zh.md` / `methods_summary.md` | 中文与英文方法摘要：样本、预处理、验证、选择流程、最佳参数与统计限制 |
 | `reproducibility_report_zh.md` / `reproducibility_report.md` | 中文与英文报告及核查建议，包含环境、配置、逐折结果、警告和 best_parameters |
 | `result.json` | 完成标记、GUI 摘要、最终家族/参数、评价范围与文件索引 |
-| `best_parameters.json` | 最终全数据内层选择后的参数覆盖；不是各外层折参数的平均 |
+| `best_parameters.json` | 最终模型实际超参数（含默认值）；不是各外层折参数的平均 |
 | `best_parameters_configure.json` | 可直接运行的单模型固定最佳参数配置，关闭搜索；不是独立验证 |
 | `predictions.csv` / `confusion_matrix.csv` | 样本外观测与预测、行索引和折号；分类混淆矩阵用于核查错误类别 |
 | `figures/` | 分类可选混淆矩阵、观测/预测类别分布；回归可选观测对预测、残差散点、残差分布。均基于主要验证或独立子目录验证的样本外预测，结果页可切换显示；全部取消则不输出 PNG |
@@ -357,7 +357,7 @@ Reports and recommendations use deterministic local rules and work offline. **Au
 | `methods_summary_zh.md` / `methods_summary.md` | Chinese/English Methods drafts, including preprocessing, selection, final parameters and limitations. |
 | `reproducibility_report_zh.md` / `reproducibility_report.md` | Chinese/English reports with environment, configuration, folds, warnings, parameters and checks. |
 | `result.json` | Completion state, GUI summary, final family/parameters, evaluation scope and artifact index. |
-| `best_parameters.json` / `best_parameters_configure.json` | Final parameter overrides and a runnable fixed-parameter retraining recipe; no independent validation. |
+| `best_parameters.json` / `best_parameters_configure.json` | All effective final hyperparameters (including defaults) and a runnable fixed-parameter retraining recipe; no independent validation. |
 | `predictions.csv` / `confusion_matrix.csv` | Held-out truth and predictions, original row index and fold; classification error counts. |
 | `figures/` | Select confusion matrix/class distribution for classification; observed–predicted/residuals/residual distribution for regression. Select none to omit PNGs; switch available figures on the result page. |
 | `model_comparison.csv` | Exploratory within-validation family ranks and scores; the winning rank can differ from the final family. |
@@ -531,7 +531,7 @@ Rapports et conseils utilisent des règles locales déterministes et fonctionnen
 | `methods_summary_zh.md` / `methods_summary.md` | Brouillons de méthodes chinois/anglais : prétraitement, sélection, paramètres finaux et limites. |
 | `reproducibility_report_zh.md` / `reproducibility_report.md` | Rapports chinois/anglais : environnement, configuration, plis, avertissements, paramètres et vérifications. |
 | `result.json` | État final, résumé GUI, famille/paramètres finaux, portée de l’évaluation et index des fichiers. |
-| `best_parameters.json` / `best_parameters_configure.json` | Paramètres finaux et recette exécutable de réentraînement fixe ; aucune validation indépendante. |
+| `best_parameters.json` / `best_parameters_configure.json` | Hyperparamètres finaux effectifs (valeurs par défaut incluses) et recette exécutable de réentraînement fixe ; aucune validation indépendante. |
 | `predictions.csv` / `confusion_matrix.csv` | Observations et prédictions hors apprentissage, index de ligne et pli ; erreurs de classification. |
 | `figures/` | Classification : matrice de confusion/distribution des classes. Régression : observation–prédiction/résidus/distribution des résidus. Tout décocher supprime les PNG ; menu de figures dans les résultats. |
 | `model_comparison.csv` | Classements exploratoires des familles dans chaque validation ; le rang 1 peut différer de la famille finale. |

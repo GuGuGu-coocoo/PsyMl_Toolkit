@@ -274,7 +274,7 @@ def test_multi_model_multi_validation_nested_search_and_progress(tmp_path):
     }
     assert (
         json.loads((config.output_dir / "best_parameters.json").read_text(encoding="utf-8"))
-        == result.best_params
+        == result.effective_params
     )
     assert progress[0]["progress"] == 0.0
     assert progress[0]["estimated_remaining_seconds"] is None

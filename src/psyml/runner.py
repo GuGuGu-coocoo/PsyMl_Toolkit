@@ -31,6 +31,7 @@ from psyml.evaluation.metrics import (
 )
 from psyml.models.catalog import quick_parameter_grid, supported_models
 from psyml.models.factory import build_model
+from psyml.models.parameters import effective_parameters
 from psyml.preprocessing.pipeline import build_preprocessor
 from psyml.reporting.output import write_result_summary, write_results, write_study_outputs
 from psyml.reporting.research import write_research_outputs
@@ -55,6 +56,7 @@ class ExperimentResult:
     best_model_name: str = ""
     best_validation_strategy: str = ""
     best_params: dict[str, Any] = field(default_factory=dict)
+    effective_params: dict[str, Any] = field(default_factory=dict)
     selection_trace: pd.DataFrame = field(default_factory=pd.DataFrame)
     validation_summary: pd.DataFrame = field(default_factory=pd.DataFrame)
     validation_results: dict[str, ExperimentResult] = field(default_factory=dict)
@@ -837,6 +839,7 @@ def _run_prioritized(
     validation_summary = pd.DataFrame(validation_rows)
     final_model = _build_pipeline(config, features, best["model"], best_params, target, groups)
     final_model.fit(features, target)
+    actual_params = effective_parameters(final_model.named_steps["model"])
     tracker.advance(
         phase="finalizing",
         message="Best model fitted on all analyzed rows",
@@ -882,7 +885,7 @@ def _run_prioritized(
             "error",
         ],
     )
-    write_study_outputs(output_dir, config, leaderboard, tuning_results, best_params)
+    write_study_outputs(output_dir, config, leaderboard, tuning_results, actual_params)
     selection_trace.to_csv(output_dir / "selection_trace.csv", index=False)
     validation_summary.to_csv(output_dir / "validation_summary.csv", index=False)
     write_research_outputs(
@@ -910,6 +913,7 @@ def _run_prioritized(
             "best_validation": best["validation"],
             "selection_metric": metric,
             "best_parameters": best_params,
+            "effective_parameters": actual_params,
             "evaluated_combinations": len(ranked_rows),
         },
     )
@@ -926,6 +930,7 @@ def _run_prioritized(
         best_model_name=best["model"],
         best_validation_strategy=best["validation"],
         best_params=best_params,
+        effective_params=actual_params,
         selection_trace=selection_trace,
         validation_summary=validation_summary,
     )
