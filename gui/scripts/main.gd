@@ -7,6 +7,9 @@ const BORDER := Color("dce0e6")
 const MUTED := Color("626977")
 const RADIUS := 6
 
+const DataPreview = preload("res://scripts/data_preview.gd")
+
+var prediction_page
 var bridge: CoreBridge
 var capabilities: Dictionary = {}
 var preview_payload: Dictionary = {}
@@ -225,6 +228,9 @@ func _bind_scene() -> void:
 	_bind_dialogs()
 	_bind_feedback_controls()
 	configuration_io = preload("res://scripts/configuration_io.gd").new(self)
+	prediction_page = preload("res://scripts/prediction_page.gd").new()
+	add_child(prediction_page)
+	prediction_page.build(self)
 
 
 func _bind_data_tab() -> void:
@@ -434,6 +440,8 @@ func _apply_language() -> void:
 	tabs.set_tab_hidden(1, true)
 	tabs.set_tab_title(2, tr("TAB_REVIEW"))
 	tabs.set_tab_title(3, tr("TAB_RESULTS"))
+	if prediction_page != null:
+		prediction_page.refresh_language()
 	_update_primary_validation()
 	_update_checks()
 	_update_tree_titles()
@@ -514,18 +522,13 @@ func _on_preview_ready(payload: Dictionary) -> void:
 	preview_payload = payload
 	data_summary_label.text = tr("DATA_SUMMARY") % [payload.row_count, payload.column_count]
 	_set_status("PREVIEW_READY")
-	variable_tree.clear()
-	var root := variable_tree.create_item()
+	DataPreview.variables(variable_tree, payload.columns)
 	feature_list.clear()
 	target_option.clear()
 	group_option.clear()
 	group_option.add_item(tr("NONE"))
 	group_option.set_item_metadata(0, null)
 	for column in payload.columns:
-		var row := variable_tree.create_item(root)
-		row.set_text(0, column.name)
-		row.set_text(1, column.dtype)
-		row.set_text(2, str(int(column.missing_count)))
 		feature_list.add_item(column.name)
 		feature_list.set_item_metadata(feature_list.item_count - 1, column.name)
 		feature_list.select(feature_list.item_count - 1, false)
@@ -539,21 +542,7 @@ func _on_preview_ready(payload: Dictionary) -> void:
 
 
 func _populate_sample(rows: Array) -> void:
-	sample_tree.clear()
-	if rows.is_empty():
-		return
-	var headers: Array = rows[0].keys()
-	sample_tree.columns = headers.size()
-	sample_tree.column_titles_visible = true
-	for index in range(headers.size()):
-		sample_tree.set_column_title(index, str(headers[index]))
-		sample_tree.set_column_custom_minimum_width(index, 150)
-		sample_tree.set_column_expand(index, false)
-	var root := sample_tree.create_item()
-	for values in rows:
-		var item := sample_tree.create_item(root)
-		for index in range(headers.size()):
-			item.set_text(index, str(values.get(headers[index], "")))
+	DataPreview.sample(sample_tree, rows, preview_payload.get("columns", []))
 
 
 func _on_preview_failed(error: Dictionary) -> void:

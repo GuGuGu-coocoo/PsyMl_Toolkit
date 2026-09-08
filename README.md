@@ -206,7 +206,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 ### 配置与功能边界
 
-配置文件中的留出比例、随机种子、固定参数、搜索候选和数据指纹选项分别对应 `test_size`、`random_seed`、`model_params`、`parameter_grids` 和 `include_data_hash`，完整字段见[配置说明](src/psyml/schemas/analysis_config.schema.json)。关闭数据指纹不等于匿名化；预测文件仍包含目标值和预测值。GUI 支持导入和保存配置，并提供留出比例、随机种子、数据指纹、固定参数及额外搜索参数设置；高级参数使用界面内的 JSON 字段，无需命令行。当前不支持加载已拟合模型进行新数据预测、调整正类/阈值或时间序列专用验证。
+配置文件中的留出比例、随机种子、固定参数、搜索候选和数据指纹选项分别对应 `test_size`、`random_seed`、`model_params`、`parameter_grids` 和 `include_data_hash`，完整字段见[配置说明](src/psyml/schemas/analysis_config.schema.json)。关闭数据指纹不等于匿名化；预测文件仍包含目标值和预测值。GUI 支持导入和保存配置，并提供留出比例、随机种子、数据指纹、固定参数及额外搜索参数设置；高级参数使用界面内的 JSON 字段，无需命令行。第 4 页“模型与预测”支持加载可信的 PsyML 模型、自动检查所需变量、批量预测、预览与另存为。当前不支持调整正类/阈值或时间序列专用验证。
 
 ### 开发与参与
 
@@ -382,7 +382,7 @@ Except for separately identified third-party material, the project is licensed u
 
 ### Configuration and feature boundaries
 
-Configurations control `test_size`, `random_seed`, `model_params`, `parameter_grids` and `include_data_hash`; consult the [configuration schema](src/psyml/schemas/analysis_config.schema.json). Disabling fingerprints does not anonymize outputs: predictions still contain outcomes and predictions. The GUI imports and saves JSON configurations and exposes test fraction, seed, data fingerprint, fixed parameters and additional search grids through its forms and advanced JSON fields. No terminal is needed. It does not offer saved-model inference, positive-class/threshold selector or dedicated time-series validation.
+Configurations control `test_size`, `random_seed`, `model_params`, `parameter_grids` and `include_data_hash`; consult the [configuration schema](src/psyml/schemas/analysis_config.schema.json). Disabling fingerprints does not anonymize outputs: predictions still contain outcomes and predictions. The GUI imports and saves JSON configurations and exposes test fraction, seed, data fingerprint, fixed parameters and additional search grids through its forms and advanced JSON fields. No terminal is needed. Page 4, **Model & Prediction**, loads trusted PsyML models, automatically checks required features, predicts all rows, previews results and saves them in supported formats. A positive-class/threshold selector and dedicated time-series validation are not offered.
 
 ### Development and participation
 
@@ -558,7 +558,7 @@ Sauf éléments tiers signalés séparément, le projet est sous [licence Apache
 
 ### Configuration et limites fonctionnelles
 
-Les configurations contrôlent `test_size`, `random_seed`, `model_params`, `parameter_grids` et `include_data_hash` ; voir le [schéma](src/psyml/schemas/analysis_config.schema.json). Désactiver l’empreinte n’anonymise pas les sorties : les prédictions contiennent encore valeurs observées et prédites. L’interface importe et enregistre les JSON et permet de régler proportion de test, graine, empreinte, paramètres fixes et grilles supplémentaires dans ses champs, dont des champs JSON avancés. Aucun terminal requis. Elle ne propose pas d’inférence par modèle sauvegardé, de choix de classe positive/seuil ou de validation temporelle dédiée.
+Les configurations contrôlent `test_size`, `random_seed`, `model_params`, `parameter_grids` et `include_data_hash` ; voir le [schéma](src/psyml/schemas/analysis_config.schema.json). Désactiver l’empreinte n’anonymise pas les sorties : les prédictions contiennent encore valeurs observées et prédites. L’interface importe et enregistre les JSON et permet de régler proportion de test, graine, empreinte, paramètres fixes et grilles supplémentaires dans ses champs, dont des champs JSON avancés. Aucun terminal requis. La page 4, **Modèle et prédiction**, charge les modèles PsyML de confiance, vérifie automatiquement les variables, prédit toutes les lignes, affiche et exporte les résultats. Aucun choix de classe positive/seuil ni validation temporelle dédiée.
 
 ### Développement et participation
 

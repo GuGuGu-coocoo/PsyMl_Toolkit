@@ -1,6 +1,8 @@
 class_name CoreBridge
 extends Node
 
+signal response_ready(payload: Dictionary)
+
 signal preview_ready(payload: Dictionary)
 signal preview_failed(error: Dictionary)
 signal event_received(payload: Dictionary)
@@ -184,3 +186,21 @@ func _exit_tree() -> void:
 		_preview_thread.wait_to_finish()
 	if is_running():
 		OS.kill(_process_data["pid"])
+
+
+func request_json(arguments: PackedStringArray) -> void:
+	if _preview_thread != null:
+		return
+	_preview_thread = Thread.new()
+	_preview_thread.start(_json_worker.bind(arguments))
+
+
+func _json_worker(arguments: PackedStringArray) -> void:
+	var payload := execute_json_sync(arguments)
+	call_deferred("_finish_json", payload)
+
+
+func _finish_json(payload: Dictionary) -> void:
+	_preview_thread.wait_to_finish()
+	_preview_thread = null
+	response_ready.emit(payload)

@@ -35,6 +35,7 @@ godot --headless --path gui --script res://tests/test_feedback.gd
 godot --headless --path gui --script res://tests/test_parameter_context.gd
 godot --headless --path gui --script res://tests/test_independent_results.gd
 godot --headless --path gui --script res://tests/test_config_import.gd
+godot --headless --path gui --script res://tests/test_prediction.gd
 ```
 
 人工快速检查：打开分类样例，目标选 `target`、分组选 `participant`，预测变量仅 `score`、`category`，模型选 Decision Tree 和 Dummy，分组 K 折、外层 3、内层 2；选择不指定主要验证，并加选留出法。运行后应先显示验证选择提示，切换后分别显示完整结果。切换三种语言、检查结果与配置是否保持；在研究设计和结果摘要文字处测试滚轮/触控板，在小表格中检查独立滚动；再运行回归配置并检查回归指标与图形。报错、终止与重试也应分别复测。
