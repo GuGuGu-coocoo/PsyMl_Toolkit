@@ -211,8 +211,23 @@ Les fichiers ci-dessous correspondent à une analyse avec validation principale 
 | Quelles prédictions sont erronées ? | `predictions.csv`, `confusion_matrix.csv` en classification | `observed` est la vérité, `predicted` la prédiction. Pour les fichiers d’entrée, `row_index` commence à 0 et désigne une ligne de données, pas le numéro de ligne du tableur avec en-tête |
 | Environnement et effectifs correspondent-ils ? | `analysis_manifest.json` | Lignes initiales/analysées, nombre de caractéristiques, empreinte et versions. Ce nombre de caractéristiques n’est pas le nombre de colonnes après encodage one-hot |
 | Comment commencer la rédaction ? | `methods_summary.md` / `methods_summary_zh.md`, `reproducibility_report.md` / `reproducibility_report_zh.md` | Brouillons hors ligne en anglais/chinois à vérifier, pas des textes déjà validés pour publication |
+| Où est le modèle enregistré ? | `model/best_<modèle>.joblib`, `model/model_metadata.json` | Produit avec enregistrement et validation principale ; chargement à la page 4, distinct du JSON de réentraînement |
 
 Les **meilleurs paramètres** sont ceux sélectionnés pour cette plage de candidats, cette métrique, ces données et ce découpage, pas un optimum global ou un choix universel. `best_parameters_configure.json` réutilise les données ayant servi à sélectionner les paramètres ; son nouveau score n’est pas une validation indépendante et ne reproduit pas l’estimation de la recherche imbriquée originale. En v0.2.0, une analyse avec validation principale peut enregistrer un Pipeline ajusté, rechargeable à la page 4. Le JSON reste une recette de réentraînement, distincte du modèle enregistré.
+
+### Modèles enregistrés et sorties de prédiction
+
+Avec une validation principale, `save_best_model` est activé par défaut. Le Pipeline final est enregistré dans `model/best_<modèle>.joblib`, avec `model_metadata.json` décrivant variables originales, types, classes, paramètres effectifs, portée de l’ajustement et versions. Désactiver l’enregistrement n’empêche pas l’analyse. Avec `primary_validation: null`, ni la racine ni les sous-dossiers de validation n’enregistrent automatiquement de modèle.
+
+Distinguez trois enregistrements : `best_parameters.json` et `result.json.effective_parameters` contiennent les hyperparamètres effectifs, défauts inclus ; `result.json.best_parameters` conserve les valeurs choisies remplaçant les défauts et peut être vide ; `best_parameters_configure.json` est une recette de réentraînement, pas un modèle ajusté. Le fichier modèle vient de l’ajustement final sur toutes les données, pas du pli externe le mieux noté.
+
+La page 4 vérifie automatiquement le modèle de confiance et les nouvelles données. Seuls les prédicteurs requis sont nécessaires, sans cible ni groupe. Les variables nommées sont réordonnées ; avec seulement un nombre de variables, confirmez leur correspondance et ordre manuellement. Colonnes absentes, nombres invalides, valeurs infinies ou manquantes sans imputation ajustée bloquent la prédiction. La compatibilité ne prouve pas la comparabilité des populations et ne garantit pas l’exécution du modèle. Le choix `drop` à l’entraînement ne supprime pas silencieusement de nouvelles lignes.
+
+Les sorties conservent ordre des lignes et colonnes initiales et ajoutent `predicted_class` ou `predicted_value`. Seuls les classifieurs avec probabilités natives ajoutent `probability_*`. Les classes sont converties en noms de colonnes utilisables ; les collisions ajoutent des suffixes numériques aux nouvelles colonnes. Une cible présente est conservée sans métriques automatiques de validation externe, calibration ni optimisation de seuil.
+
+Neuf formats d’entrée sont acceptés ; export CSV, TSV, XLSX, SAV, DTA, XPT ou Parquet. XLS/SAS7BDAT sont en lecture seule : l’interface propose XLSX. Les limites des formats statistiques peuvent empêcher l’export ; essayez XLSX ou Parquet. Gardez modèle et métadonnées ensemble. Corruption, empreinte différente ou version scikit-learn différente provoquent des erreurs. Sans métadonnées, une récupération est tentée sans garantie d’exhaustivité.
+
+Implémentation : [enregistrement](../src/psyml/models/persistence.py), [paramètres effectifs](../src/psyml/models/parameters.py), [prédiction](../src/psyml/prediction.py).
 
 ### Figures
 
@@ -252,6 +267,14 @@ Les figures utilisent les prédictions hors apprentissage de la validation princ
 | Calibration | Concordance entre probabilités prédites et fréquences observées. Une bonne AUC de classement ne garantit pas une bonne calibration |
 | Empreinte SHA-256 | Permet de détecter un changement du contenu d’entrée. Ce n’est ni chiffrement, ni anonymisation, ni preuve de qualité |
 | Avertissement de convergence | L’optimisation n’a pas satisfait son critère d’arrêt dans les conditions choisies. Des résultats peuvent exister sans que l’ajustement soit suffisamment stable |
+| Modèle final | Pipeline ajusté sur toutes les données après sélection finale ; pas le gagnant d’un pli externe |
+| Paramètres effectifs | Réglages d’initialisation appliqués, défauts inclus ; pas les coefficients appris |
+| model_metadata.json | Noms/types, classes, paramètres, portée et versions à garder avec le modèle |
+| Compatibilité des variables | Noms requis et types utilisables ; pas une preuve de comparabilité des populations |
+| predicted_class / predicted_value | Classe / valeur prédite, pas un résultat observé |
+| probability_* | Probabilités natives du classifieur, sans calibration automatique ; absentes en régression |
+| Prédiction de nouvelles données | Sorties sans cible requise ; la validation externe exige données indépendantes étiquetées et plan d’évaluation |
+| Source de modèle fiable | Charger joblib/pickle peut exécuter du code ; utiliser seulement ses modèles ou une provenance vérifiée |
 
 <a id="checklist"></a>
 
@@ -276,8 +299,6 @@ Pour les principes généraux, consulter les références scikit-learn sur les [
 
 ## Reproduire à partir d’une configuration
 
+Commencez les essais dans [examples/quickstart/](../examples/quickstart/README.md) : chaque tâche fournit une configuration, 48 lignes d’entraînement et 10 nouvelles lignes à prédire, toutes synthétiques. Suivez la [procédure du README](../README.md#french) ; enregistrement et prédiction font partie de l’étape 9.
+
 À la page 1, **Importer une configuration…** ouvre un exemple fourni, le `config.json` d’un résultat ou `best_parameters_configure.json`, sans terminal. Réassociez les données correspondantes si leur chemin est introuvable ; les colonnes requises sont vérifiées. Vérifiez variables, validation et paramètres, puis choisissez un dossier local et lancez à la page 2. Chaque exécution crée un nouveau sous-dossier sans réutiliser le chemin de sortie importé. **Enregistrer la configuration…** conserve les réglages. Relancer les meilleurs paramètres fixes ne reproduit pas la recherche originale et ne constitue pas une validation indépendante.
-
-## Ajouts de la version 0.2.0 : modèles et prédiction
-
-Le modèle final comprend le Pipeline de prétraitement et estimateur réajusté sur toutes les lignes analysées après sélection interne sur toutes les données. Les paramètres effectifs incluent les valeurs par défaut, pas les coefficients appris. Conservez model_metadata.json à côté du modèle. La compatibilité vérifie noms et types, pas la comparabilité des populations. predicted_class et predicted_value sont des sorties, pas des observations. Les probability_* natives ne sont pas automatiquement calibrées ; la régression n’en produit pas. Prédire peut se faire sans cible, tandis que la validation externe exige des données indépendantes étiquetées et un plan d’évaluation. Ne chargez que des fichiers joblib/pickle de confiance, car leur chargement peut exécuter du code.

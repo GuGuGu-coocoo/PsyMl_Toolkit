@@ -192,7 +192,7 @@ A prespecified single family with one parameter candidate needs no inner search.
 
 ## 5. Reading output files and figures
 
-The file descriptions below apply to a primary-design run or each successful child directory in independent mode. The root validation_summary.csv uses `role=independent`. Python callers obtain full results from `validation_results[strategy]`; the top-level model is None and its metric dictionary is empty.
+The file descriptions below apply to a primary-design run or each successful child directory in independent mode. In independent mode only, the root validation_summary.csv uses `role=independent`; Python callers obtain full results from `validation_results[strategy]`, while the top-level model is None and its metric dictionary is empty.
 
 ### Find a file by question
 
@@ -211,8 +211,23 @@ The file descriptions below apply to a primary-design run or each successful chi
 | Which predictions were wrong? | `predictions.csv`, classification `confusion_matrix.csv` | `observed` is truth, `predicted` the prediction. For file inputs, `row_index` is a zero-based data-row index, not a spreadsheet row number including the header |
 | Do the environment and sample sizes match? | `analysis_manifest.json` | Input/analyzed rows, feature count, fingerprint and dependency versions. Input features are not the number of one-hot encoded columns |
 | How should reporting start? | `methods_summary.md` / `methods_summary_zh.md`, `reproducibility_report.md` / `reproducibility_report_zh.md` | Offline English/Chinese drafts to check, not reviewed manuscript text |
+| Where is the saved model? | `model/best_<model>.joblib`, `model/model_metadata.json` | Produced only when saving a primary-validation run; load on page 4, unlike a retraining JSON |
 
 **Best parameters** means the settings selected under this candidate range, metric, data and splitting design, not a global optimum or a universal choice. `best_parameters_configure.json` reuses data that participated in selection; its new score is not independent validation and does not reproduce the original nested-search estimate. In v0.2.0, primary-validation runs can save a fitted Pipeline for loading on page 4. This JSON configuration remains a retraining recipe, distinct from the saved model.
+
+### Saved models and prediction outputs
+
+Primary-validation runs enable `save_best_model` by default. The final Pipeline is saved as `model/best_<model>.joblib`, with `model_metadata.json` recording original features, types, classes, effective parameters, fit scope and versions. Disabling saving still allows analysis. With `primary_validation: null`, neither the root nor validation children automatically save a model.
+
+Distinguish three parameter records: `best_parameters.json` and `result.json.effective_parameters` contain effective hyperparameters including defaults; `result.json.best_parameters` retains selected overrides and may be empty; `best_parameters_configure.json` is a retraining recipe, not a fitted model. The model file comes from the final full-data fit, not the highest-scoring outer fold.
+
+Page 4 automatically checks a trusted model and new table. Only required predictors are needed, not target or group columns. Named features are reordered automatically; a model with only a feature count needs confirmed manual mapping and order. Missing columns, invalid numbers, infinity or missing values without fitted imputation block prediction. Compatibility does not establish population comparability or guarantee that model execution succeeds. Training with `drop` does not silently delete new rows during prediction.
+
+Outputs preserve original row order and all input columns, adding `predicted_class` or `predicted_value`. Only classifiers with native probabilities add `probability_*`. Class names are made suitable for column names; collisions receive numeric suffixes on new columns. An input target is retained without automatic external-validation metrics, probability calibration or threshold optimization.
+
+Nine input formats are supported; export CSV, TSV, XLSX, SAV, DTA, XPT or Parquet. XLS/SAS7BDAT are read-only, so the GUI defaults to XLSX. Statistical-format limits can prevent export; try XLSX or Parquet. Keep the model and metadata together. Corruption, hash mismatch or a different scikit-learn version causes errors; missing metadata triggers recovery where possible, without guaranteeing completeness.
+
+Implementation: [persistence](../src/psyml/models/persistence.py), [effective parameters](../src/psyml/models/parameters.py), [prediction](../src/psyml/prediction.py).
 
 ### Figures
 
@@ -252,6 +267,14 @@ Figures use held-out predictions from the primary validation, or from the curren
 | Calibration | Agreement between predicted probabilities and observed frequencies. Good ranking AUC does not ensure good calibration |
 | SHA-256 fingerprint | Identifies input-content changes. It is not encryption, anonymization or proof of data quality |
 | Convergence warning | Optimization did not meet its stopping criterion under the configured conditions. Output may exist without the fit being sufficiently stable |
+| Final model | Full-data fitted Pipeline after final selection; not an outer-fold winner |
+| Effective parameters | Applied estimator initialization settings, including defaults; not learned coefficients |
+| model_metadata.json | Feature names/types, classes, parameters, fit scope and versions kept beside the model |
+| Feature compatibility | Required input names and usable types; does not establish population comparability |
+| predicted_class / predicted_value | Predicted label / numerical value, not an observed outcome |
+| probability_* | Native classifier probabilities, not automatically calibrated; absent for regression |
+| New-data prediction | Generates outputs without needing a target; independent external validation requires labeled data and an evaluation design |
+| Trusted model source | Loading joblib/pickle can execute code; load only your own or verified trusted models |
 
 <a id="checklist"></a>
 
@@ -276,8 +299,6 @@ For general principles, consult scikit-learn's [metrics](https://scikit-learn.or
 
 ## Reproduce from a configuration
 
+Start user testing in [examples/quickstart/](../examples/quickstart/README.md): each task has a configuration, 48 training rows and 10 new prediction rows, all synthetic. Follow the [README analysis workflow](../README.md#english); model saving and prediction are integrated as step 9.
+
 On page 1, **Import configuration…** opens a bundled example, a result folder’s `config.json`, or `best_parameters_configure.json`; no terminal is required. Relink the corresponding data if its path is unavailable; required columns are checked. Review variables, validation and parameters, then choose a local output folder and run on page 2. Each run creates a new subfolder instead of reusing the imported output path. **Save configuration…** saves current settings. Rerunning fixed best parameters neither reproduces the original search nor provides independent validation.
-
-## Added in 0.2.0: saved models and prediction
-
-A final model is the complete preprocessing/estimator Pipeline refitted on all analyzed rows after full-data inner selection. Effective parameters include applied defaults, not fitted coefficients. Keep model_metadata.json beside the model. Feature compatibility checks names and types, not population comparability. predicted_class and predicted_value are model outputs, not observed outcomes. Native probability_* columns are not automatically calibrated; regression has none. New-data prediction can omit the target, whereas external validation needs independent labeled data and an evaluation design. Load only trusted joblib/pickle files because loading can execute code.
