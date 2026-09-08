@@ -13,6 +13,8 @@
 | [regression_train.csv](regression_train.csv) | 48 行回归训练数据，含目标 target | 配置导入时自动读取，无需另外打开 |
 | [regression_predict.csv](regression_predict.csv) | 10 行新样本，无目标列 | 第 4 页“加载预测数据…” |
 
+先打开含“4 模型与预测”的新版 GUI；macOS 源码版可在项目根目录双击 `Launch PsyML.command`。旧的 v0.1.1 下载包不包含该页面。
+
 建议先测分类：
 
 1. 第 1 页点击“导入配置…”，选择 `classification_config.json`。对话框默认定位到此资料夹。训练数据和设置一起恢复，预测变量为 score/category；不要导入 `_predict.csv` 来训练。
@@ -39,6 +41,8 @@ Keep or copy this entire folder so each JSON stays beside its training CSV. All 
 | [regression_train.csv](regression_train.csv) | 48 training rows including target | Loaded automatically by the configuration |
 | [regression_predict.csv](regression_predict.csv) | 10 new samples without target | Page 4: Load prediction data… |
 
+Open the updated GUI with page 4, Model & Prediction (on macOS, source users can double-click `Launch PsyML.command` in the project root). Published v0.1.1 apps lack this page.
+
 Import the classification JSON on page 1. Keep **Save best model** enabled, below Random seed in the lower settings area. Choose an output folder and run on page 2. On page 3, open the result folder; keep `model/best_decision_tree.joblib` with `model_metadata.json`. On page 4, trust and load that model, then load `classification_predict.csv`. The configuration and first prediction-data dialogs start in this folder. When automatic checks pass, run and save predictions: expect 10 rows with original sample_id/category/score plus predicted_class and probability_0/probability_1.
 
 Repeat with the regression JSON, its saved `best_ridge.joblib`, and `regression_predict.csv`: 10 rows, with predicted_value and no probability columns. Do not train on the `_predict.csv` files. Their feature order differs from training, and extra sample_id values test column preservation. Predictors require only score/category; no target/group column is needed. Exact predictions may vary with settings and dependency versions; this is not a validation of real-world model quality.
@@ -57,6 +61,8 @@ Conservez ou copiez ce dossier entier pour garder chaque JSON à côté de son C
 | [regression_config.json](regression_config.json) | Réglages de régression, modèle enregistré | Page 1 : Importer une configuration… |
 | [regression_train.csv](regression_train.csv) | 48 lignes d’entraînement avec target | Chargé automatiquement par le JSON |
 | [regression_predict.csv](regression_predict.csv) | 10 nouveaux exemples sans cible | Page 4 : Charger les données à prédire… |
+
+Ouvrez la version avec la page 4, Modèle et prédiction (sources macOS : double-cliquez sur `Launch PsyML.command` à la racine). Les applications v0.1.1 publiées ne proposent pas cette page.
 
 Importez le JSON de classification à la page 1. Gardez l’enregistrement du meilleur modèle activé, sous la graine aléatoire en bas des réglages. Choisissez le dossier de sortie et lancez à la page 2. À la page 3, ouvrez les résultats ; gardez `model/best_decision_tree.joblib` avec `model_metadata.json`. À la page 4, confirmez la confiance, chargez ce modèle puis `classification_predict.csv`. Les dialogues de configuration et de première sélection des données à prédire commencent ici. Après vérification automatique, lancez et enregistrez : 10 lignes, colonnes sample_id/category/score conservées, plus predicted_class et probability_0/probability_1.
 

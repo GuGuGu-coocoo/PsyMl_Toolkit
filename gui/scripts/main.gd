@@ -79,7 +79,6 @@ var figure_choices: VBoxContainer
 var copy_error_button: Button
 var error_details: TextEdit
 var run_folder_name := ""
-var sample_data_button: Button
 var figure_option: OptionButton
 var validation_result_option: OptionButton
 var validation_result_entries: Dictionary = {}
@@ -838,7 +837,6 @@ func _analysis_inputs() -> Array[Control]:
 		data_path_edit,
 		browse_button,
 		preview_button,
-		sample_data_button,
 		feature_list,
 		task_option,
 		target_option,
@@ -1329,13 +1327,6 @@ func _bind_feedback_controls() -> void:
 	primary_validation_option.item_selected.connect(func(_index): _refresh_review())
 	figure_choices = VBoxContainer.new()
 	parameter_editor.get_parent().add_child(figure_choices)
-	sample_data_button = Button.new()
-	translated_controls.append({"node": sample_data_button, "key": "SAMPLE_DATA"})
-	browse_button.get_parent().add_child(sample_data_button)
-	sample_data_button.pressed.connect(func():
-		file_dialog.current_dir = CoreBridge.examples_directory()
-		file_dialog.popup_centered_ratio(0.8)
-	)
 	copy_error_button = Button.new()
 	translated_controls.append({"node": copy_error_button, "key": "COPY_ERROR"})
 	status_label.get_parent().get_parent().add_child(copy_error_button)

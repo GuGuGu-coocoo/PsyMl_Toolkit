@@ -48,7 +48,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 旧 `examples/synthetic/` 保留供现有开发测试使用；用户试用从 `examples/quickstart/` 开始。
 
-**第一步：导入配置。** 在 **“1 数据与分析设置”** 点击 **“导入配置…”**，在系统文件选择窗口中选中 `classification_config.json` 并打开。默认会定位到内置样例目录；如果选择自己的配置，也使用同一个按钮。**“测试数据”只用于选择数据文件，不会恢复分析设置。**
+**第一步：导入配置。** 在 **“1 数据与分析设置”** 点击 **“导入配置…”**，在系统文件选择窗口中选中 `classification_config.json` 并打开。默认会定位到内置样例目录；如果选择自己的配置，也使用同一个按钮。训练试用从“导入配置…”开始；“浏览…”用于选择自己的数据文件。
 
 数据和配置会一起恢复，无需另外逐项设置。分类示例应显示目标 `target`、分组 `participant`、预测变量 `score` 和 `category`，模型为 Decision Tree，验证为分组 K 折。导入配置不会自动运行分析。
 
@@ -290,7 +290,7 @@ Configuration import and the first prediction-data dialog default to this folder
 
 `examples/synthetic/` remains for existing developer tests; start user testing in `examples/quickstart/`.
 
-**Step 1 — Import a configuration.** On **1 Data & analysis setup**, click **Import configuration…**, select `classification_config.json` in the system file dialog and open it. The dialog starts in the bundled examples directory; use the same button for your own configuration. **Sample data selects data only; it does not restore analysis settings.**
+**Step 1 — Import a configuration.** On **1 Data & analysis setup**, click **Import configuration…**, select `classification_config.json` in the system file dialog and open it. The dialog starts in the bundled examples directory; use the same button for your own configuration. Start a training test with Import configuration…; Browse… is for selecting your own data.
 
 Data and settings are restored together. The classification example uses target `target`, group `participant`, predictors `score` and `category`, Decision Tree and Group K Fold. Importing does not start the analysis automatically.
 
@@ -498,7 +498,7 @@ Les dialogues de configuration et de première sélection des données à prédi
 
 `examples/synthetic/` reste réservé aux tests de développement existants ; commencez les essais utilisateur dans `examples/quickstart/`.
 
-**Étape 1 — Importer une configuration.** Dans **1 Données et analyse**, cliquez sur **Importer une configuration…**, sélectionnez `classification_config.json` dans le dialogue système puis ouvrez-le. Le dialogue commence dans le dossier des exemples fournis ; le même bouton ouvre vos propres configurations. **Données de test sélectionne seulement un fichier de données, sans restaurer les réglages d’analyse.**
+**Étape 1 — Importer une configuration.** Dans **1 Données et analyse**, cliquez sur **Importer une configuration…**, sélectionnez `classification_config.json` dans le dialogue système puis ouvrez-le. Le dialogue commence dans le dossier des exemples fournis ; le même bouton ouvre vos propres configurations. Commencez un essai par Importer une configuration… ; Parcourir… sert à sélectionner vos propres données.
 
 Données et réglages sont restaurés ensemble. L’exemple de classification utilise la cible `target`, le groupe `participant`, les prédicteurs `score` et `category`, Decision Tree et K plis par groupes. L’importation ne lance pas automatiquement l’analyse.
 

@@ -22,9 +22,9 @@ func _capture_walkthrough() -> void:
 	main._on_language_selected(locale)
 	var sample_dir := "/tmp/PsyML-demo"
 	DirAccess.make_dir_recursive_absolute(sample_dir)
-	var input_path := sample_dir.path_join("classification.csv")
+	var input_path := sample_dir.path_join("classification_train.csv")
 	var file := FileAccess.open(input_path, FileAccess.WRITE)
-	file.store_string(FileAccess.get_file_as_string("res://../examples/synthetic/classification.csv"))
+	file.store_string(FileAccess.get_file_as_string("res://../examples/quickstart/classification_train.csv"))
 	file.close()
 	main._on_file_selected(input_path)
 	var deadline := Time.get_ticks_msec() + 15000
@@ -85,7 +85,7 @@ func _capture_walkthrough() -> void:
 	main._on_language_selected(locale)
 	main.output_edit.text = sample_dir.path_join("outputs")
 	# A second sequence shows the exact bundled configuration used by the quick start.
-	var example: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://../examples/synthetic/classification_config.json"))
+	var example: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://../examples/quickstart/classification_config.json"))
 	example.input_path = input_path
 	var config_path := sample_dir.path_join("classification_config.json")
 	file = FileAccess.open(config_path, FileAccess.WRITE)
