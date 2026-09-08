@@ -1,0 +1,11 @@
+sample_id,category,score
+new_01,A,1.5
+new_02,B,-1.2
+new_03,A,0.35
+new_04,B,2.1
+new_05,A,-0.75
+new_06,B,0.9
+new_07,A,-1.65
+new_08,B,0.05
+new_09,A,1.8
+new_10,B,-0.4

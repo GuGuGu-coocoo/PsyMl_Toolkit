@@ -29,8 +29,9 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(directory)
 	# Exercise each task through real full-data training, disk save and GUI inference.
 	for task in ["classification", "regression"]:
-		var input := ProjectSettings.globalize_path("res://../examples/synthetic/" + task + ".csv")
-		var config: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://../examples/synthetic/" + task + "_config.json"))
+		var input := ProjectSettings.globalize_path("res://../examples/quickstart/" + task + "_train.csv")
+		var prediction_input := ProjectSettings.globalize_path("res://../examples/quickstart/" + task + "_predict.csv")
+		var config: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://../examples/quickstart/" + task + "_config.json"))
 		config.input_path = input
 		config.output_dir = directory.path_join(task)
 		config.figure_types = []
@@ -50,12 +51,12 @@ func _run() -> void:
 		# Data-first and model-first must both trigger automatic checks.
 		page.trust.button_pressed = true
 		if task == "classification":
-			page.load_data(input)
+			page.load_data(prediction_input)
 			await _wait(page)
 			assert(page.predict_button.disabled)
 		page.load_model(model_path)
 		await _wait(page)
-		page.load_data(input)
+		page.load_data(prediction_input)
 		await _wait(page)
 		assert(page.error_message.is_empty(), page.error_message)
 		assert(page.compatibility.compatible and not page.predict_button.disabled)
@@ -65,6 +66,8 @@ func _run() -> void:
 		await _wait(page)
 		assert(page.error_message.is_empty(), page.error_message)
 		assert(not page.export_button.disabled and not page.predictions.is_empty())
+		assert(page.predictions.row_count == 10)
+		assert(page.predictions.columns[0].name == "sample_id")
 		var names: Array = []
 		for column in page.predictions.columns:
 			names.append(column.name)

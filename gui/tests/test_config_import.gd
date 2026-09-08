@@ -14,7 +14,7 @@ func run() -> void:
 	var main = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
-	var example := ProjectSettings.globalize_path("res://../examples/synthetic/classification_config.json")
+	var example := CoreBridge.quickstart_directory().path_join("classification_config.json")
 	check(main.configuration_io.import_file(example), "Import example failed")
 	var imported: Dictionary = main._build_config()
 	check(imported.target_column == "target", "Target not restored")

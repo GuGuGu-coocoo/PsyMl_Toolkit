@@ -25,6 +25,14 @@ static func examples_directory() -> String:
 	return ProjectSettings.globalize_path("res://../examples/synthetic")
 
 
+static func quickstart_directory() -> String:
+	var bundled := bundle_directory().path_join("examples/quickstart")
+	if DirAccess.dir_exists_absolute(bundled):
+		return bundled
+	var source := ProjectSettings.globalize_path("res://../examples/quickstart")
+	return source if DirAccess.dir_exists_absolute(source) else examples_directory()
+
+
 func _command_prefix() -> PackedStringArray:
 	return PackedStringArray([]) if FileAccess.file_exists(_bundled_core()) else PackedStringArray(["-m", "psyml"])
 

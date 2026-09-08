@@ -120,6 +120,8 @@ func build(owner: Control) -> void:
 		model_dialog.popup_centered_ratio(0.8))
 	data_button.pressed.connect(func():
 		data_dialog.title = tr("LOAD_PREDICTION_DATA")
+		if input_path.is_empty():
+			data_dialog.current_dir = CoreBridge.quickstart_directory()
 		data_dialog.popup_centered_ratio(0.8))
 	model_dialog.file_selected.connect(load_model)
 	data_dialog.file_selected.connect(load_data)

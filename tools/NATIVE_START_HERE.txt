@@ -3,29 +3,35 @@ PsyML Toolkit 0.1.1 — Desktop application / 桌面应用 / Application de bure
 中文
 完整解压。Mac 双击 PsyML Toolkit.app；Windows 双击 PsyML Toolkit.exe，保留 core 文件夹。
 无需安装 Python、Godot 或其他依赖，无需命令行或联网下载。
-在第 1 页点击“导入配置…”，选择 examples/synthetic/classification_config.json。
+在第 1 页点击“导入配置…”，选择 examples/quickstart/classification_config.json。
 核对 target、participant、score/category、Decision Tree 和 Group K Fold。
 在第 2 页选择本机输出文件夹，点击运行。也可先“保存配置…”再重新导入。
-regression_config.json 用于回归示例。全部样例为合成数据。
+regression_config.json 用于回归示例。全部资料集中在 examples/quickstart/，各文件作用见其中 README.md。
+*_train.csv 是训练数据，导入对应配置时自动读取；*_predict.csv 是另外 10 行合成新样本。
+保留“保存最佳模型”，运行后在第 4 页加载结果 model/ 中的模型，再加载对应 *_predict.csv 并运行预测。
 数据路径失效时，在弹窗中重新选择对应的 CSV。结果始终保存到新的本机子目录。
 应用未商业签名/公证，首次打开可能需要系统安全确认。
 
 English
 Extract everything. On Mac open PsyML Toolkit.app; on Windows open PsyML Toolkit.exe and keep core beside it.
 Python, Godot and analysis dependencies are included. No terminal or additional download is needed.
-On page 1 choose Import configuration… and examples/synthetic/classification_config.json.
+On page 1 choose Import configuration… and examples/quickstart/classification_config.json.
 Check target, participant, score/category, Decision Tree and Group K Fold.
 On page 2 choose a local output folder and run. You can save and reimport the configuration first.
-Use regression_config.json for regression. All examples are synthetic.
+Use regression_config.json for regression. Everything is in examples/quickstart/; see its README.md.
+*_train.csv is loaded automatically by the matching configuration; *_predict.csv contains 10 new synthetic samples.
+Keep Save best model enabled, run, then load the model from the result model/ folder on page 4 and predict the matching *_predict.csv.
 Relink a missing CSV in the dialog. Results always use a new local subfolder.
 Applications have no commercial signing/notarization; the OS may require first-launch confirmation.
 
 Français
 Décompressez tout. Sur Mac, ouvrez PsyML Toolkit.app ; sur Windows, PsyML Toolkit.exe, en conservant core à côté.
 Python, Godot et dépendances sont inclus. Aucun terminal ni téléchargement supplémentaire nécessaire.
-À la page 1, choisissez Importer une configuration… puis examples/synthetic/classification_config.json.
+À la page 1, choisissez Importer une configuration… puis examples/quickstart/classification_config.json.
 Vérifiez target, participant, score/category, Decision Tree et Group K Fold.
 À la page 2, choisissez un dossier local et lancez. Vous pouvez d’abord enregistrer puis réimporter le JSON.
-regression_config.json sert à la régression. Tous les exemples sont synthétiques.
+regression_config.json sert à la régression. Tout est dans examples/quickstart/ ; voir son README.md.
+Le JSON charge automatiquement *_train.csv ; *_predict.csv contient 10 nouveaux exemples synthétiques.
+Conservez l’enregistrement du modèle, lancez, puis chargez le modèle du dossier de résultats model/ à la page 4 et prédisez le fichier *_predict.csv correspondant.
 Réassociez le CSV manquant dans la boîte de dialogue. Chaque résultat utilise un nouveau sous-dossier local.
 Versions sans signature commerciale ni notarisation ; le système peut demander une confirmation initiale.

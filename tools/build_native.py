@@ -72,6 +72,11 @@ def main():
     if mac:
         shutil.copytree(ROOT / "examples/synthetic", resource_dir / "examples/synthetic",
                         dirs_exist_ok=True)
+    shutil.copytree(ROOT / "examples/quickstart", destination / "examples/quickstart",
+                    dirs_exist_ok=True)
+    if mac:
+        shutil.copytree(ROOT / "examples/quickstart", resource_dir / "examples/quickstart",
+                        dirs_exist_ok=True)
     shutil.copy2(ROOT / "LICENSE", destination / "LICENSE")
     shutil.copy2(ROOT / "tools/NATIVE_START_HERE.txt", destination / "START_HERE.txt")
     shutil.copytree(ROOT / "tools/licenses", destination / "licenses", dirs_exist_ok=True)

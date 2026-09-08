@@ -30,7 +30,7 @@ func _init(owner: Control) -> void:
 	relink_dialog = _dialog(FileDialog.FILE_MODE_OPEN_FILE, main.file_dialog.filters)
 	import_button.pressed.connect(func():
 		import_dialog.title = main.tr("IMPORT_CONFIG")
-		import_dialog.current_dir = CoreBridge.examples_directory()
+		import_dialog.current_dir = CoreBridge.quickstart_directory()
 		import_dialog.popup_centered_ratio(0.8))
 	save_button.pressed.connect(func():
 		save_dialog.title = main.tr("SAVE_CONFIG")

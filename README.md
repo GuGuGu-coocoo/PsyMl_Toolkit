@@ -26,15 +26,27 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 - **macOS（Apple 芯片）**：完整解压对应应用包，双击 `PsyML Toolkit.app`。
 - **Windows（Intel/AMD x64）**：完整解压对应应用包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
-- 应用内含 Python、分析依赖和界面运行时；使用时无需命令行、额外安装或联网下载。合成数据和快速复现配置在 `examples/synthetic/`，也可从 GUI 的“测试数据”或“导入配置…”打开。
+- 应用内含 Python、分析依赖和界面运行时；使用时无需命令行、额外安装或联网下载。用户测试资料统一在 `examples/quickstart/`，通过 GUI 的“导入配置…”开始。
 - 应用尚未使用商业开发者证书签名/公证。首次打开时系统可能显示安全确认；macOS 可在“系统设置 → 隐私与安全性”确认打开，Windows 可核对来源后在安全提示中确认。请遵守所在机构的电脑管理要求。
 
 ### 测试数据与快速复现
 
 内置样例无需在线下载，全部为合成数据，不用于提出真实研究结论。
 
-- [分类数据](examples/synthetic/classification.csv) · [分类配置](examples/synthetic/classification_config.json)
-- [回归数据](examples/synthetic/regression.csv) · [回归配置](examples/synthetic/regression_config.json)
+**统一测试入口：[examples/quickstart/ 使用说明](examples/quickstart/README.md)**。训练数据、配置和新数据预测样本都在同一资料夹。复制或分享时请保留整个资料夹。
+
+| 文件 | 用来做什么 | 在 GUI 哪里打开 |
+| --- | --- | --- |
+| [classification_config.json](examples/quickstart/classification_config.json) | 恢复分类训练设置，自动关联训练数据，开启保存模型 | 第 1 页“导入配置…” |
+| [classification_train.csv](examples/quickstart/classification_train.csv) | 48 行分类训练数据，含目标值 | 导入配置时自动读取 |
+| [classification_predict.csv](examples/quickstart/classification_predict.csv) | 10 行合成新样本，不含目标值 | 第 4 页“加载预测数据…” |
+| [regression_config.json](examples/quickstart/regression_config.json) | 恢复回归训练设置，自动关联训练数据，开启保存模型 | 第 1 页“导入配置…” |
+| [regression_train.csv](examples/quickstart/regression_train.csv) | 48 行回归训练数据，含目标值 | 导入配置时自动读取 |
+| [regression_predict.csv](examples/quickstart/regression_predict.csv) | 10 行合成新样本，不含目标值 | 第 4 页“加载预测数据…” |
+
+首次导入配置、首次加载预测数据均默认打开此资料夹。先导入分类配置并运行，再加载本次结果 `model/best_decision_tree.joblib` 和 `classification_predict.csv`，应输出 10 行分类结果及两列概率。回归使用对应配置、`model/best_ridge.joblib` 和 `regression_predict.csv`，应输出 10 行预测值。不要把 `_predict.csv` 当训练数据。新样本包含额外的 sample_id，并调整了变量顺序，用于检查原始列保留和自动变量匹配。
+
+旧 `examples/synthetic/` 保留供现有开发测试使用；用户试用从 `examples/quickstart/` 开始。
 
 **第一步：导入配置。** 在 **“1 数据与分析设置”** 点击 **“导入配置…”**，在系统文件选择窗口中选中 `classification_config.json` 并打开。默认会定位到内置样例目录；如果选择自己的配置，也使用同一个按钮。**“测试数据”只用于选择数据文件，不会恢复分析设置。**
 
@@ -256,15 +268,27 @@ Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for av
 
 - **macOS (Apple Silicon)**: fully extract the matching application archive and double-click `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)**: fully extract the matching archive and double-click `PsyML Toolkit.exe`. Keep the adjacent `core` folder; do not move the EXE alone.
-- Python, analysis dependencies and the GUI runtime are bundled. No terminal, additional installation or internet download is required to use the app. Synthetic examples and reproduction configurations are in `examples/synthetic/`, also accessible through **Sample data** and **Import configuration…**.
+- Python, analysis dependencies and the GUI runtime are bundled. No terminal, additional installation or internet download is required to use the app. The user test kit is in `examples/quickstart/`; start with **Import configuration…**.
 - The apps do not yet have commercial developer signing/notarization. Your OS may request confirmation on first launch: macOS offers confirmation under **System Settings → Privacy & Security**; Windows may show a security prompt. Verify the source and follow your institution’s device policy.
 
 ### Sample data and quick reproduction
 
 The synthetic examples are included; no online data download is needed. They demonstrate the workflow and support no real-world research conclusions.
 
-- [Classification data](examples/synthetic/classification.csv) · [Configuration](examples/synthetic/classification_config.json)
-- [Regression data](examples/synthetic/regression.csv) · [Configuration](examples/synthetic/regression_config.json)
+**One test entry point: [examples/quickstart/ instructions](examples/quickstart/README.md)**. Training data, configurations and new prediction samples are together. Keep the whole folder when copying or sharing.
+
+| File | Purpose | GUI entry |
+| --- | --- | --- |
+| [classification_config.json](examples/quickstart/classification_config.json) | Classification settings, automatic training-data selection and model saving | Page 1: Import configuration… |
+| [classification_train.csv](examples/quickstart/classification_train.csv) | 48 training rows with target values | Loaded automatically by the configuration |
+| [classification_predict.csv](examples/quickstart/classification_predict.csv) | 10 new synthetic samples without targets | Page 4: Load prediction data… |
+| [regression_config.json](examples/quickstart/regression_config.json) | Regression settings, automatic training-data selection and model saving | Page 1: Import configuration… |
+| [regression_train.csv](examples/quickstart/regression_train.csv) | 48 training rows with target values | Loaded automatically by the configuration |
+| [regression_predict.csv](examples/quickstart/regression_predict.csv) | 10 new synthetic samples without targets | Page 4: Load prediction data… |
+
+Configuration import and the first prediction-data dialog default to this folder. Train with the classification configuration, then load that run’s `model/best_decision_tree.joblib` and `classification_predict.csv`: expect 10 rows with predicted classes and two probability columns. For regression, use its configuration, `model/best_ridge.joblib` and `regression_predict.csv`: expect 10 predicted values. Do not train on `_predict.csv`. New data deliberately changes feature order and includes an extra sample_id to test automatic matching and original-column preservation.
+
+`examples/synthetic/` remains for existing developer tests; start user testing in `examples/quickstart/`.
 
 **Step 1 — Import a configuration.** On **1 Data & analysis setup**, click **Import configuration…**, select `classification_config.json` in the system file dialog and open it. The dialog starts in the bundled examples directory; use the same button for your own configuration. **Sample data selects data only; it does not restore analysis settings.**
 
@@ -452,15 +476,27 @@ Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) po
 
 - **macOS (puce Apple)** : décompressez entièrement l’archive correspondante puis double-cliquez sur `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)** : décompressez entièrement l’archive puis double-cliquez sur `PsyML Toolkit.exe`. Conservez le dossier `core` adjacent ; ne déplacez pas seulement l’EXE.
-- Python, dépendances scientifiques et moteur de l’interface sont intégrés. Aucun terminal, installation supplémentaire ou téléchargement Internet n’est requis. Les exemples et configurations sont dans `examples/synthetic/`, accessibles aussi par **Données de test** et **Importer une configuration…**.
+- Python, dépendances scientifiques et moteur de l’interface sont intégrés. Aucun terminal, installation supplémentaire ou téléchargement Internet n’est requis. Les fichiers de test sont réunis dans `examples/quickstart/` ; commencez par **Importer une configuration…**.
 - Les applications n’ont pas encore de signature commerciale ni de notarisation. Le système peut demander une confirmation au premier lancement : **Réglages Système → Confidentialité et sécurité** sous macOS, ou une alerte de sécurité sous Windows. Vérifiez la provenance et respectez la politique informatique de votre établissement.
 
 ### Données de test et reproduction rapide
 
 Les exemples synthétiques sont fournis, sans téléchargement de données. Ils illustrent le parcours et ne permettent pas de conclusions de recherche réelles.
 
-- [Données de classification](examples/synthetic/classification.csv) · [Configuration](examples/synthetic/classification_config.json)
-- [Données de régression](examples/synthetic/regression.csv) · [Configuration](examples/synthetic/regression_config.json)
+**Entrée unique : [instructions examples/quickstart/](examples/quickstart/README.md)**. Données d’entraînement, configurations et nouveaux exemples à prédire sont réunis. Conservez le dossier entier lors d’une copie ou d’un partage.
+
+| Fichier | Utilité | Entrée GUI |
+| --- | --- | --- |
+| [classification_config.json](examples/quickstart/classification_config.json) | Réglages, données d’entraînement associées et enregistrement du modèle | Page 1 : Importer une configuration… |
+| [classification_train.csv](examples/quickstart/classification_train.csv) | 48 lignes d’entraînement avec cible | Chargé automatiquement par le JSON |
+| [classification_predict.csv](examples/quickstart/classification_predict.csv) | 10 nouveaux exemples synthétiques sans cible | Page 4 : Charger les données à prédire… |
+| [regression_config.json](examples/quickstart/regression_config.json) | Réglages, données d’entraînement associées et enregistrement du modèle | Page 1 : Importer une configuration… |
+| [regression_train.csv](examples/quickstart/regression_train.csv) | 48 lignes d’entraînement avec cible | Chargé automatiquement par le JSON |
+| [regression_predict.csv](examples/quickstart/regression_predict.csv) | 10 nouveaux exemples synthétiques sans cible | Page 4 : Charger les données à prédire… |
+
+Les dialogues de configuration et de première sélection des données à prédire commencent ici. Entraînez avec le JSON de classification, puis chargez son `model/best_decision_tree.joblib` et `classification_predict.csv` : 10 lignes avec classes et deux probabilités. Pour la régression, utilisez le JSON correspondant, `model/best_ridge.joblib` et `regression_predict.csv` : 10 valeurs prédites. Ne pas entraîner sur `_predict.csv`. L’ordre des variables diffère et sample_id est supplémentaire, afin de vérifier l’association automatique et la conservation des colonnes.
+
+`examples/synthetic/` reste réservé aux tests de développement existants ; commencez les essais utilisateur dans `examples/quickstart/`.
 
 **Étape 1 — Importer une configuration.** Dans **1 Données et analyse**, cliquez sur **Importer une configuration…**, sélectionnez `classification_config.json` dans le dialogue système puis ouvrez-le. Le dialogue commence dans le dossier des exemples fournis ; le même bouton ouvre vos propres configurations. **Données de test sélectionne seulement un fichier de données, sans restaurer les réglages d’analyse.**
 
