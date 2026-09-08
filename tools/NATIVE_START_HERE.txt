@@ -1,4 +1,4 @@
-PsyML Toolkit 0.1.1 — Desktop application / 桌面应用 / Application de bureau
+PsyML Toolkit 0.2.0 — Desktop application / 桌面应用 / Application de bureau
 
 中文
 完整解压。Mac 双击 PsyML Toolkit.app；Windows 双击 PsyML Toolkit.exe，保留 core 文件夹。
