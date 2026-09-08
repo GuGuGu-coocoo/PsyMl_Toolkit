@@ -117,6 +117,7 @@ func _run() -> void:
 		_write(missing, "unrelated\n1\n2\n")
 		page.load_data(missing)
 		assert(page.predictions.is_empty() and page.export_button.disabled and page.predict_button.disabled)
+		assert(not page.result_tree.column_titles_visible)
 		await _wait(page)
 		assert(not page.compatibility.compatible and page.predict_button.disabled)
 		assert(page.compatibility.errors[0].code == "missing_feature")

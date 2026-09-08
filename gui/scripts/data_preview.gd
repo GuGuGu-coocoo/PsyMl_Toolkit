@@ -18,6 +18,7 @@ static func variables(tree: Tree, columns: Array) -> void:
 
 static func sample(tree: Tree, rows: Array, columns: Array = []) -> void:
 	tree.clear()
+	tree.column_titles_visible = not rows.is_empty()
 	if rows.is_empty():
 		return
 	var headers: Array = []
