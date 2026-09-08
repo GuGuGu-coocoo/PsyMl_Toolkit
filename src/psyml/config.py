@@ -38,6 +38,7 @@ class ExperimentConfig:
     n_splits: int = 5
     missing_strategy: MissingStrategy = "median"
     scaling: ScalingStrategy = "standard"
+    save_best_model: bool = True
     include_data_hash: bool = True
     model_params: dict[str, Any] = field(default_factory=dict)
     model_names: list[str] | None = None
@@ -65,6 +66,8 @@ class ExperimentConfig:
             if isinstance(grid, dict) else grid
             for model, grid in self.parameter_grids.items()
         })
+        if not isinstance(self.save_best_model, bool):
+            raise TypeError("save_best_model must be a boolean")
         allowed_figures = {"confusion_matrix", "class_distribution"} if self.task == "classification" else {
             "observed_vs_predicted", "residuals", "residual_distribution"
         }

@@ -401,6 +401,7 @@ def write_research_outputs(
 
 
 CONFIG_HELP = {
+    "save_best_model": "保存全分析数据拟合的完整流水线 / Save final full-data Pipeline",
     "schema_version": "配置格式版本 / Configuration schema version",
     "task": "分类或回归 / Classification or regression",
     "target_column": "预测目标列 / Outcome column",

@@ -54,5 +54,7 @@ func run() -> void:
 	check(not main.configuration_io.import_file(temp), "Invalid schema accepted")
 	check(main._build_config() == actual, "Invalid import changed configuration")
 	DirAccess.remove_absolute(temp)
+	main.configuration_io.save_best_model.button_pressed = false
+	assert(main._build_config().save_best_model == false)
 	print("PSYML_CONFIG_IMPORT_OK")
 	quit(1 if failures else 0)

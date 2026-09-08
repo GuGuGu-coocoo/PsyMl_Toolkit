@@ -97,6 +97,7 @@ def write_independent_outputs(
     results: dict,
 ) -> None:
     """Write an index of peer validations, never global metrics or a winning validation."""
+    from psyml.models.persistence import INDEPENDENT_SAVING_MESSAGE
     from psyml.reporting.research import CONFIG_HELP
 
     serialized = json.dumps(config_to_dict(config), indent=2, ensure_ascii=False) + "\n"
@@ -170,6 +171,8 @@ def write_independent_outputs(
         "task": config.task, "metrics": {}, "warnings": warnings, "artifacts": artifacts,
         "evaluation_scope": "independent_validations", "primary_validation": None,
         "selection_metric": config.resolved_selection_metric(), "validation_results": entries,
+        "model_export": {"status": "independent_validations",
+                         "message": INDEPENDENT_SAVING_MESSAGE},
     }
     temporary = output_dir / ".result.json.tmp"
     temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

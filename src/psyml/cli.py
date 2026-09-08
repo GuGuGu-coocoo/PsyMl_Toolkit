@@ -67,6 +67,7 @@ def build_legacy_parser() -> argparse.ArgumentParser:
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--missing", default="median", choices=["drop", "mean", "median", "mode"])
     parser.add_argument("--scaling", default="standard", choices=["none", "standard", "minmax"])
+    parser.add_argument("--no-save-best-model", action="store_false", dest="save_best_model")
     parser.add_argument(
         "--no-data-hash",
         action="store_false",
@@ -119,6 +120,7 @@ def _legacy_config(args: argparse.Namespace) -> ExperimentConfig:
         missing_strategy=args.missing,
         scaling=args.scaling,
         include_data_hash=args.include_data_hash,
+        save_best_model=args.save_best_model,
         model_params=dict(args.param),
     )
 

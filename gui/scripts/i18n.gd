@@ -5,6 +5,9 @@ const LOCALES := ["zh_CN", "en", "fr"]
 
 const MESSAGES := {
 	"zh_CN": {
+		"SAVE_BEST_MODEL": "保存最佳模型",
+		"MODEL_SAVED": "最终完整模型已保存：%s\n模型：%s\n元数据：%s",
+		"MODEL_NOT_SAVED_INDEPENDENT": "独立验证没有全局最终模型，不自动保存模型。",
 		"IMPORT_CONFIG": "导入配置…",
 		"SAVE_CONFIG": "保存配置…",
 		"CONFIG_IO_HELP": "导入 JSON 配置即可恢复分析设置；数据丢失时重新选择文件。结果保存到本机所选文件夹的新子文件夹。",
@@ -131,6 +134,9 @@ const MESSAGES := {
 		"PROGRESS_FAILED": "本次未成功完成。请检查错误信息，修正后使用新的空目录重试。",
 	},
 	"en": {
+		"SAVE_BEST_MODEL": "Save best model",
+		"MODEL_SAVED": "Final fitted model saved: %s\nModel: %s\nMetadata: %s",
+		"MODEL_NOT_SAVED_INDEPENDENT": "No global final model is selected in independent validation mode; models are not automatically saved.",
 		"IMPORT_CONFIG": "Import configuration…",
 		"SAVE_CONFIG": "Save configuration…",
 		"CONFIG_IO_HELP": "Import a JSON configuration to restore analysis settings; locate the data if its path is missing. Results go to a new subfolder of the local output folder.",
@@ -266,6 +272,9 @@ const MESSAGES := {
 		"PROGRESS_FAILED": "This run did not complete. Review the error, correct it and retry in a new empty folder.",
 	},
 	"fr": {
+		"SAVE_BEST_MODEL": "Enregistrer le meilleur modèle",
+		"MODEL_SAVED": "Modèle final enregistré : %s\nModèle : %s\nMétadonnées : %s",
+		"MODEL_NOT_SAVED_INDEPENDENT": "Aucun modèle final global en validation indépendante ; aucun enregistrement automatique.",
 		"IMPORT_CONFIG": "Importer une configuration…",
 		"SAVE_CONFIG": "Enregistrer la configuration…",
 		"CONFIG_IO_HELP": "Importez un fichier JSON pour restaurer les réglages ; sélectionnez les données si leur chemin est introuvable. Les résultats vont dans un nouveau sous-dossier du dossier local choisi.",

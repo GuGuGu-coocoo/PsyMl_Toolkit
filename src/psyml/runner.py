@@ -32,6 +32,7 @@ from psyml.evaluation.metrics import (
 from psyml.models.catalog import quick_parameter_grid, supported_models
 from psyml.models.factory import build_model
 from psyml.models.parameters import effective_parameters
+from psyml.models.persistence import save_final_model
 from psyml.preprocessing.pipeline import build_preprocessor
 from psyml.reporting.output import write_result_summary, write_results, write_study_outputs
 from psyml.reporting.research import write_research_outputs
@@ -56,6 +57,7 @@ class ExperimentResult:
     best_model_name: str = ""
     best_validation_strategy: str = ""
     best_params: dict[str, Any] = field(default_factory=dict)
+    model_export: dict[str, Any] = field(default_factory=dict)
     effective_params: dict[str, Any] = field(default_factory=dict)
     selection_trace: pd.DataFrame = field(default_factory=pd.DataFrame)
     validation_summary: pd.DataFrame = field(default_factory=pd.DataFrame)
@@ -899,6 +901,8 @@ def _run_prioritized(
         warnings=warnings,
         confusion=confusion,
     )
+    model_export = (save_final_model(final_model, executed_config, features)
+                    if config.save_best_model else {"status": "disabled"})
     write_result_summary(
         output_dir,
         executed_config,
@@ -914,6 +918,7 @@ def _run_prioritized(
             "selection_metric": metric,
             "best_parameters": best_params,
             "effective_parameters": actual_params,
+            "model_export": model_export,
             "evaluated_combinations": len(ranked_rows),
         },
     )
@@ -931,6 +936,7 @@ def _run_prioritized(
         best_validation_strategy=best["validation"],
         best_params=best_params,
         effective_params=actual_params,
+        model_export=model_export,
         selection_trace=selection_trace,
         validation_summary=validation_summary,
     )
@@ -981,7 +987,7 @@ def _run_independent_validations(
         child_dir = output_dir / "validations" / validation
         child_config = replace(
             config, output_dir=child_dir, validation_strategy=validation,
-            validation_strategies=[validation], primary_validation=validation,
+            validation_strategies=[validation], primary_validation=validation, save_best_model=False,
         )
         try:
             child = _run_prioritized(child_config, frame, report)

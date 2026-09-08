@@ -56,6 +56,8 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 `best_parameters_configure.json` 也可通过同一按钮导入，但它固定最终模型与参数、不重新搜索；其分数不重现原嵌套搜索的性能估计，也不能作为所选参数的独立验证。
 
+默认开启“保存最佳模型”（第 1 页），配置字段 `save_best_model` 默认为 `true`；旧配置同样适用，CLI 旧式参数可用 `--no-save-best-model` 关闭。主要验证模式下，最终在全部分析行拟合的完整 Pipeline 保存为 `model/best_<模型名>.joblib`，旁边的 `model_metadata.json` 记录变量、预处理、参数与环境。结果页提供路径。独立验证没有全局最终模型，因此不自动保存。CV 指标估计验证与选择流程的泛化表现，不保证保存模型在未来数据上的表现。
+
 ### 工作流程总览
 
 1. **导入数据**：读取本地表格，核对字段类型和缺失值。
@@ -437,6 +439,8 @@ Données et réglages sont restaurés ensemble. L’exemple de classification ut
 **Si les données sont introuvables.** Sur un autre ordinateur, les chemins peuvent devenir invalides. Sélectionnez les données correspondantes dans le dialogue système, sans modifier les chemins JSON ni saisir de commande. Une colonne requise manquante produit une erreur ; annuler conserve les réglages actuels. Partagez données et configuration ensemble. Le chemin sauvegardé est relatif uniquement si les deux fichiers partagent un dossier ; sinon le chemin complet est conservé. Les sorties GUI utilisent toujours la destination locale choisie.
 
 Le même bouton accepte `best_parameters_configure.json`. Ce fichier fixe le modèle et les paramètres finaux sans recherche ; il ne reproduit pas l’estimation imbriquée originale et ne constitue pas une validation indépendante des paramètres sélectionnés.
+
+**Enregistrer le meilleur modèle** est activé par défaut à la page 1 (`save_best_model: true`, y compris les anciens JSON ; option CLI historique `--no-save-best-model` pour désactiver). Avec une validation principale, le Pipeline complet ajusté sur toutes les lignes analysées est enregistré dans `model/best_<modèle>.joblib` avec `model_metadata.json` (variables, prétraitement, paramètres et environnement). La page des résultats indique les chemins. Aucun enregistrement automatique en validation indépendante, sans modèle final global. Les métriques CV estiment la procédure de sélection et ne garantissent pas les performances futures.
 
 ### Vue d’ensemble du parcours
 

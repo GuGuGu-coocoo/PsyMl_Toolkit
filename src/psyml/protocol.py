@@ -118,6 +118,10 @@ def result_payload(
     }
     if study_summary:
         payload.update(study_summary)
+        export = study_summary.get("model_export", {})
+        if export.get("status") == "saved":
+            artifacts["saved_model"] = export["model_path"]
+            artifacts["model_metadata"] = export["metadata_path"]
     return payload
 
 

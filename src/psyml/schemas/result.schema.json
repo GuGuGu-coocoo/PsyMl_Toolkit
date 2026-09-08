@@ -32,6 +32,7 @@
       }
     },
     "selection_metric": {"type": "string"},
+    "model_export": {"type": "object"},
     "effective_parameters": {"type": "object"},
     "best_parameters": {"type": "object"},
     "evaluated_combinations": {"type": "integer", "minimum": 0}

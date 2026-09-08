@@ -8,6 +8,7 @@ var save_dialog: FileDialog
 var relink_dialog: FileDialog
 var seed: SpinBox
 var test_fraction: SpinBox
+var save_best_model: CheckBox
 var data_hash: CheckBox
 var fixed_parameters: LineEdit
 var extra_grids: LineEdit
@@ -51,6 +52,11 @@ func _init(owner: Control) -> void:
 	test_fraction.allow_greater = true
 	_label(grid, "RANDOM_SEED")
 	seed = _spin(grid, 0, 4294967295, 1, 42)
+	_label(grid, "SAVE_BEST_MODEL")
+	save_best_model = CheckBox.new()
+	save_best_model.button_pressed = true
+	grid.add_child(save_best_model)
+	save_best_model.toggled.connect(func(_value): main._refresh_review())
 	_label(grid, "DATA_HASH")
 	data_hash = CheckBox.new()
 	data_hash.button_pressed = true
@@ -159,6 +165,7 @@ func ordered(values: Array, previous: Array) -> Array:
 
 
 func apply_configuration(config: Dictionary, preview: Dictionary) -> void:
+	save_best_model.button_pressed = config.get("save_best_model", true)
 	main._clear_results()
 	choose(main.task_option, config.task)
 	main._on_task_changed()
@@ -242,6 +249,7 @@ func enrich(config: Dictionary) -> Dictionary:
 			config.parameter_grids[model][parameter] = values
 	config.random_seed = int(seed.value)
 	config.test_size = test_fraction.value
+	config.save_best_model = save_best_model.button_pressed
 	config.include_data_hash = data_hash.button_pressed
 	config.model_names = ordered(config.model_names, model_order)
 	config.model_name = config.model_names[0]
@@ -269,5 +277,5 @@ func save_file(path: String) -> bool:
 
 
 func set_enabled(enabled: bool) -> void:
-	for control in [import_button, save_button, seed, test_fraction, data_hash, fixed_parameters, extra_grids]:
+	for control in [import_button, save_button, seed, test_fraction, data_hash, save_best_model, fixed_parameters, extra_grids]:
 		main._set_control_interactive(control, enabled)

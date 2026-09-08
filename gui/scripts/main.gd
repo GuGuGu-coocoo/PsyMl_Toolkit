@@ -1084,6 +1084,7 @@ func _load_results(result_path: String, navigate := true, as_child := false) -> 
 	last_result_dir = result_path.get_base_dir()
 	if parsed.get("evaluation_scope", "") == "independent_validations":
 		_load_independent_results(parsed, previous_validation)
+		best_result_label.text += "\n" + tr("MODEL_NOT_SAVED_INDEPENDENT")
 		if navigate:
 			tabs.current_tab = 3
 		return
@@ -1104,6 +1105,9 @@ func _load_results(result_path: String, navigate := true, as_child := false) -> 
 	if as_child:
 		scope_key = "VIEWING_NESTED_METRICS" if nested else "VIEWING_FIXED_METRICS"
 	best_result_label.text += "\n" + tr(scope_key)
+	var model_export: Dictionary = parsed.get("model_export", {})
+	if model_export.get("status") == "saved":
+		best_result_label.text += "\n" + tr("MODEL_SAVED") % [model_export.model_name, last_result_dir.path_join(model_export.model_path), last_result_dir.path_join(model_export.metadata_path)]
 	_render_warnings()
 	metrics_tree.clear()
 	var root := metrics_tree.create_item()
