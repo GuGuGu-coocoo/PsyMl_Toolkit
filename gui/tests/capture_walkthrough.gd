@@ -58,6 +58,12 @@ func _capture_walkthrough() -> void:
 	await _save(main, 0, directory.path_join("01-data.png"))
 	main.tabs.get_tab_control(0).ensure_control_visible(main.get_node("%ParameterSectionLabel"))
 	await _save(main, 0, directory.path_join("02-settings.png"))
+	main.tabs.get_tab_control(0).ensure_control_visible(main.configuration_io.save_best_model)
+	main.tabs.get_tab_control(0).scroll_vertical += 240
+	await _save(main, 0, directory.path_join("11-save-model.png"))
+	if OS.get_environment("PSYML_CAPTURE_SAVE_ONLY") == "1":
+		quit(0)
+		return
 	await _save(main, 2, directory.path_join("03-review.png"))
 	main._on_run_pressed()
 	deadline = Time.get_ticks_msec() + 45000

@@ -56,7 +56,27 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 `best_parameters_configure.json` 也可通过同一按钮导入，但它固定最终模型与参数、不重新搜索；其分数不重现原嵌套搜索的性能估计，也不能作为所选参数的独立验证。
 
+### 模型保存与新数据预测（当前源码）
+
+以下新增功能与截图对应当前源码；已发布的 v0.1.1 独立应用包尚不包含本次更新。
+
 默认开启“保存最佳模型”（第 1 页），配置字段 `save_best_model` 默认为 `true`；旧配置同样适用，CLI 旧式参数可用 `--no-save-best-model` 关闭。主要验证模式下，最终在全部分析行拟合的完整 Pipeline 保存为 `model/best_<模型名>.joblib`，旁边的 `model_metadata.json` 记录变量、预处理、参数与环境。结果页提供路径。独立验证没有全局最终模型，因此不自动保存。CV 指标估计验证与选择流程的泛化表现，不保证保存模型在未来数据上的表现。
+
+
+![中文：第 1 页保存最佳模型开关](docs/images/zh/11-save-model.png)
+
+1. 打开 **“4 模型与预测”**，确认模型来源可信后点击 **“加载模型…”**。joblib / pickle 加载可以执行代码，只加载你信任的 PsyML 模型。正式支持本工具导出的普通 sklearn `.joblib` / `.pkl` 文件；不保证任意第三方对象兼容。
+2. 查看模型任务、估计器、流水线、所需变量、类别、原生概率支持、版本及参数。metadata 与模型放在一起；缺少 metadata 时尝试从模型恢复信息，未记录的项显示“未知 / 不可用”。版本不兼容或 metadata 损坏时给出错误。
+3. 点击 **“加载预测数据…”**，支持同样的 9 种研究数据格式，并复用第 1 页的变量、缺失值和前 5 行预览。模型与数据同时存在后立即自动检查，**没有额外的检查按钮**。缺列、不兼容的数值或无法填补的缺失值会阻止预测；列顺序可不同，多余列会保留。只有特征数而没有变量名时，在紧凑的“手动变量映射”中选择并确认 N 个变量及顺序。
+
+![中文：模型信息、变量要求和新数据预览](docs/images/zh/09-prediction.png)
+
+4. 检查通过后点击 **“运行预测”**，一次处理全部行，在当前页面查看原始列和新增预测列。回归追加 `predicted_value`；分类追加 `predicted_class`，原生支持 `predict_proba()` 时按类别顺序追加 `probability_<类别>`。重名时只给新增列加数字后缀，原数据不改动。目标列即使存在，也只保留，不自动计算验证指标或调整分类阈值。
+5. 点击 **“预测结果另存为…”**。默认使用输入格式；XLS 与 SAS7BDAT 只支持读取，默认另存为 XLSX。可选择 CSV、TSV、XLSX、SAV、DTA、XPT 或 Parquet。统计格式的列名、长度或类型限制会明确报错，可改用 XLSX/Parquet。更换模型、数据或映射后会清除旧预测，重新检查。
+
+![中文：自动兼容性检查、批量预测和结果导出](docs/images/zh/10-prediction-results.png)
+
+**统计解释：**最终保存模型是在全部已分析数据上，按最终选定家族与参数重新拟合的完整流水线。CV / nested validation 指标估计的是训练和模型选择流程的泛化表现，不是这个保存模型的未来性能保证。预测只生成新数据的结果；本版本不提供 External Validation、阈值优化或自动重训练。概率来自分类器的原生输出，回归不生成概率。
 
 ### 工作流程总览
 
@@ -266,7 +286,27 @@ Data and settings are restored together. The classification example uses target 
 
 You can also import `best_parameters_configure.json` using the same button. It fixes the final model and parameters without searching; it neither reproduces the original nested-search estimate nor provides independent validation of the selected parameters.
 
+### Model saving and new-data prediction (current source)
+
+These features and screenshots describe the current source. Published v0.1.1 standalone apps do not include this update yet.
+
 **Save best model** is enabled on page 1 by default (`save_best_model: true`, including old configs; legacy CLI: `--no-save-best-model` to disable). With a primary validation, the complete final Pipeline fitted on all analyzed rows is saved to `model/best_<model>.joblib` with `model_metadata.json` describing features, preprocessing, parameters and environment. Independent validations have no global final model and do not auto-save. CV metrics estimate the validation/selection procedure, with no guarantee of future saved-model performance.
+
+
+![English: Save best model on page 1](docs/images/en/11-save-model.png)
+
+1. Open **4 Model & Prediction**, confirm that you trust the model source, and select **Load model…**. Joblib/pickle loading can execute code. PsyML-exported ordinary sklearn `.joblib` / `.pkl` files are supported; arbitrary third-party objects are not guaranteed compatible.
+2. Inspect task, estimator, Pipeline steps, required predictors, classes, native probability support, versions and effective parameters. Keep metadata beside the model; if absent, PsyML tries to recover model information and displays unknown/unavailable for unrecorded fields. Incompatible versions and malformed metadata produce readable errors.
+3. Select **Load prediction data…**. The same 9 input formats and shared variable/missingness/first-five-row preview are available. Once both model and data are present, compatibility is checked immediately, **without a separate Check button**. Missing predictors, invalid numeric values or missing values without imputation block prediction. Column order may differ and extra columns are retained. If only a feature count is available, use the compact manual mapping to select N distinct predictors and confirm their order.
+
+![English: Model information, required features and data preview](docs/images/en/09-prediction.png)
+
+4. After checks pass, **Run prediction** processes every row and previews original plus prediction columns on the same page. Regression appends `predicted_value`; classification appends `predicted_class` and, when natively supported, `probability_<class>` columns in estimator class order. New column names receive numeric suffixes on collision; original values are retained. An existing target column is preserved without automatically calculating validation metrics or changing thresholds.
+5. **Save predictions as…** defaults to the input format. Read-only XLS and SAS7BDAT inputs default to XLSX output. Choose CSV, TSV, XLSX, SAV, DTA, XPT or Parquet. Statistical-format restrictions on names/types cause explicit errors; XLSX/Parquet are alternatives. Changing model, data or mapping clears previous predictions and requires a fresh check.
+
+![English: Automatic compatibility check, batch predictions and export](docs/images/en/10-prediction-results.png)
+
+**Statistical interpretation:** The saved final model is the complete Pipeline refitted on all analyzed rows with the finally selected family and parameters. CV/nested-validation metrics estimate the training and selection procedure, not guaranteed future performance of this saved model. Prediction generates outputs on new data only; External Validation, threshold optimization and automatic retraining are outside this version. Class probabilities are native estimator outputs; regression never invents probabilities.
 
 ### Workflow at a glance
 
@@ -442,7 +482,27 @@ Données et réglages sont restaurés ensemble. L’exemple de classification ut
 
 Le même bouton accepte `best_parameters_configure.json`. Ce fichier fixe le modèle et les paramètres finaux sans recherche ; il ne reproduit pas l’estimation imbriquée originale et ne constitue pas une validation indépendante des paramètres sélectionnés.
 
+### Enregistrement et prédiction sur de nouvelles données (sources actuelles)
+
+Ces fonctionnalités et captures correspondent aux sources actuelles. Les applications autonomes v0.1.1 publiées ne contiennent pas encore cette mise à jour.
+
 **Enregistrer le meilleur modèle** est activé par défaut à la page 1 (`save_best_model: true`, y compris les anciens JSON ; option CLI historique `--no-save-best-model` pour désactiver). Avec une validation principale, le Pipeline complet ajusté sur toutes les lignes analysées est enregistré dans `model/best_<modèle>.joblib` avec `model_metadata.json` (variables, prétraitement, paramètres et environnement). La page des résultats indique les chemins. Aucun enregistrement automatique en validation indépendante, sans modèle final global. Les métriques CV estiment la procédure de sélection et ne garantissent pas les performances futures.
+
+
+![Français : enregistrement du meilleur modèle à la page 1](docs/images/fr/11-save-model.png)
+
+1. Ouvrir **4 Modèle et prédiction**, confirmer la confiance dans la source, puis **Charger un modèle…**. Le chargement joblib/pickle peut exécuter du code. Les fichiers sklearn ordinaires `.joblib` / `.pkl` exportés par PsyML sont pris en charge ; la compatibilité de tout objet tiers n’est pas garantie.
+2. Examiner tâche, estimateur, étapes du Pipeline, variables requises, classes, probabilités natives, versions et paramètres effectifs. Conserver les métadonnées à côté du modèle ; en leur absence, PsyML récupère les informations disponibles et affiche « inconnu / indisponible » pour le reste. Versions incompatibles et métadonnées incorrectes produisent des erreurs lisibles.
+3. **Charger les données à prédire…** : mêmes 9 formats d’entrée et même aperçu des variables, valeurs manquantes et cinq premières lignes qu’à la page 1. Dès que modèle et données sont présents, la compatibilité est vérifiée automatiquement, **sans bouton de vérification supplémentaire**. Variables absentes, nombres invalides ou valeurs manquantes sans imputation bloquent la prédiction. L’ordre des colonnes peut différer ; les colonnes supplémentaires restent présentes. Si seul le nombre de variables est connu, sélectionner N prédicteurs distincts et confirmer leur ordre dans l’association manuelle compacte.
+
+![Français : informations du modèle, variables requises et aperçu des données](docs/images/fr/09-prediction.png)
+
+4. Après vérification, **Exécuter la prédiction** traite toutes les lignes et affiche immédiatement les colonnes originales et ajoutées. La régression ajoute `predicted_value` ; la classification `predicted_class` et, si disponible nativement, `probability_<classe>` dans l’ordre des classes de l’estimateur. Les collisions ajoutent un suffixe numérique aux nouvelles colonnes, sans modifier les valeurs originales. Une cible présente est conservée sans calcul automatique de métriques ni modification du seuil.
+5. **Enregistrer les prédictions sous…** utilise par défaut le format d’entrée. XLS et SAS7BDAT sont en lecture seule : sortie XLSX par défaut. Choix disponibles : CSV, TSV, XLSX, SAV, DTA, XPT et Parquet. Les restrictions de noms/types des formats statistiques produisent une erreur explicite ; choisir XLSX/Parquet au besoin. Changer modèle, données ou association efface les anciennes prédictions et relance la vérification.
+
+![Français : compatibilité automatique, prédictions et export](docs/images/fr/10-prediction-results.png)
+
+**Interprétation statistique :** le modèle final enregistré est le Pipeline complet réajusté sur toutes les lignes analysées, avec la famille et les paramètres finalement sélectionnés. Les métriques CV/validation imbriquée estiment la procédure d’entraînement et de sélection ; elles ne garantissent pas les performances futures du modèle enregistré. La prédiction génère seulement des sorties sur de nouvelles données. Validation externe, optimisation du seuil et réentraînement automatique restent hors périmètre. Les probabilités sont celles du classifieur ; aucune probabilité artificielle en régression.
 
 ### Vue d’ensemble du parcours
 
