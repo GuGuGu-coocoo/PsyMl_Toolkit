@@ -1,6 +1,6 @@
 # 研究者参考：模型、指标、结果与术语
 
-适用代码版本：**v0.1.1**。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准。
+适用代码版本：**v0.2.0**。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准。
 
 [返回 README 中文部分](../README.md#chinese) · **中文** · [English](RESEARCHER_GUIDE_EN.md) · [Français](RESEARCHER_GUIDE_FR.md)
 
@@ -205,14 +205,14 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 | 哪些家族值得进一步研究？ | `model_comparison.csv` | rank 在各验证内分别排序，属探索性比较；第一名可与最终模型不同 |
 | 每一折选了什么？ | `selection_trace.csv` | 记录 `outer_training_fold` 或 `final_full_data`；`outer_fold=0` 是全数据选择，不是第 0 个测试折 |
 | 某个参数为何被选中或失败？ | `parameter_search.csv` | 看内层 score、候选参数、status 与 error；score 是选择指标原始尺度，RMSE/MAE 仍是越小越好 |
-| 最终参数能否重用？ | `best_parameters.json`、`best_parameters_configure.json` | 前者保存参数覆盖，`{}` 表示使用默认值；后者是固定最终模型与参数、关闭搜索的可运行配置 |
+| 最终参数能否重用？ | `best_parameters.json`、`best_parameters_configure.json` | 前者保存实际有效超参数（含默认值）；后者是固定最终模型与参数、关闭搜索的可运行配置 |
 | 怎样复现原始分析设计？ | `config.json`、`analysis_config.json`、`study_config.json` | 保留原始搜索设计；三者用于兼容不同接口。重跑前核对 input_path 并改用新空 output_dir |
 | 配置字段是什么？ | `configuration_guide.md` | 中英文简短解释；JSON 本身不加注释 |
 | 哪些观测预测错了？ | `predictions.csv`、分类的 `confusion_matrix.csv` | `observed` 为真值、`predicted` 为预测；文件数据输入时 `row_index` 是从 0 开始的数据行索引，不是含表头的电子表格行号 |
 | 环境与样本量能否对上？ | `analysis_manifest.json` | 比较输入/分析行数、特征数、数据指纹和依赖版本；输入特征数不等于独热编码后的列数 |
 | 如何准备研究报告？ | `methods_summary_zh.md` / `methods_summary.md`、`reproducibility_report_zh.md` / `reproducibility_report.md` | 中英文离线摘要与报告是待核查草稿，不是已审核论文文本 |
 
-**“最佳参数”（best parameters）只表示在本次候选范围、指标、数据与切分下选出的设置**，不是全局最优或跨研究通用值。`best_parameters_configure.json` 重跑使用曾参与选择的数据，其新分数不能当作独立验证，也不等同于复现原始嵌套搜索。当前 GUI 没有导出可直接加载的已拟合模型文件；该配置是重新训练的配方。
+**“最佳参数”（best parameters）只表示在本次候选范围、指标、数据与切分下选出的设置**，不是全局最优或跨研究通用值。`best_parameters_configure.json` 重跑使用曾参与选择的数据，其新分数不能当作独立验证，也不等同于复现原始嵌套搜索。v0.2.0 可在主要验证模式下保存已拟合的完整 Pipeline，供第 4 页加载预测；该 JSON 配置仍是重新训练的配方，与保存模型文件用途不同。
 
 ### 图形（figures）
 
@@ -277,3 +277,17 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 ## 从配置快速复现
 
 应用第 1 页的“导入配置…”可读取附带示例、结果目录的 `config.json`，或固定参数文件 `best_parameters_configure.json`；无需命令行。数据路径失效时，重新选择对应数据；程序会核对所需列。检查变量、验证与参数后，在第 2 页选择本机输出目录并运行。每次建立新的结果子目录，导入的输出路径不会被沿用。“保存配置…”可保存当前设置。固定最佳参数的再运行不重现原搜索，也不是独立验证。
+
+## 0.2.0 新增：保存模型与预测术语
+
+| 术语 | 解释与使用边界 |
+| --- | --- |
+| 最终模型 | 根据全数据内层选择确定模型家族和参数，再在全部分析样本上拟合；不是直接保存某个外层折的模型 |
+| Pipeline（流水线） | 将已拟合的预处理与估计器一起保存，预测时自动沿用训练时的填补、编码和缩放 |
+| 有效参数 | 最终估计器实际使用的初始化参数，包含未手动修改的默认值；不等于训练学得的系数 |
+| model_metadata.json | 与模型并排保存的变量名、类型、类别、参数和版本等说明；分享模型时一起保留 |
+| 特征兼容性 | 必需变量存在且类型可用；列顺序不同可自动选列，额外列保留。检查通过不代表新样本与训练人群相同 |
+| predicted_class / predicted_value | 分类模型输出的类别 / 回归模型输出的数值；不是已知真实结果 |
+| probability_* | 估计器原生提供的类别概率；不保证已经校准，也不直接等于临床风险，回归不生成此列 |
+| 新数据预测 / 外部验证 | 预测可以没有真实目标；外部验证需要独立样本、真实目标和适当的评价设计。本版预测页不自动执行外部验证 |
+| 模型来源可信 | joblib/pickle 加载可能执行代码，只加载自己训练或确认可信来源的模型 |

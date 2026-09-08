@@ -13,7 +13,7 @@
 | [regression_train.csv](regression_train.csv) | 48 行回归训练数据，含目标 target | 配置导入时自动读取，无需另外打开 |
 | [regression_predict.csv](regression_predict.csv) | 10 行新样本，无目标列 | 第 4 页“加载预测数据…” |
 
-先打开含“4 模型与预测”的新版 GUI；macOS 源码版可在项目根目录双击 `Launch PsyML.command`。旧的 v0.1.1 下载包不包含该页面。
+先打开含“4 模型与预测”的新版 GUI；macOS 源码版可在项目根目录双击 `Launch PsyML.command`。独立应用请使用 v0.2.0 或更新版本。
 
 建议先测分类：
 
@@ -41,7 +41,7 @@ Keep or copy this entire folder so each JSON stays beside its training CSV. All 
 | [regression_train.csv](regression_train.csv) | 48 training rows including target | Loaded automatically by the configuration |
 | [regression_predict.csv](regression_predict.csv) | 10 new samples without target | Page 4: Load prediction data… |
 
-Open the updated GUI with page 4, Model & Prediction (on macOS, source users can double-click `Launch PsyML.command` in the project root). Published v0.1.1 apps lack this page.
+Open the updated GUI with page 4, Model & Prediction (on macOS, source users can double-click `Launch PsyML.command` in the project root). Use standalone version v0.2.0 or later.
 
 Import the classification JSON on page 1. Keep **Save best model** enabled, below Random seed in the lower settings area. Choose an output folder and run on page 2. On page 3, open the result folder; keep `model/best_decision_tree.joblib` with `model_metadata.json`. On page 4, trust and load that model, then load `classification_predict.csv`. The configuration and first prediction-data dialogs start in this folder. When automatic checks pass, run and save predictions: expect 10 rows with original sample_id/category/score plus predicted_class and probability_0/probability_1.
 
@@ -62,7 +62,7 @@ Conservez ou copiez ce dossier entier pour garder chaque JSON à côté de son C
 | [regression_train.csv](regression_train.csv) | 48 lignes d’entraînement avec target | Chargé automatiquement par le JSON |
 | [regression_predict.csv](regression_predict.csv) | 10 nouveaux exemples sans cible | Page 4 : Charger les données à prédire… |
 
-Ouvrez la version avec la page 4, Modèle et prédiction (sources macOS : double-cliquez sur `Launch PsyML.command` à la racine). Les applications v0.1.1 publiées ne proposent pas cette page.
+Ouvrez la version avec la page 4, Modèle et prédiction (sources macOS : double-cliquez sur `Launch PsyML.command` à la racine). Utilisez une application autonome v0.2.0 ou ultérieure.
 
 Importez le JSON de classification à la page 1. Gardez l’enregistrement du meilleur modèle activé, sous la graine aléatoire en bas des réglages. Choisissez le dossier de sortie et lancez à la page 2. À la page 3, ouvrez les résultats ; gardez `model/best_decision_tree.joblib` avec `model_metadata.json`. À la page 4, confirmez la confiance, chargez ce modèle puis `classification_predict.csv`. Les dialogues de configuration et de première sélection des données à prédire commencent ici. Après vérification automatique, lancez et enregistrez : 10 lignes, colonnes sample_id/category/score conservées, plus predicted_class et probability_0/probability_1.
 

@@ -22,7 +22,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 ### 打开应用
 
-请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。下载 v0.1.1 中与你的系统对应的独立应用 ZIP：`macOS-arm64` 或 `Windows-x64`。应用包包含运行环境；GitHub 自动生成的 Source code 压缩包仅含源码，开发安装见[开发者指南](docs/DEVELOPMENT_ZH.md)。
+请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。下载 v0.2.0 中与你的系统对应的独立应用 ZIP：`macOS-arm64` 或 `Windows-x64`。应用包包含运行环境；GitHub 自动生成的 Source code 压缩包仅含源码，开发安装见[开发者指南](docs/DEVELOPMENT_ZH.md)。
 
 - **macOS（Apple 芯片）**：完整解压对应应用包，双击 `PsyML Toolkit.app`。
 - **Windows（Intel/AMD x64）**：完整解压对应应用包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
@@ -68,9 +68,9 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 `best_parameters_configure.json` 也可通过同一按钮导入，但它固定最终模型与参数、不重新搜索；其分数不重现原嵌套搜索的性能估计，也不能作为所选参数的独立验证。
 
-### 模型保存与新数据预测（当前源码）
+### 模型保存与新数据预测（v0.2.0）
 
-以下新增功能与截图对应当前源码；已发布的 v0.1.1 独立应用包尚不包含本次更新。
+以下功能与截图对应 v0.2.0 独立应用及源码。
 
 默认开启“保存最佳模型”（第 1 页），配置字段 `save_best_model` 默认为 `true`；旧配置同样适用，CLI 旧式参数可用 `--no-save-best-model` 关闭。主要验证模式下，最终在全部分析行拟合的完整 Pipeline 保存为 `model/best_<模型名>.joblib`，旁边的 `model_metadata.json` 记录变量、预处理、参数与环境。结果页提供路径。独立验证没有全局最终模型，因此不自动保存。CV 指标估计验证与选择流程的泛化表现，不保证保存模型在未来数据上的表现。
 
@@ -215,6 +215,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 | `methods_summary_zh.md` / `methods_summary.md` | 中文与英文方法摘要：样本、预处理、验证、选择流程、最佳参数与统计限制 |
 | `reproducibility_report_zh.md` / `reproducibility_report.md` | 中文与英文报告及核查建议，包含环境、配置、逐折结果、警告和 best_parameters |
 | `result.json` | 完成标记、GUI 摘要、最终家族/参数、评价范围与文件索引 |
+| `model/` | 开启保存且指定主要验证时，保存最终 Pipeline 与 model_metadata.json；用于第 4 页新数据预测，独立验证子目录不生成 |
 | `best_parameters.json` | 最终模型实际超参数（含默认值）；不是各外层折参数的平均 |
 | `best_parameters_configure.json` | 可直接运行的单模型固定最佳参数配置，关闭搜索；不是独立验证 |
 | `predictions.csv` / `confusion_matrix.csv` | 样本外观测与预测、行索引和折号；分类混淆矩阵用于核查错误类别 |
@@ -264,7 +265,7 @@ Automatic reports are available in Chinese and English. Exported plot axes, clas
 
 ### Open the application
 
-Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for available versions and platforms. Download the v0.1.1 standalone ZIP for your system: `macOS-arm64` or `Windows-x64`. These application packages include the runtime. GitHub’s automatic Source code archives contain source only; see the [developer guide](docs/DEVELOPMENT_EN.md) for source installation.
+Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for available versions and platforms. Download the v0.2.0 standalone ZIP for your system: `macOS-arm64` or `Windows-x64`. These application packages include the runtime. GitHub’s automatic Source code archives contain source only; see the [developer guide](docs/DEVELOPMENT_EN.md) for source installation.
 
 - **macOS (Apple Silicon)**: fully extract the matching application archive and double-click `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)**: fully extract the matching archive and double-click `PsyML Toolkit.exe`. Keep the adjacent `core` folder; do not move the EXE alone.
@@ -310,9 +311,9 @@ Data and settings are restored together. The classification example uses target 
 
 You can also import `best_parameters_configure.json` using the same button. It fixes the final model and parameters without searching; it neither reproduces the original nested-search estimate nor provides independent validation of the selected parameters.
 
-### Model saving and new-data prediction (current source)
+### Model saving and new-data prediction (v0.2.0)
 
-These features and screenshots describe the current source. Published v0.1.1 standalone apps do not include this update yet.
+These features and screenshots describe the v0.2.0 standalone applications and source.
 
 **Save best model** is enabled on page 1 by default (`save_best_model: true`, including old configs; legacy CLI: `--no-save-best-model` to disable). With a primary validation, the complete final Pipeline fitted on all analyzed rows is saved to `model/best_<model>.joblib` with `model_metadata.json` describing features, preprocessing, parameters and environment. Independent validations have no global final model and do not auto-save. CV metrics estimate the validation/selection procedure, with no guarantee of future saved-model performance.
 
@@ -425,6 +426,7 @@ Reports and recommendations use deterministic local rules and work offline. **Au
 | `methods_summary_zh.md` / `methods_summary.md` | Chinese/English Methods drafts, including preprocessing, selection, final parameters and limitations. |
 | `reproducibility_report_zh.md` / `reproducibility_report.md` | Chinese/English reports with environment, configuration, folds, warnings, parameters and checks. |
 | `result.json` | Completion state, GUI summary, final family/parameters, evaluation scope and artifact index. |
+| `model/` | Final Pipeline and model_metadata.json when saving is enabled with a primary validation; load on page 4. Independent validation children do not export models. |
 | `best_parameters.json` / `best_parameters_configure.json` | All effective final hyperparameters (including defaults) and a runnable fixed-parameter retraining recipe; no independent validation. |
 | `predictions.csv` / `confusion_matrix.csv` | Held-out truth and predictions, original row index and fold; classification error counts. |
 | `figures/` | Select confusion matrix/class distribution for classification; observed–predicted/residuals/residual distribution for regression. Select none to omit PNGs; switch available figures on the result page. |
@@ -472,7 +474,7 @@ Les rapports automatiques sont disponibles en chinois et en anglais. Les axes de
 
 ### Ouvrir l’application
 
-Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) pour les versions et plateformes disponibles. Téléchargez le ZIP autonome v0.1.1 adapté à votre système : `macOS-arm64` ou `Windows-x64`. Ces applications incluent leur environnement. Les archives Source code générées par GitHub ne contiennent que les sources ; leur installation est décrite dans le [guide de développement](docs/DEVELOPMENT_FR.md).
+Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) pour les versions et plateformes disponibles. Téléchargez le ZIP autonome v0.2.0 adapté à votre système : `macOS-arm64` ou `Windows-x64`. Ces applications incluent leur environnement. Les archives Source code générées par GitHub ne contiennent que les sources ; leur installation est décrite dans le [guide de développement](docs/DEVELOPMENT_FR.md).
 
 - **macOS (puce Apple)** : décompressez entièrement l’archive correspondante puis double-cliquez sur `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)** : décompressez entièrement l’archive puis double-cliquez sur `PsyML Toolkit.exe`. Conservez le dossier `core` adjacent ; ne déplacez pas seulement l’EXE.
@@ -518,9 +520,9 @@ Données et réglages sont restaurés ensemble. L’exemple de classification ut
 
 Le même bouton accepte `best_parameters_configure.json`. Ce fichier fixe le modèle et les paramètres finaux sans recherche ; il ne reproduit pas l’estimation imbriquée originale et ne constitue pas une validation indépendante des paramètres sélectionnés.
 
-### Enregistrement et prédiction sur de nouvelles données (sources actuelles)
+### Enregistrement et prédiction sur de nouvelles données (v0.2.0)
 
-Ces fonctionnalités et captures correspondent aux sources actuelles. Les applications autonomes v0.1.1 publiées ne contiennent pas encore cette mise à jour.
+Ces fonctionnalités et captures correspondent aux applications autonomes et aux sources v0.2.0.
 
 **Enregistrer le meilleur modèle** est activé par défaut à la page 1 (`save_best_model: true`, y compris les anciens JSON ; option CLI historique `--no-save-best-model` pour désactiver). Avec une validation principale, le Pipeline complet ajusté sur toutes les lignes analysées est enregistré dans `model/best_<modèle>.joblib` avec `model_metadata.json` (variables, prétraitement, paramètres et environnement). La page des résultats indique les chemins. Aucun enregistrement automatique en validation indépendante, sans modèle final global. Les métriques CV estiment la procédure de sélection et ne garantissent pas les performances futures.
 
@@ -633,6 +635,7 @@ Rapports et conseils utilisent des règles locales déterministes et fonctionnen
 | `methods_summary_zh.md` / `methods_summary.md` | Brouillons de méthodes chinois/anglais : prétraitement, sélection, paramètres finaux et limites. |
 | `reproducibility_report_zh.md` / `reproducibility_report.md` | Rapports chinois/anglais : environnement, configuration, plis, avertissements, paramètres et vérifications. |
 | `result.json` | État final, résumé GUI, famille/paramètres finaux, portée de l’évaluation et index des fichiers. |
+| `model/` | Pipeline final et model_metadata.json si l’enregistrement et une validation principale sont activés ; chargement à la page 4. Aucun modèle dans les sous-dossiers indépendants. |
 | `best_parameters.json` / `best_parameters_configure.json` | Hyperparamètres finaux effectifs (valeurs par défaut incluses) et recette exécutable de réentraînement fixe ; aucune validation indépendante. |
 | `predictions.csv` / `confusion_matrix.csv` | Observations et prédictions hors apprentissage, index de ligne et pli ; erreurs de classification. |
 | `figures/` | Classification : matrice de confusion/distribution des classes. Régression : observation–prédiction/résidus/distribution des résidus. Tout décocher supprime les PNG ; menu de figures dans les résultats. |

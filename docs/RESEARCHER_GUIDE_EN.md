@@ -1,6 +1,6 @@
 # Researcher reference: models, metrics, results and terminology
 
-Applies to code version **v0.1.1**. See `analysis_manifest.json` in each analysis output for runtime and dependency versions.
+Applies to code version **v0.2.0**. See `analysis_manifest.json` in each analysis output for runtime and dependency versions.
 
 [Back to the English README](../README.md#english) · [中文](RESEARCHER_GUIDE_ZH.md) · **English** · [Français](RESEARCHER_GUIDE_FR.md)
 
@@ -205,14 +205,14 @@ The file descriptions below apply to a primary-design run or each successful chi
 | Which families merit further investigation? | `model_comparison.csv` | Exploratory ranks restart within each validation; rank 1 can differ from the final model |
 | What was selected in each fold? | `selection_trace.csv` | `outer_training_fold` versus `final_full_data`; `outer_fold=0` means full-data selection, not a zeroth test fold |
 | Why was a candidate selected or rejected? | `parameter_search.csv` | Inspect inner score, parameters, status and error. Score remains on the metric's original scale: smaller RMSE/MAE is still better |
-| Can final parameters be reused? | `best_parameters.json`, `best_parameters_configure.json` | The former stores overrides; `{}` means defaults are used. The latter is a runnable fixed-model, fixed-parameter recipe with search disabled |
+| Can final parameters be reused? | `best_parameters.json`, `best_parameters_configure.json` | The former stores effective hyperparameters, including defaults. The latter is a runnable fixed-model, fixed-parameter recipe with search disabled |
 | How can the original design be repeated? | `config.json`, `analysis_config.json`, `study_config.json` | Preserve the original search design; names support different interfaces. Check input_path and use a new empty output_dir |
 | What do configuration fields mean? | `configuration_guide.md` | Brief Chinese/English definitions kept outside standard JSON |
 | Which predictions were wrong? | `predictions.csv`, classification `confusion_matrix.csv` | `observed` is truth, `predicted` the prediction. For file inputs, `row_index` is a zero-based data-row index, not a spreadsheet row number including the header |
 | Do the environment and sample sizes match? | `analysis_manifest.json` | Input/analyzed rows, feature count, fingerprint and dependency versions. Input features are not the number of one-hot encoded columns |
 | How should reporting start? | `methods_summary.md` / `methods_summary_zh.md`, `reproducibility_report.md` / `reproducibility_report_zh.md` | Offline English/Chinese drafts to check, not reviewed manuscript text |
 
-**Best parameters** means the settings selected under this candidate range, metric, data and splitting design, not a global optimum or a universal choice. `best_parameters_configure.json` reuses data that participated in selection; its new score is not independent validation and does not reproduce the original nested-search estimate. The GUI currently does not export a loadable fitted-model file: this configuration is a recipe for retraining.
+**Best parameters** means the settings selected under this candidate range, metric, data and splitting design, not a global optimum or a universal choice. `best_parameters_configure.json` reuses data that participated in selection; its new score is not independent validation and does not reproduce the original nested-search estimate. In v0.2.0, primary-validation runs can save a fitted Pipeline for loading on page 4. This JSON configuration remains a retraining recipe, distinct from the saved model.
 
 ### Figures
 
@@ -277,3 +277,7 @@ For general principles, consult scikit-learn's [metrics](https://scikit-learn.or
 ## Reproduce from a configuration
 
 On page 1, **Import configuration…** opens a bundled example, a result folder’s `config.json`, or `best_parameters_configure.json`; no terminal is required. Relink the corresponding data if its path is unavailable; required columns are checked. Review variables, validation and parameters, then choose a local output folder and run on page 2. Each run creates a new subfolder instead of reusing the imported output path. **Save configuration…** saves current settings. Rerunning fixed best parameters neither reproduces the original search nor provides independent validation.
+
+## Added in 0.2.0: saved models and prediction
+
+A final model is the complete preprocessing/estimator Pipeline refitted on all analyzed rows after full-data inner selection. Effective parameters include applied defaults, not fitted coefficients. Keep model_metadata.json beside the model. Feature compatibility checks names and types, not population comparability. predicted_class and predicted_value are model outputs, not observed outcomes. Native probability_* columns are not automatically calibrated; regression has none. New-data prediction can omit the target, whereas external validation needs independent labeled data and an evaluation design. Load only trusted joblib/pickle files because loading can execute code.

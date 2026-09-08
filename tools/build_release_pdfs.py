@@ -80,27 +80,28 @@ def render(source: Path, text: str, target: Path, title: str) -> None:
             textColor=BLUE, spaceBefore=14, spaceAfter=9, keepWithNext=True,
         ) for n in range(1, 7)
     }
-    base = "https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/v0.1.1/"
+    base = "https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/v0.2.0/"
     base += source.relative_to(ROOT).as_posix()
-    story = [Paragraph(title, heading[1]), Paragraph("PsyML Toolkit · v0.1.1", body)]
+    story = [Paragraph(title, heading[1]), Paragraph("PsyML Toolkit · v0.2.0", body)]
     story.append(Paragraph(
-        "本文可离线阅读。蓝色链接指向 v0.1.1 的仓库文件或外部资料，需要联网。"
+        "本文可离线阅读。蓝色链接指向 v0.2.0 的仓库文件或外部资料，需要联网。"
         "软件操作均在图形界面中完成，无需输入命令。", small,
     ))
     if source.name == "README.md":
         story.append(Paragraph("收到分享包后，从这里开始", heading[2]))
         story.append(Paragraph(
-            "1. 完整解压分享包。打开 Applications 文件夹，按系统选择 macOS-arm64 或 Windows-x64。"
-            "Mac 双击 PsyML Toolkit.app；Windows 双击 PsyML Toolkit.exe，保留 core 文件夹。<br/>"
-            "2. 在第 1 页点击“导入配置…”，选择分享包 examples/synthetic 中的 classification_config.json。<br/>"
-            "3. 在第 2 页选择本机结果文件夹，点击“运行分析”；完成后在第 3 页查看结果。<br/>"
-            "4. 导入 regression_config.json 可试回归。两份配置的 CSV 均与配置放在同一文件夹；"
-            "找不到数据时按提示选择对应 CSV。<br/>"
-            "应用内含运行环境，样例分析无需下载内容。首次启动可能需要操作系统安全确认。"
-            "样例均为合成数据，仅用于熟悉流程。<br/>"
-            "更多快速测试：examples/synthetic/matrix 内含 27 份小数据（每份 48 行，9 种格式），"
-            "覆盖二分类、多分类和回归，导入同名的配置 JSON 即可运行。"
-            "其中 SAS7BDAT 为真实二进制格式的合成样例，用于本软件读取测试，未经 SAS 软件认证。", body))
+            "1. 完整解压分享包。打开 Windows 文件夹，双击 PsyML Toolkit.exe，保留旁边的 core 文件夹。<br/>"
+            "2. 在第 1 页点击“导入配置…”，选择 TestData 中的 classification_config.json；"
+            "训练数据会自动读取，保持“保存最佳模型”勾选。<br/>"
+            "3. 在第 2 页选择本机结果文件夹并运行；第 3 页查看结果并打开完整结果文件夹。<br/>"
+            "4. 第 4 页加载结果 model/ 中的 best_decision_tree.joblib，保留旁边的 model_metadata.json；"
+            "加载 TestData/classification_predict.csv，运行预测并另存结果，应得到 10 行。<br/>"
+            "5. 使用 regression_config.json、best_ridge.joblib 和 regression_predict.csv 可试回归。<br/>"
+            "分享包的 Documents 文件夹含两份中文 PDF；TestData 是与应用内 examples/quickstart 相同的测试资料。"
+            "全部为合成数据，仅用于熟悉流程。应用内含运行环境，无需安装 Python 或使用命令行。<br/>"
+            "Mac 用户请到 GitHub 下载 v0.2.0 的 macOS-arm64 应用，分享包只含 Windows 版："
+            '<link href="https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.2.0" color="#334a88">'
+            "打开 GitHub Release</link>。", body))
     story.append(Spacer(1, 12))
     lines = text.splitlines()
     i = 0
@@ -173,7 +174,7 @@ def render(source: Path, text: str, target: Path, title: str) -> None:
         canvas.saveState()
         canvas.setFont("PsyMLCJK", 8)
         canvas.setFillColor(colors.HexColor("#667085"))
-        canvas.drawString(48, 818, "PsyML Toolkit v0.1.1 · " + title)
+        canvas.drawString(48, 818, "PsyML Toolkit v0.2.0 · " + title)
         canvas.drawRightString(547, 25, str(doc.page))
         canvas.restoreState()
 

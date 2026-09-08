@@ -1,6 +1,6 @@
 # Guide de référence : modèles, métriques, résultats et terminologie
 
-Version du code documentée : **v0.1.1**. Les versions de l’environnement et des dépendances figurent dans `analysis_manifest.json` pour chaque analyse.
+Version du code documentée : **v0.2.0**. Les versions de l’environnement et des dépendances figurent dans `analysis_manifest.json` pour chaque analyse.
 
 [Retour au README français](../README.md#french) · [中文](RESEARCHER_GUIDE_ZH.md) · [English](RESEARCHER_GUIDE_EN.md) · **Français**
 
@@ -205,14 +205,14 @@ Les fichiers ci-dessous correspondent à une analyse avec validation principale 
 | Quelles familles méritent un examen ultérieur ? | `model_comparison.csv` | Rangs exploratoires recommençant dans chaque validation ; le rang 1 peut différer du modèle final |
 | Quel choix dans chaque pli ? | `selection_trace.csv` | Distingue `outer_training_fold` et `final_full_data` ; `outer_fold=0` désigne la sélection sur toutes les données, pas un pli de test numéro zéro |
 | Pourquoi un candidat a-t-il été choisi ou rejeté ? | `parameter_search.csv` | Examiner score interne, paramètres, status et error. Le score garde l’échelle d’origine : RMSE/MAE plus petites restent meilleures |
-| Peut-on réutiliser les paramètres finaux ? | `best_parameters.json`, `best_parameters_configure.json` | Le premier conserve les valeurs remplaçant les défauts ; `{}` signifie utiliser les défauts. Le second fixe modèle et paramètres et désactive la recherche |
+| Peut-on réutiliser les paramètres finaux ? | `best_parameters.json`, `best_parameters_configure.json` | Le premier conserve les hyperparamètres effectifs, valeurs par défaut incluses. Le second fixe modèle et paramètres et désactive la recherche |
 | Comment répéter le plan original ? | `config.json`, `analysis_config.json`, `study_config.json` | Conservent le plan de recherche original ; les noms assurent la compatibilité d’interfaces. Vérifier input_path et choisir un nouveau output_dir vide |
 | Que signifient les champs de configuration ? | `configuration_guide.md` | Définitions courtes en chinois et anglais, séparées du JSON standard |
 | Quelles prédictions sont erronées ? | `predictions.csv`, `confusion_matrix.csv` en classification | `observed` est la vérité, `predicted` la prédiction. Pour les fichiers d’entrée, `row_index` commence à 0 et désigne une ligne de données, pas le numéro de ligne du tableur avec en-tête |
 | Environnement et effectifs correspondent-ils ? | `analysis_manifest.json` | Lignes initiales/analysées, nombre de caractéristiques, empreinte et versions. Ce nombre de caractéristiques n’est pas le nombre de colonnes après encodage one-hot |
 | Comment commencer la rédaction ? | `methods_summary.md` / `methods_summary_zh.md`, `reproducibility_report.md` / `reproducibility_report_zh.md` | Brouillons hors ligne en anglais/chinois à vérifier, pas des textes déjà validés pour publication |
 
-Les **meilleurs paramètres** sont ceux sélectionnés pour cette plage de candidats, cette métrique, ces données et ce découpage, pas un optimum global ou un choix universel. `best_parameters_configure.json` réutilise les données ayant servi à sélectionner les paramètres ; son nouveau score n’est pas une validation indépendante et ne reproduit pas l’estimation de la recherche imbriquée originale. L’interface n’exporte actuellement pas de fichier de modèle ajusté directement rechargeable : la configuration est une recette de réentraînement.
+Les **meilleurs paramètres** sont ceux sélectionnés pour cette plage de candidats, cette métrique, ces données et ce découpage, pas un optimum global ou un choix universel. `best_parameters_configure.json` réutilise les données ayant servi à sélectionner les paramètres ; son nouveau score n’est pas une validation indépendante et ne reproduit pas l’estimation de la recherche imbriquée originale. En v0.2.0, une analyse avec validation principale peut enregistrer un Pipeline ajusté, rechargeable à la page 4. Le JSON reste une recette de réentraînement, distincte du modèle enregistré.
 
 ### Figures
 
@@ -277,3 +277,7 @@ Pour les principes généraux, consulter les références scikit-learn sur les [
 ## Reproduire à partir d’une configuration
 
 À la page 1, **Importer une configuration…** ouvre un exemple fourni, le `config.json` d’un résultat ou `best_parameters_configure.json`, sans terminal. Réassociez les données correspondantes si leur chemin est introuvable ; les colonnes requises sont vérifiées. Vérifiez variables, validation et paramètres, puis choisissez un dossier local et lancez à la page 2. Chaque exécution crée un nouveau sous-dossier sans réutiliser le chemin de sortie importé. **Enregistrer la configuration…** conserve les réglages. Relancer les meilleurs paramètres fixes ne reproduit pas la recherche originale et ne constitue pas une validation indépendante.
+
+## Ajouts de la version 0.2.0 : modèles et prédiction
+
+Le modèle final comprend le Pipeline de prétraitement et estimateur réajusté sur toutes les lignes analysées après sélection interne sur toutes les données. Les paramètres effectifs incluent les valeurs par défaut, pas les coefficients appris. Conservez model_metadata.json à côté du modèle. La compatibilité vérifie noms et types, pas la comparabilité des populations. predicted_class et predicted_value sont des sorties, pas des observations. Les probability_* natives ne sont pas automatiquement calibrées ; la régression n’en produit pas. Prédire peut se faire sans cible, tandis que la validation externe exige des données indépendantes étiquetées et un plan d’évaluation. Ne chargez que des fichiers joblib/pickle de confiance, car leur chargement peut exécuter du code.
