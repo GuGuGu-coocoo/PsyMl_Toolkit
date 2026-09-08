@@ -266,6 +266,8 @@ Data and settings are restored together. The classification example uses target 
 
 You can also import `best_parameters_configure.json` using the same button. It fixes the final model and parameters without searching; it neither reproduces the original nested-search estimate nor provides independent validation of the selected parameters.
 
+**Save best model** is enabled on page 1 by default (`save_best_model: true`, including old configs; legacy CLI: `--no-save-best-model` to disable). With a primary validation, the complete final Pipeline fitted on all analyzed rows is saved to `model/best_<model>.joblib` with `model_metadata.json` describing features, preprocessing, parameters and environment. Independent validations have no global final model and do not auto-save. CV metrics estimate the validation/selection procedure, with no guarantee of future saved-model performance.
+
 ### Workflow at a glance
 
 1. Import and inspect a local dataset.
@@ -565,3 +567,16 @@ Les configurations contrôlent `test_size`, `random_seed`, `model_params`, `para
 Le noyau d’apprentissage automatique a été écrit par l’auteur du projet ; l’interface Godot a été développée avec l’aide de l’IA. Cette aide ne remplace ni la revue humaine du code ni le jugement scientifique.
 
 Les chercheurs sont invités à signaler, via les issues GitHub, les problèmes reproductibles, suggestions méthodologiques et retours d’utilisation. Utilisez le jeu synthétique aléatoire du dépôt ou un exemple minimal publiable ; ne téléversez jamais de données réelles de participants, de documents de recherche non publiés, d’identifiants d’accès ou d’autres informations sensibles.
+
+
+### Batch prediction CLI / 批量预测命令行 / Prédiction en ligne de commande
+
+```bash
+psyml predict --model output/model/best_ridge.joblib --input new_data.xlsx --output predictions.xlsx --trust-model
+```
+
+中文：仅加载可信来源的 PsyML 模型；joblib/pickle 加载可以执行代码，`--trust-model` 表示确认来源。加 `--check-only` 可先检查，省略 `--output`。按训练顺序自动选取预测变量，缺列、非法数值与无法填补的缺失值会阻止预测。所有原始列（含目标）与行序保留；回归追加 `predicted_value`，分类追加 `predicted_class` 及模型原生概率。重名时给新增列加数字后缀。没有变量名的旧模型用重复 `--feature` 明确列顺序。支持原有 9 种输入格式；可写 CSV、TSV、XLSX、SAV、DTA、XPT、Parquet。XLS/SAS7BDAT 只能读取，另存为 XLSX；统计格式无法表示某些列名或数据类型时明确报错，可另存 XLSX/Parquet。CLI 输出格式由 `--output` 扩展名决定，默认不覆盖文件。
+
+English: Load only trusted PsyML models: joblib/pickle loading can execute code, and `--trust-model` confirms the source. Use `--check-only` without `--output` to inspect compatibility. Required predictors are selected in training order; missing columns, invalid numbers and missing values without imputation block prediction. Every original column (including the target) and row order is retained. Regression appends `predicted_value`; classification appends `predicted_class` and native class probabilities when supported. Collisions get numeric suffixes on new columns. Repeat `--feature` in model order for older models lacking names. All 9 input formats remain supported; writable formats are CSV, TSV, XLSX, SAV, DTA, XPT and Parquet. XLS/SAS7BDAT are read-only; save as XLSX. Statistical-format naming/type restrictions produce explicit errors; choose XLSX/Parquet instead. The output extension controls CLI format; existing files are preserved by default.
+
+Français : charger uniquement des modèles PsyML de confiance : joblib/pickle peut exécuter du code ; `--trust-model` confirme la source. Utiliser `--check-only` sans `--output` pour vérifier la compatibilité. Les prédicteurs sont remis dans l’ordre d’entraînement ; colonnes absentes, nombres invalides et valeurs manquantes sans imputation bloquent la prédiction. Toutes les colonnes originales (cible comprise) et l’ordre des lignes sont conservés. La régression ajoute `predicted_value`, la classification `predicted_class` et les probabilités natives disponibles. Un suffixe numérique évite les collisions. Répéter `--feature` dans l’ordre attendu si les noms manquent. Les 9 formats d’entrée restent disponibles ; export CSV, TSV, XLSX, SAV, DTA, XPT et Parquet. XLS/SAS7BDAT sont en lecture seule : choisir XLSX. Les restrictions de noms/types des formats statistiques produisent une erreur explicite ; choisir XLSX/Parquet. L’extension de sortie fixe le format CLI ; pas d’écrasement par défaut.

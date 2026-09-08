@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from psyml.config import ExperimentConfig
-from psyml.data.formats import SUPPORTED_SUFFIXES
+from psyml.data.formats import OUTPUT_SUFFIXES, SUPPORTED_SUFFIXES
 from psyml.models.catalog import quick_parameter_grid, supported_models
 
 SCHEMA_VERSION = "1.0"
@@ -181,6 +181,7 @@ def capabilities_payload() -> dict[str, Any]:
             "regression": ["rmse", "mae", "r2"],
         },
         "input_formats": sorted(SUPPORTED_SUFFIXES),
+        "output_formats": sorted(OUTPUT_SUFFIXES),
         "validation_strategies": [
             "holdout",
             "k_fold",
@@ -219,6 +220,11 @@ def preview_payload(
     from psyml.data import load_dataframe
 
     frame = load_dataframe(path)
+    return dataframe_preview(frame, rows=rows, include_sample=include_sample)
+
+
+def dataframe_preview(frame, *, rows=5, include_sample=True):
+    """Shared training/prediction preview, with identical column and sample semantics."""
     payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "row_count": len(frame),

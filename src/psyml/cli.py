@@ -19,7 +19,7 @@ from psyml.protocol import (
     schema_text,
 )
 
-COMMANDS = {"capabilities", "preview", "run", "schema", "import-config"}
+COMMANDS = {"capabilities", "preview", "run", "schema", "import-config", "model-info", "predict", "export-table"}
 
 
 class CancellationRequested(BaseException):
@@ -84,6 +84,23 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the stable command-oriented CLI parser."""
     parser = argparse.ArgumentParser(description="PsyML local analysis interface.")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    model_parser = commands.add_parser("model-info", help="Inspect a trusted PsyML model")
+    model_parser.add_argument("--model", required=True, type=Path)
+    model_parser.add_argument("--trust-model", action="store_true",
+                              help="Trust this file: joblib/pickle loading can execute code")
+    predict_parser = commands.add_parser("predict", help="Batch prediction from a trusted model")
+    predict_parser.add_argument("--model", required=True, type=Path)
+    predict_parser.add_argument("--input", required=True, type=Path)
+    predict_parser.add_argument("--output", type=Path)
+    predict_parser.add_argument("--trust-model", action="store_true")
+    predict_parser.add_argument("--check-only", action="store_true")
+    predict_parser.add_argument("--feature", action="append", help="Ordered manual mapping; repeat")
+    predict_parser.add_argument("--overwrite", action="store_true")
+    export_parser = commands.add_parser("export-table", help="Export a prediction table")
+    export_parser.add_argument("--input", required=True, type=Path)
+    export_parser.add_argument("--output", required=True, type=Path)
+    export_parser.add_argument("--overwrite", action="store_true")
 
     import_parser = commands.add_parser("import-config", help="Validate a desktop configuration")
     import_parser.add_argument("--config", required=True, type=Path)
@@ -203,7 +220,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "run":
         return _run_versioned(args)
     try:
-        if args.command == "import-config":
+        if args.command in {"model-info", "predict", "export-table"}:
+            _print_json(_prediction_command(args))
+        elif args.command == "import-config":
             from psyml.gui_config import import_configuration
 
             _print_json(import_configuration(args.config, args.input))
@@ -231,3 +250,36 @@ def _execute(config: ExperimentConfig, progress_callback=None):
     from psyml.runner import run_experiment
 
     return run_experiment(config, progress_callback=progress_callback)
+
+
+def _prediction_command(args):
+    from psyml.data.formats import prediction_output_suffix
+    from psyml.data.io import load_dataframe, save_dataframe
+    from psyml.prediction import compatibility_check, load_model, predict_dataframe
+    from psyml.protocol import dataframe_preview
+
+    if args.command == "export-table":
+        if args.input.resolve() == args.output.resolve():
+            raise ValueError("Choose an output path different from the input data.")
+        save_dataframe(load_dataframe(args.input), args.output, overwrite=args.overwrite)
+        return {"output_path": str(args.output)}
+    loaded = load_model(args.model, trusted=args.trust_model)
+    payload = {"model": loaded.metadata, "warnings": loaded.notices}
+    if args.command == "model-info":
+        return payload
+    frame = load_dataframe(args.input)
+    check = compatibility_check(loaded, frame, args.feature)
+    payload.update(compatibility=check, preview=dataframe_preview(frame),
+                   default_output_suffix=prediction_output_suffix(args.input.suffix))
+    if args.check_only:
+        return payload
+    if args.output is None:
+        raise ValueError("Prediction requires --output (or --check-only for a compatibility check).")
+    if args.output.resolve() in {args.input.resolve(), args.model.resolve(),
+                                 (args.model.parent / 'model_metadata.json').resolve()}:
+        raise ValueError("Choose a separate prediction output; preserve the input and model files.")
+    predicted, columns = predict_dataframe(loaded, frame, args.feature)
+    save_dataframe(predicted, args.output, overwrite=args.overwrite)
+    payload.update(predictions=dataframe_preview(predicted), prediction_columns=columns,
+                   output_path=str(args.output))
+    return payload

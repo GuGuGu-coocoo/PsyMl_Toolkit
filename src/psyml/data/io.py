@@ -62,3 +62,43 @@ def validate_dataset(
         raise KeyError(f"Group column '{group_column}' was not found")
     if frame[target_column].isna().all():
         raise ValueError("Target column contains only missing values")
+
+
+def save_dataframe(frame: pd.DataFrame, path: Path | str, *, overwrite=False) -> None:
+    """Write a table atomically using existing format dependencies; preserve existing files."""
+    import os
+    import tempfile
+
+    from psyml.data.formats import OUTPUT_SUFFIXES
+
+    path = Path(path)
+    suffix = path.suffix.lower()
+    if suffix not in OUTPUT_SUFFIXES:
+        raise ValueError(f"Cannot write {suffix}; choose one of {', '.join(sorted(OUTPUT_SUFFIXES))}.")
+    if path.exists() and not overwrite:
+        raise FileExistsError(f"Output file already exists: {path}")
+    handle, temporary = tempfile.mkstemp(suffix=suffix, dir=path.parent)
+    os.close(handle)
+    try:
+        if suffix in {'.csv', '.tsv'}:
+            frame.to_csv(temporary, index=False, sep='\t' if suffix == '.tsv' else ',')
+        elif suffix == '.xlsx':
+            frame.to_excel(temporary, index=False)
+        elif suffix == '.parquet':
+            frame.to_parquet(temporary, index=False)
+        else:
+            writer = {'.sav': pyreadstat.write_sav, '.dta': pyreadstat.write_dta,
+                      '.xpt': pyreadstat.write_xport}[suffix]
+            writer(frame, temporary)
+        if overwrite:
+            os.replace(temporary, path)
+        else:
+            # Hard link publishes only a complete file and refuses an existing destination.
+            os.link(temporary, path)
+    except Exception as error:
+        if isinstance(error, FileExistsError):
+            raise
+        raise ValueError(f"Cannot export {suffix}: {error}. Try XLSX or Parquet if the format "
+                         "cannot represent the original column names or values.") from error
+    finally:
+        Path(temporary).unlink(missing_ok=True)
