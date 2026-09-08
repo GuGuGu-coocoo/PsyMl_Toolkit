@@ -30,6 +30,9 @@ uv run python tools/launch_gui.py
 | `gui/scripts/i18n.gd`、`light_theme.gd` | 中英法文案、交互状态颜色 |
 | `tests/`、`gui/tests/`、`examples/synthetic/` | 核心测试、界面测试、合成数据与配置 |
 | `tools/`、`.github/workflows/` | 启动、构建、检查与 CI |
+| `src/psyml/models/persistence.py`、`parameters.py`、`src/psyml/prediction.py` | 最终 Pipeline 保存、有效参数记录、模型检查与批量预测 |
+| `gui/scripts/prediction_page.gd`、`data_preview.gd` | 第 4 页预测交互与共享数据预览 |
+| `examples/quickstart/`、`tests/test_quickstart.py` | 可整体复制的用户测试资料与训练到预测验证 |
 
 `legacy/` 仅保留历史代码与合成夹具，不是当前运行入口。`dist/`、`tmp/`、`output/` 和 `.venv/` 为本地产物；不要把它们或真实研究数据提交到仓库。
 
@@ -52,6 +55,28 @@ uv run psyml run --config examples/synthetic/regression_config.json --events
 CLI 的相对路径基于运行目录，按配置的 `output_dir` 写入且拒绝覆盖已有结果；重复运行前须换新空目录。GUI 导入优先从配置目录解析数据，兼容示例路径；找不到时让用户重新关联，缺列时报错。GUI 始终使用本机选定目录的新子目录，不沿用导入的输出路径。保存配置时，仅数据与配置同目录的情况保存相对文件名。
 
 配置中 `primary_validation: null` 表示各验证分别输出；策略名表示显式主要项；省略该字段时保留旧配置的首项语义。 Python API 此模式返回 `validation_results[策略名]`；顶层 `model=None`、`metrics={}`，调用者需明确选择验证。
+
+### 0.2.0 训练、保存与预测接口
+
+`examples/quickstart/` 是统一的用户试用入口；`examples/synthetic/` 及 `matrix/` 保留给开发回归检查。上面的旧合成示例命令仍有效。下面的 quickstart 配置使用相邻训练文件名，CLI 需先进入该目录；`load_config()` 本身不会按 JSON 所在目录改写相对路径。首次运行前确认 `results/quickstart_classification` 和 `results/quickstart_regression` 不含旧结果；重跑请修改配置选择新输出目录。
+
+```bash
+cd examples/quickstart
+uv run psyml run --config classification_config.json --events
+uv run psyml model-info --model results/quickstart_classification/model/best_decision_tree.joblib --trust-model
+uv run psyml predict --model results/quickstart_classification/model/best_decision_tree.joblib --input classification_predict.csv --check-only --trust-model
+uv run psyml predict --model results/quickstart_classification/model/best_decision_tree.joblib --input classification_predict.csv --output results/quickstart_classification/new_predictions.xlsx --trust-model
+uv run psyml export-table --input results/quickstart_classification/new_predictions.xlsx --output results/quickstart_classification/new_predictions.csv
+uv run psyml run --config regression_config.json --events
+uv run psyml predict --model results/quickstart_regression/model/best_ridge.joblib --input regression_predict.csv --output results/quickstart_regression/new_predictions.csv --trust-model
+cd ../..
+```
+
+两份预测输出均应为 10 行，保留 sample_id/category/score；分类新增 predicted_class 和两列 probability_*，回归新增 predicted_value。`model-info` 返回模型信息；`predict --check-only` 返回 `compatibility.compatible` 和错误列表，不能仅凭退出码判断兼容。实际预测必须指定 `--output`，其扩展名决定格式；默认不覆盖，`--overwrite` 仅在有意替换时使用。`--feature` 可按训练顺序重复提供手动映射。`export-table` 转换已有表格，不重新运行模型。XLS/SAS7BDAT 只读，可输出 XLSX。
+
+Python 预测接口位于 `psyml.prediction`：`load_model(path, trusted=True)`、`compatibility_check(loaded, frame, mapping=None)`、`predict_dataframe(loaded, frame, mapping=None)`；最后一个返回 `(DataFrame, 新增列名列表)`。模型加载需要显式可信来源，不因只是查看信息就跳过信任检查。
+
+`save_best_model` 默认为 true。主要验证运行的 `model_export` 记录保存状态和相对路径，`result.json.artifacts.saved_model` / `model_metadata` 提供文件索引；独立验证模式不自动保存。`best_parameters.json`、`result.json.effective_parameters` 与模型 metadata 的 best_parameters 含实际默认值；`result.json.best_parameters` 和固定参数配置保留参数覆盖，不能混为同一字段语义。
 
 ## 修改时必须保留的行为
 
@@ -81,4 +106,17 @@ uv run --group build python tools/build_native.py
 
 [Core CI](../.github/workflows/ci.yml) 检查三个操作系统；[独立包工作流](../.github/workflows/native-test-build.yml) 可手动触发，也会在推送 `desktop-test` 分支时自动构建 Windows 测试包。推送到该分支会消耗构建资源，提交前应确认需要生成测试包。工作流仅保存构建产物，不创建 release。
 
-`tools/package_release.py` 用于源码发行包；独立应用使用 `tools/build_native.py`。`tools/build_release_pdfs.py` 可生成中文使用说明和术语指南 PDF，输出位于 `output/pdf/`；分发前须逐页核对版式与内容。构建产物经测试验收后，由维护者手动发布。
+### 发布附件与本地研究者分享包
+
+0.2.0 的 GitHub Release 只上传 Windows-x64 与 macOS-arm64 两个独立应用 ZIP，发布说明保持中英法三语。构建脚本仍生成 SHA-256 供本地验证，不上传校验附件或额外源码 ZIP。GitHub 自动提供的 Source code 留给开发者。`tools/package_release.py` 是可选的本地源码归档工具，需要干净工作区和最新 PDF；不要把它的输出混入应用附件。
+
+先核对 README 与研究者指南对应 0.2.0，再生成 PDF；下方字体路径须替换为支持中文且允许嵌入的 TrueType 字体。`output/pdf/sources.json` 记录内容来源哈希；来源改变后应重新生成并逐页渲染检查。
+
+```bash
+uv run --with reportlab python tools/build_release_pdfs.py --font /path/to/chinese-font.ttf
+uv run python tools/package_researcher_share.py --windows-zip dist/PsyML-Toolkit-0.2.0-Windows-x64.zip
+```
+
+分享脚本不调用发布接口，输出根目录的 `PsyML-Toolkit-Researcher-Share-v0.2.0.zip`，只用于直接分享，**不得上传 Release**。其中 Windows/ 为程序，TestData/ 为训练、配置及预测资料，Documents/ 为中文使用指南和术语 PDF，“从这里开始.txt”解释运行顺序与文件夹，并引导 Mac 用户到 GitHub 下载。输出目录若已存在，先移走或备份旧包再重建；不要混用旧 PDF。
+
+版本升级时核对 pyproject.toml、src/psyml/__init__.py、uv.lock、gui/export_presets.cfg、tools/build_native.py、tools/NATIVE_START_HERE.txt、PDF 构建器中的版本与链接，以及三语发布说明。检查 BUILD.json 的提交、初始工作区状态和构建生成的差异，核对 ZIP 与本地校验值。界面包内检查覆盖分类/回归训练、模型保存、加载、各 10 行新数据预测及 XLSX 导出；不替代实际窗口检查。每项独立功能完成后单独 commit 并立即 push，不累积后一起推送。

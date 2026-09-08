@@ -30,6 +30,9 @@ Le lanceur définit `PSYML_PYTHON` avec l’environnement courant. Si Godot est 
 | `gui/scripts/i18n.gd`, `light_theme.gd` | Trois langues et couleurs des états interactifs |
 | `tests/`, `gui/tests/`, `examples/synthetic/` | Tests et paires de données/configurations synthétiques |
 | `tools/`, `.github/workflows/` | Lancement, construction, contrôles et CI |
+| `src/psyml/models/persistence.py`, `parameters.py`, `src/psyml/prediction.py` | Pipeline final, paramètres effectifs, contrôle et prédiction |
+| `gui/scripts/prediction_page.gd`, `data_preview.gd` | Page 4 et aperçus communs |
+| `examples/quickstart/`, `tests/test_quickstart.py` | Dossier utilisateur portable et vérification entraînement-prédiction |
 
 `legacy/` archive du code ancien et des jeux synthétiques ; ce n’est pas le point d’entrée actuel. Ne versionnez pas les sorties locales `dist/`, `tmp/`, `output/`, `.venv/` ni de vraies données de recherche.
 
@@ -52,6 +55,28 @@ uv run psyml run --config examples/synthetic/regression_config.json --events
 En CLI, les chemins relatifs dépendent du dossier courant ; `output_dir` est utilisé tel quel et les résultats existants ne sont pas écrasés. Choisissez un nouveau dossier vide pour relancer. L’importation GUI recherche les données près du JSON puis reconnaît les chemins des exemples du dépôt. Un chemin manquant demande une réassociation ; une colonne manquante provoque une erreur. L’interface crée toujours un nouveau sous-dossier local. Le chemin sauvegardé des données n’est relatif que si données et configuration partagent le même dossier.
 
 Dans le JSON, `primary_validation: null` active les sorties séparées par validation ; un nom désigne une validation principale et l’omission conserve le comportement historique. En Python, utiliser `validation_results[stratégie]` ; `model=None` et `metrics={}` à la racine sont intentionnels.
+
+### Interfaces 0.2.0 : entraînement, enregistrement et prédiction
+
+`examples/quickstart/` est l’entrée des essais utilisateur ; `examples/synthetic/` et `matrix/` restent des jeux de développement, avec les commandes précédentes toujours valables. Les JSON quickstart utilisent les noms des CSV voisins : entrez d’abord dans ce dossier pour la CLI. `load_config()` ne recalcule pas les chemins relativement au JSON. Vérifiez l’absence d’anciens résultats dans `results/quickstart_classification` et `results/quickstart_regression` ; choisissez de nouveaux dossiers de sortie dans les JSON avant de relancer.
+
+```bash
+cd examples/quickstart
+uv run psyml run --config classification_config.json --events
+uv run psyml model-info --model results/quickstart_classification/model/best_decision_tree.joblib --trust-model
+uv run psyml predict --model results/quickstart_classification/model/best_decision_tree.joblib --input classification_predict.csv --check-only --trust-model
+uv run psyml predict --model results/quickstart_classification/model/best_decision_tree.joblib --input classification_predict.csv --output results/quickstart_classification/new_predictions.xlsx --trust-model
+uv run psyml export-table --input results/quickstart_classification/new_predictions.xlsx --output results/quickstart_classification/new_predictions.csv
+uv run psyml run --config regression_config.json --events
+uv run psyml predict --model results/quickstart_regression/model/best_ridge.joblib --input regression_predict.csv --output results/quickstart_regression/new_predictions.csv --trust-model
+cd ../..
+```
+
+Chaque prédiction contient 10 lignes et conserve sample_id/category/score. La classification ajoute predicted_class et deux colonnes probability_* ; la régression ajoute predicted_value. `model-info` renvoie les métadonnées. Inspectez `compatibility.compatible` et les erreurs de `predict --check-only`, pas seulement le code de sortie. Prédire exige `--output`, dont le suffixe détermine le format ; aucun écrasement sans `--overwrite` explicite. Répétez `--feature` dans l’ordre d’entraînement pour une correspondance manuelle. `export-table` convertit une table sans relancer le modèle. XLS/SAS7BDAT sont en lecture seule ; utilisez XLSX en sortie.
+
+Interfaces Python de `psyml.prediction` : `load_model(path, trusted=True)`, `compatibility_check(loaded, frame, mapping=None)`, `predict_dataframe(loaded, frame, mapping=None)`. La dernière renvoie `(DataFrame, liste_des_colonnes_ajoutées)`. La confiance explicite est requise même pour examiner les métadonnées.
+
+`save_best_model` vaut true par défaut. Une analyse principale consigne état et chemins relatifs dans `model_export`, avec les index `result.json.artifacts.saved_model` / `model_metadata` ; le mode indépendant n’enregistre pas automatiquement de modèles. `best_parameters.json`, `result.json.effective_parameters` et best_parameters des métadonnées incluent les défauts effectifs ; `result.json.best_parameters` et la recette fixe conservent les valeurs remplaçant les défauts. Préservez cette distinction.
 
 ## Comportements à préserver
 
@@ -81,4 +106,17 @@ Le script reconstruit le dossier de sortie de même nom dans `dist/`, vérifie c
 
 [Core CI](../.github/workflows/ci.yml) couvre trois systèmes. Le [workflow autonome](../.github/workflows/native-test-build.yml) construit Windows sur déclenchement manuel ou push vers `desktop-test`. Un push consomme des ressources de construction ; utilisez cette branche lorsqu’un paquet de test est nécessaire. Il conserve les artefacts sans créer de release.
 
-`tools/package_release.py` crée les distributions source ; utilisez `tools/build_native.py` pour les applications autonomes. `tools/build_release_pdfs.py` génère les PDF chinois d’utilisation et de terminologie dans `output/pdf/` ; vérifiez chaque page avant diffusion. Les responsables publient manuellement les artefacts testés et acceptés.
+### Pièces jointes de publication et dossier de partage local
+
+La Release 0.2.0 ne reçoit que les ZIP Windows-x64 et macOS-arm64, avec des notes chinoises, anglaises et françaises. Les scripts produisent toujours des SHA-256 pour vérification locale ; ne publiez ni ces fichiers ni un ZIP de sources supplémentaire. GitHub fournit ses téléchargements Source code. `tools/package_release.py` est un outil facultatif d’archivage local exigeant des sources propres et des PDF actuels ; sa sortie ne fait pas partie des applications publiées.
+
+Vérifiez d’abord README et guide de référence pour 0.2.0, puis produisez les PDF. Remplacez le chemin ci-dessous par une police TrueType chinoise autorisant l’intégration. `output/pdf/sources.json` conserve les empreintes des sources ; régénérez et inspectez visuellement toutes les pages après modification.
+
+```bash
+uv run --with reportlab python tools/build_release_pdfs.py --font /path/to/chinese-font.ttf
+uv run python tools/package_researcher_share.py --windows-zip dist/PsyML-Toolkit-0.2.0-Windows-x64.zip
+```
+
+Le script de partage n’appelle aucune API de publication. Il crée `PsyML-Toolkit-Researcher-Share-v0.2.0.zip` à la racine pour partage direct uniquement ; **ne jamais le joindre à une Release**. Windows/ contient l’application, TestData/ les données et configurations, Documents/ les deux PDF chinois ; 从这里开始.txt décrit dossiers et étapes et renvoie les utilisateurs Mac vers GitHub. Déplacez ou sauvegardez un ancien dossier avant de reconstruire ; ne réutilisez pas de PDF périmés.
+
+Pour changer la version, vérifiez pyproject.toml, src/psyml/__init__.py, uv.lock, gui/export_presets.cfg, tools/build_native.py, tools/NATIVE_START_HERE.txt, versions/liens du générateur PDF et notes trilingues. Inspectez commit et états des sources dans BUILD.json, puis archives et empreintes locales. Les tests intégrés couvrent entraînement classification/régression, enregistrement/chargement, dix nouvelles prédictions par tâche et export XLSX ; ils ne remplacent pas l’examen d’une vraie fenêtre. Faites un commit par fonctionnalité indépendante terminée et poussez immédiatement, sans accumulation.

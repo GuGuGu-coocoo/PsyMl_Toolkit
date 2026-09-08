@@ -12,7 +12,8 @@ Liste de contrôles de régression pour le développement ; non requise pour uti
 
 - `tests/`：Python 核心自动测试，位于根目录下一层。
 - `gui/tests/`：GUI 与核心桥接、完整流程、滚动、多语言及独立验证测试。
-- `examples/synthetic/`：分类、回归 CSV 与相邻 JSON 配置；`two_groups.csv` 用于边界检查。
+- `examples/quickstart/`：用户试用的分类、回归配置，48 行训练数据与各 10 行预测数据。
+- `examples/synthetic/`：旧开发夹具与格式矩阵；`two_groups.csv` 用于边界检查。
 - `examples/public/`：可选公开数据示例，需要额外下载；默认快速测试不需要。
 
 这些命令在完整源码检出中执行，独立应用包不包含开发测试环境。隐私审计还需要 `legacy/` 中的历史夹具；只有源码副本明确不含该目录时，才跳过 `tools/audit_repository.py`。
@@ -60,13 +61,13 @@ Vérification manuelle : classification, cible `target`, groupe `participant`, p
 
 ## Configuration import / 配置导入 / Importation de configuration
 
-中文：仅测试配置导入时，打开应用，在第 1 页点击“导入配置…”，选择附带的 `examples/synthetic/classification_config.json`。确认目标为 `target`、分组为 `participant`、预测变量为 `score` 和 `category`，模型为 Decision Tree，验证为 Group K Fold。切换中英法语言，确认设置保留。点击“保存配置…”，重新导入所存文件，然后运行一次。再导入回归配置，确认任务和模型切换为回归与 Ridge。将配置复制到另一目录、临时改名原数据，再导入，确认出现重新选择数据的窗口；取消应保留当前设置。测试后恢复数据文件名。GUI 始终使用本机所选输出文件夹的新子目录。
+中文：仅测试配置导入时，打开应用，在第 1 页点击“导入配置…”，选择附带的 `examples/quickstart/classification_config.json`。确认目标为 `target`、分组为 `participant`、预测变量为 `score` 和 `category`，模型为 Decision Tree，验证为 Group K Fold。切换中英法语言，确认设置保留。点击“保存配置…”，重新导入所存文件，然后运行一次。再导入回归配置，确认任务和模型切换为回归与 Ridge。将配置复制到另一目录、临时改名原数据，再导入，确认出现重新选择数据的窗口；取消应保留当前设置。测试后恢复数据文件名。GUI 始终使用本机所选输出文件夹的新子目录。
 
-English: Open the app and click **Import configuration…** on page 1. Choose the bundled `examples/synthetic/classification_config.json`. Verify target `target`, group `participant`, predictors `score` and `category`, Decision Tree and Group K Fold. Switch among all three languages and verify settings persist. Save the configuration, reimport it and run once. Import the regression example and check Regression and Ridge. Copy a configuration elsewhere, temporarily rename its data, and import: a data-relink dialog should appear. Cancelling must preserve the current settings. Restore the data filename afterward. GUI output always goes to a fresh subfolder of the selected local directory.
+English: Open the app and click **Import configuration…** on page 1. Choose the bundled `examples/quickstart/classification_config.json`. Verify target `target`, group `participant`, predictors `score` and `category`, Decision Tree and Group K Fold. Switch among all three languages and verify settings persist. Save the configuration, reimport it and run once. Import the regression example and check Regression and Ridge. Copy a configuration elsewhere, temporarily rename its data, and import: a data-relink dialog should appear. Cancelling must preserve the current settings. Restore the data filename afterward. GUI output always goes to a fresh subfolder of the selected local directory.
 
-Français : ouvrez l’application et cliquez sur **Importer une configuration…** à la page 1. Choisissez `examples/synthetic/classification_config.json`. Vérifiez cible `target`, groupe `participant`, prédicteurs `score` et `category`, Decision Tree et Group K Fold. Changez de langue et vérifiez la conservation des réglages. Enregistrez, réimportez et lancez une analyse. Importez l’exemple de régression et vérifiez Régression et Ridge. Copiez le JSON ailleurs, renommez temporairement ses données puis importez : une boîte de dialogue doit permettre de les réassocier. Annuler conserve les réglages actuels. Rétablissez ensuite le nom du fichier. Chaque exécution utilise un nouveau sous-dossier local.
+Français : ouvrez l’application et cliquez sur **Importer une configuration…** à la page 1. Choisissez `examples/quickstart/classification_config.json`. Vérifiez cible `target`, groupe `participant`, prédicteurs `score` et `category`, Decision Tree et Group K Fold. Changez de langue et vérifiez la conservation des réglages. Enregistrez, réimportez et lancez une analyse. Importez l’exemple de régression et vérifiez Régression et Ridge. Copiez le JSON ailleurs, renommez temporairement ses données puis importez : une boîte de dialogue doit permettre de les réassocier. Annuler conserve les réglages actuels. Rétablissez ensuite le nom du fichier. Chaque exécution utilise un nouveau sous-dossier local.
 
-Developer checks: `tests/test_gui_config.py` and `gui/tests/test_config_import.gd`. During native builds, `tools/build_native.py` invokes `gui/scripts/native_smoke.gd` through the exported app’s `--psyml-smoke-test` argument, with development Python variables removed. It runs classification and regression through the bundled core. `.github/workflows/native-test-build.yml` retains Windows test artifacts and never publishes a release. Build only when packaging is intended; see the developer guide for triggers.
+Developer checks: `tests/test_gui_config.py` and `gui/tests/test_config_import.gd`. During native builds, `tools/build_native.py` invokes `gui/scripts/native_smoke.gd` through the exported app’s `--psyml-smoke-test` argument, with development Python variables removed. It trains classification and regression, saves and reloads both models, predicts 10 new quickstart rows per task and exports XLSX through the bundled core. `.github/workflows/native-test-build.yml` retains Windows test artifacts and never publishes a release. Build only when packaging is intended; see the developer guide for triggers.
 
 ## 原生窗口与可读性 / Native dialogs and readability / Dialogues natifs et lisibilité
 
@@ -78,10 +79,20 @@ Français : vérifiez les dialogues natifs pour les données, l’importation/sa
 
 ## 小数据参数组合矩阵
 
-[合成数据与覆盖说明](../examples/synthetic/matrix/README.md)提供 27 份、每份 48 行的九格式测试数据及可直接导入 GUI 的配置。快速运行所有模型、推荐参数网格、预处理、验证方法、嵌套调参和失败路径：
+[合成数据与覆盖说明](../examples/synthetic/matrix/README.md)提供 27 份、每份 48 行的九格式测试数据及可直接导入 GUI 的配置。快速运行所有模型、内置快速参数网格、预处理、验证方法、嵌套调参和失败路径：
 
 ```bash
 uv run pytest tests/test_parameter_matrix.py -q --durations=10
 ```
 
 它随默认核心测试自动运行，无需额外服务或网络。可添加 `--junitxml=output/parameter-matrix.xml` 保存逐项结果。不要把这组兼容性检查当作模型效能验证，也不要为避免失败而静默改变研究者的参数；对数据与模型不兼容的组合，验证明确报错或保留失败候选记录。
+
+## 0.2.0 模型保存与预测 / Model saving and prediction / Enregistrement et prédiction
+
+中文：从 `examples/quickstart/` 导入分类配置，保留“保存最佳模型”，确认主要验证为分组 K 折。训练后加载 `model/best_decision_tree.joblib` 与 `classification_predict.csv`，应保留 sample_id/category/score 并生成 10 行分类结果和两列概率。回归配置使用 `best_ridge.joblib` 与 `regression_predict.csv`，应生成 10 行 predicted_value 且没有概率列。检查另存为、切换模型/数据时旧输出清空、缺列与数值错误阻止预测、取消信任后无法运行。独立验证模式不应产生模型文件。新测试入口无“测试数据”按钮；配置和首次预测数据对话框默认定位 quickstart。
+
+English: Import the quickstart classification configuration, keep saving enabled and verify group K-fold as primary. Load best_decision_tree.joblib and classification_predict.csv; expect 10 rows retaining sample_id/category/score, predicted_class and two probability columns. Repeat regression with best_ridge.joblib and regression_predict.csv: 10 predicted_value rows, no probabilities. Check export, cleared old output after model/data changes, missing-column/numeric failures and disabled prediction after trust is revoked. Independent mode must not save models. There is no Sample data button; configuration and first prediction-data dialogs open quickstart.
+
+Français : importez la configuration quickstart de classification, gardez l’enregistrement et la validation principale par groupes. Chargez best_decision_tree.joblib puis classification_predict.csv : 10 lignes, sample_id/category/score conservés, predicted_class et deux probabilités. Répétez avec best_ridge.joblib et regression_predict.csv : 10 predicted_value, sans probabilités. Vérifiez export, effacement des anciennes sorties, blocage pour colonnes absentes/valeurs invalides et retrait de confiance. Aucun modèle enregistré en mode indépendant. Le bouton Données de test est supprimé ; dialogues de configuration et de première prédiction ouverts sur quickstart.
+
+Focused checks / 专项检查 : `tests/test_quickstart.py`, `tests/test_model_persistence.py`, `tests/test_prediction.py`, `gui/tests/test_prediction.gd`. These supplement visual inspection; they do not validate real-world model performance.
