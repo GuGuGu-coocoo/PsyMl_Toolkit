@@ -176,6 +176,8 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 **填写分组列并不自动让所有外层验证按组切分**。重复测量应选择与研究目标匹配的分组策略。当前没有专用的时间序列验证。一般原理见[交叉验证文档](https://scikit-learn.org/stable/modules/cross_validation.html)。
 
+**随机分开与分组隔离的实际含义。** 未设置分组列时的随机划分（`holdout`、`k_fold`、`stratified_k_fold`）按行随机分开，同一参与者的多条记录可能一侧在训练、另一侧在测试，所以不能声称“同一个人只出现在一侧”。分组划分（`holdout` 设置分组列、`group_k_fold`、`stratified_group_k_fold`、`leave_one_group_out`）在**同一次划分内**保证整个组只进入训练或测试一侧；**不同折之间**同一组可以轮换到另一侧，这是分组交叉验证的正常行为，不破坏隔离。只有当分组列确实是参与者编号时，才可以把它读作“同一个人的记录不跨训练和测试”；若分组列是家庭、中心或批次，则对应的是这些单位的隔离，而不是个人。**仅选择分组列并不会让普通留出法或 K 折隔离组**：是否隔离取决于所选验证策略（见上表）。GUI 始终使用专业方法名，不把策略改写为场景化选项，也不改变划分算法。
+
 ### 嵌套选择（nested selection）按什么顺序发生
 
 1. 留出当前外层测试折（outer test fold）。
@@ -239,7 +241,19 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 | `residuals.png` | 横轴预测，纵轴残差（residual）= 观测 − 预测 | 正残差表示低估，负残差表示高估；曲线形状或漏斗形可提示结构未拟合或误差波动不均 |
 | `residual_distribution.png` | 残差直方图 | 是否偏向一侧、重尾或有极端误差？单靠直方图不能证明正态性或独立性 |
 
-这些图使用主要验证（独立模式为当前子目录验证）的样本外预测；留出法只包括测试部分，交叉验证通常包括每个保留样本的一次外层预测。分类图以 Class 1、Class 2 等显示，顺序对应 `confusion_matrix.csv`，不表示 GUI 指定了临床正类。图形可多选或全部取消，保存在本次 `figures/`；它们不是 SHAP、特征重要性、ROC 或置信区间图，当前并未导出这些额外图形。
+这些图使用主要验证（独立模式为当前子目录验证）的样本外预测；留出法只包括测试部分，交叉验证通常包括每个保留样本的一次外层预测。分类图以 Class 1、Class 2 等显示，顺序对应 `confusion_matrix.csv`，不表示 GUI 指定了临床正类。图形可多选或全部取消，保存在本次 `figures/`；它们不是 SHAP、ROC 或置信区间图。特征重要性只在显式启用 `permutation_importance` 时以单独的 `interpretations/<验证>/permutation_importance.png` 输出（见下一节）。
+
+### 置换重要性（可选，`permutation_importance`）
+
+在 GUI 第 1 页启用后，系统对每种验证的每个外层折，用内层选择出的折模型仅在该折的外层测试行上逐变量边际置换，使用当前 `selection_metric` 衡量性能变化，并写入 `interpretations/<验证>/`：
+
+- `permutation_raw.csv`：每次置换一行（validation、fold、model_family、variable、repeat、metric、importance、direction、baseline_score、n_rows）；
+- `permutation_folds.csv`：逐折 baseline、`repeats`、`mean`、`repeat_std`（ddof=0）、`n_rows` 与状态/错误；
+- `permutation_summary.csv`：同一验证内各折均值的等权平均 `fold_mean_equal_weight` 与 `between_fold_std`（ddof=1），并记录成功/计划折数；
+- `permutation.json`：指标与高低方向、seed/repeats、held-out 行数、`model_scope=outer_fold_model`、编码映射、限制与失败原因；
+- `permutation_importance.png`：带零线的有符号排序图。
+
+读法与限制：`importance` 有符号，MAE/RMSE 正值为误差升高，其他指标正值为性能下降；保留负值，不归一化为百分比，也不称置信区间或 R² 百分比。`repeat_std` 是折内重复波动，`between_fold_std` 是折间波动，二者不能混用；只有一折时跨折标准差为空。变量相关时贡献会被共享或掩盖；逐行置换不保留重复测量/分组结构，因此分组数据的解释更弱，需结合设计判断。缺折或失败标记 partial/failed，不补造完整排名；全部失败不生成成功表格或空白图。这是模型在特定折、特定指标下对变量扰动的敏感度，不是因果效应，也不等于所保存全数据模型的解释。未明确启用时不生成任何 `interpretations/`。
 
 <a id="glossary"></a>
 

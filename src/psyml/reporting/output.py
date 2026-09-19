@@ -7,6 +7,7 @@ import pandas as pd
 
 from psyml.config import ExperimentConfig
 from psyml.protocol import config_to_dict, result_payload
+from psyml.reporting.permutation import existing_permutation_artifacts
 
 
 def write_results(
@@ -49,11 +50,20 @@ def write_result_summary(
     metrics: dict[str, float],
     warnings: list[str],
     study_summary: dict | None = None,
+    permutation_artifacts: dict[str, str] | None = None,
+    interpretation_artifacts: dict[str, str] | None = None,
 ) -> None:
     """Write the stable result summary after every other artefact succeeds."""
     (output_dir / ".result.json.tmp").write_text(
         json.dumps(
-            result_payload(config, metrics, warnings, study_summary=study_summary),
+            result_payload(
+                config,
+                metrics,
+                warnings,
+                study_summary=study_summary,
+                permutation_artifacts=permutation_artifacts,
+                interpretation_artifacts=interpretation_artifacts,
+            ),
             indent=2,
             ensure_ascii=False,
             sort_keys=True,
@@ -98,6 +108,10 @@ def write_independent_outputs(
 ) -> None:
     """Write an index of peer validations, never global metrics or a winning validation."""
     from psyml.models.persistence import INDEPENDENT_SAVING_MESSAGE
+    from psyml.reporting.interpretation import (
+        build_independent_interpretation,
+        write_independent_interpretation,
+    )
     from psyml.reporting.research import CONFIG_HELP
 
     serialized = json.dumps(config_to_dict(config), indent=2, ensure_ascii=False) + "\n"
@@ -129,6 +143,21 @@ def write_independent_outputs(
             (directory / "error.json").write_text(
                 json.dumps(entry["error"], indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
             )
+        elif entry["status"] == "completed":
+            # Surface each completed child's interpretation files at the root index.
+            child_dir = output_dir / "validations" / validation
+            artifacts.update(
+                existing_permutation_artifacts(
+                    child_dir, validation, prefix=f"validations/{validation}/"
+                )
+            )
+
+    # Root-level overview/index only: each validation keeps its own summary.
+    interpretation = build_independent_interpretation(entries, results, output_dir)
+    artifacts.update(write_independent_interpretation(output_dir, interpretation))
+    for validation, item in interpretation["validations"].items():
+        for key, value in item.get("artifacts", {}).items():
+            artifacts[f"{key}_{validation}"] = value
 
     for language, title, introduction in [
         ("", "Independent validation results", (
@@ -174,6 +203,25 @@ def write_independent_outputs(
         "model_export": {"status": "independent_validations",
                          "message": INDEPENDENT_SAVING_MESSAGE},
     }
+    permutation_validations = {
+        validation: {
+            "status": entries[validation]["status"],
+            "artifacts": {
+                key: value
+                for key, value in artifacts.items()
+                if key.startswith(f"permutation_{validation}_")
+            },
+        }
+        for validation in entries
+        if any(key.startswith(f"permutation_{validation}_") for key in artifacts)
+    }
+    if permutation_validations:
+        payload["permutation"] = {
+            "enabled": True,
+            "data_scope": "outer_test",
+            "model_scope": "outer_fold_model",
+            "validations": permutation_validations,
+        }
     temporary = output_dir / ".result.json.tmp"
     temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     temporary.replace(output_dir / "result.json")

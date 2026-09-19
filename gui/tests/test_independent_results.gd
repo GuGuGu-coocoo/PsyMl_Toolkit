@@ -1,5 +1,7 @@
 extends SceneTree
 
+const TestPaths = preload("res://tests/test_paths.gd")
+
 
 func _initialize() -> void:
 	call_deferred("_run_test")
@@ -87,7 +89,7 @@ func _run_test() -> void:
 	main._on_language_selected(1)
 	assert(main._build_config().primary_validation == null)
 	main._on_language_selected(0)
-	main.output_edit.text = OS.get_temp_dir().path_join("psyml-independent-%d" % Time.get_ticks_usec())
+	main.output_edit.text = TestPaths.temp_dir().path_join("psyml-independent-%d" % Time.get_ticks_usec())
 	main._on_run_pressed()
 	await _wait_run(main)
 	assert(main.status_key == "COMPLETED", main.status_detail)

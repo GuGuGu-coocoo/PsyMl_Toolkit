@@ -1,5 +1,7 @@
 extends SceneTree
 
+const TestPaths = preload("res://tests/test_paths.gd")
+
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -25,7 +27,7 @@ func _run() -> void:
 	assert(main.tabs.get_tab_title(4) == "4  模型与预测")
 	assert(page.predict_button.disabled and page.model_button.disabled)
 	assert(not page.data_button.disabled)
-	var directory := OS.get_temp_dir().path_join("psyml-prediction-ui-%d" % Time.get_ticks_usec())
+	var directory := TestPaths.temp_dir().path_join("psyml-prediction-ui-%d" % Time.get_ticks_usec())
 	DirAccess.make_dir_recursive_absolute(directory)
 	# Exercise each task through real full-data training, disk save and GUI inference.
 	for task in ["classification", "regression"]:

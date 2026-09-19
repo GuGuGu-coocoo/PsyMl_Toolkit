@@ -1,5 +1,7 @@
 extends SceneTree
 
+const TestPaths = preload("res://tests/test_paths.gd")
+
 
 func _initialize() -> void:
 	call_deferred("_run_test")
@@ -75,7 +77,7 @@ func _run_test() -> void:
 			main.tuning_option.select(index)
 			break
 	main._populate_parameter_editor()
-	var result_dir := OS.get_temp_dir().path_join("psyml godot 中文 %d" % Time.get_ticks_msec())
+	var result_dir := TestPaths.temp_dir().path_join("psyml godot 中文 %d" % Time.get_ticks_msec())
 	main.output_edit.text = "relative/results"
 	main._refresh_review()
 	assert(main.run_button.disabled)
@@ -136,7 +138,7 @@ func _run_test() -> void:
 			main.task_option.select(index)
 			break
 	main._on_task_changed()
-	var regression_dir := OS.get_temp_dir().path_join(
+	var regression_dir := TestPaths.temp_dir().path_join(
 		"psyml godot regression %d" % Time.get_ticks_msec()
 	)
 	main.output_edit.text = regression_dir
@@ -175,7 +177,7 @@ func _run_test() -> void:
 			main.tuning_option.select(index)
 			break
 	main._populate_parameter_editor()
-	main.output_edit.text = OS.get_temp_dir().path_join(
+	main.output_edit.text = TestPaths.temp_dir().path_join(
 		"psyml godot cancel %d" % Time.get_ticks_msec()
 	)
 	main._on_run_pressed()
@@ -207,7 +209,7 @@ func _run_test() -> void:
 		if main.validation_list.get_item_metadata(index) == "group_k_fold":
 			main.validation_list.select(index, false)
 	main.folds_spin.value = 20
-	main.output_edit.text = OS.get_temp_dir().path_join("psyml-invalid-%d" % Time.get_ticks_usec())
+	main.output_edit.text = TestPaths.temp_dir().path_join("psyml-invalid-%d" % Time.get_ticks_usec())
 	main._on_run_pressed()
 	var failure_deadline := Time.get_ticks_msec() + 20000
 	while main.is_analysis_running and Time.get_ticks_msec() < failure_deadline:
@@ -218,7 +220,7 @@ func _run_test() -> void:
 	assert(main.figure_view.texture == null)
 	assert(main.open_results_button.disabled)
 	main.folds_spin.value = 3
-	main.output_edit.text = OS.get_temp_dir().path_join("psyml-recovery-%d" % Time.get_ticks_usec())
+	main.output_edit.text = TestPaths.temp_dir().path_join("psyml-recovery-%d" % Time.get_ticks_usec())
 	main._on_run_pressed()
 	var recovery_deadline := Time.get_ticks_msec() + 20000
 	while main.is_analysis_running and Time.get_ticks_msec() < recovery_deadline:

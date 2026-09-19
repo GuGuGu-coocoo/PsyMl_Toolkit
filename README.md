@@ -80,6 +80,8 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 - 不要把参与者编号、答案键、采集时间戳等仅用于识别或管理的字段当成预测变量；
 - 目标变量和分组变量会自动从预测变量中排除。
 
+分类任务下，界面还会对当前目标显示**实际类别数、每类数量及其占非缺失目标的比例**，并明确总行数、非缺失分母和缺失数；全缺失目标不会除零，未观测到的类别不计入。界面同时给出“疑似编号/参与者列”的启发式提醒（依据列名标记，或非缺失数较多时接近唯一的整数/文本值，并记录原因与比例）；这只是“疑似、请判断”的提示，不会自动删除列、改变角色或阻止分析，分组列本身也可能是编号。类别与取值统计来自本地预览模式，默认预览不返回取值。
+
 ![中文数据与变量界面](docs/images/zh/01-data.png)
 
 #### 2. 任务、目标与分组
@@ -165,6 +167,28 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 ![选择一种验证后的完整结果](docs/images/zh/05-selected-result.png)
 
+#### 8.1 置换重要性（解释产物）
+
+在第 1 页“置换重要性（解释）”处启用并设置每个变量的重复置换次数（1–100，默认 10），该功能默认关闭。启用后，系统对每种验证的每个外层折，用内层选择出的折模型仅在该折的外层测试行上逐变量边际置换，并用当前选择指标衡量性能变化，写出：
+
+- `interpretations/<验证>/permutation_raw.csv`：每次置换一行，含 validation/fold/model_family/variable/repeat/metric/importance 等；
+- `interpretations/<验证>/permutation_folds.csv`：逐折 baseline、重复次数、均值、`repeat_std`(ddof=0) 与测试行数；
+- `interpretations/<验证>/permutation_summary.csv`：同一验证内各折均值的等权平均与 `between_fold_std`(ddof=1)；
+- `interpretations/<验证>/permutation.json`：指标与高低方向、seed/repeats、样本外行数、外层折模型范围、编码映射与限制；
+- `interpretations/<验证>/permutation_importance.png`：带零线和负值的有符号排序图。
+
+数值有符号：MAE/RMSE 表示置换后误差升高，其他指标表示性能下降；保留负值，不归一化为百分比，不称置信区间。`repeat_std` 是折内重复波动，`between_fold_std` 是折间波动，两者不混合；单折时折间标准差为空。相关变量会共享或掩盖贡献，逐行置换不保留重复测量/分组依赖。缺折或失败会明确标记 partial/failed，不伪造完整排名；全部失败不生成成功表格或空白图。开关与结果摘要、导出入口都在现有页面内，切换语言保留设置；结果页可按验证切换查看，独立验证各自解释，没有全局排名或“全局最佳模型”标签。
+
+#### 8.2 结果解读（基线差值、折间波动与失败摘要）
+
+结果页显示紧凑的“结果解读”，并输出 `result_interpretation.json`、`interpretation_baseline_differences.csv` 与 `result_interpretation.md`。它只汇总已被选择折的外层评估证据（逐组合折、`parameter_search.csv`、`model_comparison.csv`、`validation_summary.csv`），不重新拟合模型、不重新选择家族或参数，也不把外层描述结果回流到选择或调参。
+
+- **基线比较**只使用用户已选且成功运行的 Dummy，并要求同一验证、相同折集合、相同指标，且所有配对折分数有限；否则明确给出不可比较原因，不捏造差值。Dummy 未选、失败、折集合不同或指标缺失都不会自动补跑。
+- **差值方向**：分类“越高越好”指标为 procedure−dummy，MAE/RMSE 为 dummy−procedure，正值一律表示所选流程相对基线更好。某折若选中的就是 Dummy，差值为 0 并标注该折模型，属正常情况。
+- **折间波动**沿用既有汇总定义并注明 ddof=0；单折时标准差与稳定性为 `null`/不可评估，不设置“显著、可靠、不稳定”阈值，也不把分数差异称为统计显著。
+- **失败分层**：内层搜索候选失败、外层模型+验证失败、整种验证/流程失败分别计数并可追溯；代表原因可看，完整记录仍在 `parameter_search.csv`、`warnings.json` 和失败子目录。
+- **独立验证**各自摘要，顶层只提供概览与索引，不跨验证比较。未比较时状态清楚；重跑或切换验证不会残留旧摘要；关闭该功能前生成的旧结果也可正常打开。
+
 #### 9. 保存模型与新数据预测
 
 默认开启“保存最佳模型”（第 1 页），配置字段 `save_best_model` 默认为 `true`；旧配置同样适用，CLI 旧式参数可用 `--no-save-best-model` 关闭。主要验证模式下，最终在全部分析行拟合的完整 Pipeline 保存为 `model/best_<模型名>.joblib`，旁边的 `model_metadata.json` 记录变量、预处理、参数与环境。结果页提供路径。独立验证没有全局最终模型，因此不自动保存。CV 指标估计验证与选择流程的泛化表现，不保证保存模型在未来数据上的表现。
@@ -202,6 +226,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 | `methods_summary_zh.md` / `methods_summary.md` | 中文与英文方法摘要：样本、预处理、验证、选择流程、最佳参数与统计限制 |
 | `reproducibility_report_zh.md` / `reproducibility_report.md` | 中文与英文报告及核查建议，包含环境、配置、逐折结果、警告和 best_parameters |
 | `result.json` | 完成标记、GUI 摘要、最终家族/参数、评价范围与文件索引 |
+| `result_interpretation.json` / `interpretation_baseline_differences.csv` / `result_interpretation.md` | 结果解读：逐折指标均值/标准差、相对同折同指标 Dummy 的差值、折数配对与分层失败；仅描述，不回流选择。独立模式下总目录只写概览索引，各验证子目录各有一份 |
 | `model/` | 开启保存且指定主要验证时，保存最终 Pipeline 与 model_metadata.json；用于第 4 页新数据预测，独立验证子目录不生成 |
 | `best_parameters.json` | 最终模型实际超参数（含默认值）；不是各外层折参数的平均 |
 | `best_parameters_configure.json` | 可直接运行的单模型固定最佳参数配置，关闭搜索；不是独立验证 |
@@ -226,7 +251,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 ### 配置与功能边界
 
-配置文件中的留出比例、随机种子、固定参数、搜索候选和数据指纹选项分别对应 `test_size`、`random_seed`、`model_params`、`parameter_grids` 和 `include_data_hash`，完整字段见[配置说明](src/psyml/schemas/analysis_config.schema.json)。关闭数据指纹不等于匿名化；预测文件仍包含目标值和预测值。GUI 支持导入和保存配置，并提供留出比例、随机种子、数据指纹、固定参数及额外搜索参数设置；高级参数使用界面内的 JSON 字段，无需命令行。第 4 页“模型与预测”支持加载可信的 PsyML 模型、自动检查所需变量、批量预测、预览与另存为。当前不支持调整正类/阈值或时间序列专用验证。
+配置文件中的留出比例、随机种子、固定参数、搜索候选和数据指纹选项分别对应 `test_size`、`random_seed`、`model_params`、`parameter_grids` 和 `include_data_hash`，完整字段见[配置说明](src/psyml/schemas/analysis_config.schema.json)。置换重要性对应 `permutation_importance`（默认 `false`）与 `permutation_repeats`（1–100，默认 `10`），旧配置缺省即为关闭。关闭数据指纹不等于匿名化；预测文件仍包含目标值和预测值。GUI 支持导入和保存配置，并提供留出比例、随机种子、数据指纹、固定参数及额外搜索参数设置；高级参数使用界面内的 JSON 字段，无需命令行。第 4 页“模型与预测”支持加载可信的 PsyML 模型、自动检查所需变量、批量预测、预览与另存为。当前不支持调整正类/阈值或时间序列专用验证。
 
 ### 开发与参与
 
@@ -304,6 +329,8 @@ You can also import `best_parameters_configure.json` using the same button. It f
 
 Choose a CSV, TSV, XLSX, XLS, SPSS SAV, Stata DTA, SAS7BDAT, XPT or Parquet file. Selecting a file loads its preview automatically; after typing a path, click Load preview. You remain on page 1, with predictors inside Research design on the right. Check dimensions, inferred types, missing counts, headers and character handling. Select only genuine predictors. Administrative IDs, answer keys and acquisition timestamps should not normally become predictors. The outcome and group fields are automatically excluded.
 
+For classification, a compact check also shows the **observed number of target categories, the count of each category and its share of the non-missing target**, with the total rows, non-missing denominator and missing count stated explicitly. An all-missing target never divides by zero, and unobserved categories are not counted. A heuristic hint flags **suspected identifier/participant columns** (by name token, or by near-unique integer/text values once enough rows exist) and records the reason and ratio. It is a "suspected, please judge" note only: columns are never deleted, roles never change and analysis is never blocked; the group column itself may be an identifier. Category and value counts come from the local preview mode; the privacy-first default returns no values.
+
 ![English data and variables screen](docs/images/en/01-data.png)
 
 #### 2. Task, outcome and groups
@@ -365,6 +392,28 @@ Check warnings first, improvement over Dummy and simple models, fold-level varia
 
 ![Complete results after selecting a validation](docs/images/en/05-selected-result.png)
 
+#### 8.1 Permutation importance (interpretation)
+
+Enable **Export permutation importance** on page 1 and set the number of permutations per variable (1–100, default 10); it is off by default. When enabled, for every outer fold of each validation the inner-selected fold model is explained by permuting each variable only on that fold's outer test rows, using the current selection metric to measure the change in performance. The run writes:
+
+- `interpretations/<validation>/permutation_raw.csv` — one row per permutation with validation/fold/model_family/variable/repeat/metric/importance and more;
+- `interpretations/<validation>/permutation_folds.csv` — per-fold baseline, repeats, mean, `repeat_std` (ddof=0) and test rows;
+- `interpretations/<validation>/permutation_summary.csv` — equal-weight mean of fold means within one validation and `between_fold_std` (ddof=1);
+- `interpretations/<validation>/permutation.json` — metric and direction, seed/repeats, held-out rows, outer-fold model scope, encoding map and limitations;
+- `interpretations/<validation>/permutation_importance.png` — signed ranking figure with a zero line and negative values.
+
+Values are signed: MAE/RMSE means error increase after permutation, other metrics mean performance decrease; negatives are kept, values are not normalised to percentages and are not confidence intervals. `repeat_std` is within-fold repeat variation and `between_fold_std` is between-fold variation; the two are never mixed, and the between-fold value is empty for a single fold. Correlated variables share or mask attribution, and row-wise permutation does not preserve repeated-measures/group dependence. Missing or failed folds are marked partial/failed and never fabricate a complete ranking; an all-failed validation produces no success table or blank figure. The switch, result summary and export entry stay within the existing pages and survive language switches; the results page switches per validation, and independent validations keep separate interpretations with no global ranking or "global best model" label.
+
+#### 8.2 Result interpretation (baseline difference, fold variability and failures)
+
+The results page shows a compact **Result interpretation** block and writes `result_interpretation.json`, `interpretation_baseline_differences.csv` and `result_interpretation.md`. It only aggregates evidence already produced by the selected fold evaluations (per-combination folds, `parameter_search.csv`, `model_comparison.csv`, `validation_summary.csv`); it never refits a model, reselects a family or parameter, or feeds a descriptive comparison back into selection or tuning.
+
+- **Baseline comparison** uses only the user-selected `dummy` when it completed, and requires the same validation, the same fold set and the same metric with all paired fold scores finite; otherwise it returns an explicit not-comparable reason and invents no difference. A missing, failed, incomplete or metric-less dummy is never retrained automatically.
+- **Difference direction**: higher-is-better metrics use procedure−dummy, MAE/RMSE use dummy−procedure, so a positive value always means the procedure did better than the baseline. If a fold selected the dummy itself, the difference is 0 and the fold model is labelled — that is valid.
+- **Fold variability** reuses the runner's summary definition and states ddof=0; a single fold reports `null` standard deviation and stability "not assessable", and no significance, reliability or instability threshold is fabricated.
+- **Failures are layered**: inner-search candidate failures, outer model+validation failures and whole validation/procedure failures are counted separately and remain traceable; representative reasons are shown and full records stay in `parameter_search.csv`, `warnings.json` and failed child folders.
+- **Independent validations** are summarised separately; the root only gives an overview/index with no cross-validation comparison. The uncompared state is explicit, reruns or validation switches clear stale summaries, and older outputs without the feature still open.
+
 #### 9. Save a model and predict new data
 
 **Save best model** is enabled on page 1 by default (`save_best_model: true`, including old configs; legacy CLI: `--no-save-best-model` to disable). With a primary validation, the complete final Pipeline fitted on all analyzed rows is saved to `model/best_<model>.joblib` with `model_metadata.json` describing features, preprocessing, parameters and environment. Independent validations have no global final model and do not auto-save. CV metrics estimate the validation/selection procedure, with no guarantee of future saved-model performance.
@@ -400,6 +449,7 @@ Reports and recommendations use deterministic local rules and work offline. **Au
 | `methods_summary_zh.md` / `methods_summary.md` | Chinese/English Methods drafts, including preprocessing, selection, final parameters and limitations. |
 | `reproducibility_report_zh.md` / `reproducibility_report.md` | Chinese/English reports with environment, configuration, folds, warnings, parameters and checks. |
 | `result.json` | Completion state, GUI summary, final family/parameters, evaluation scope and artifact index. |
+| `result_interpretation.json` / `interpretation_baseline_differences.csv` / `result_interpretation.md` | Result interpretation: fold means/standard deviations, difference vs the same-fold, same-metric dummy, paired-fold counts and layered failures; descriptive only, never fed back into selection. In independent mode the root writes an overview/index and each validation child keeps its own copy. |
 | `model/` | Final Pipeline and model_metadata.json when saving is enabled with a primary validation; load on page 4. Independent validation children do not export models. |
 | `best_parameters.json` / `best_parameters_configure.json` | All effective final hyperparameters (including defaults) and a runnable fixed-parameter retraining recipe; no independent validation. |
 | `predictions.csv` / `confusion_matrix.csv` | Held-out truth and predictions, original row index and fold; classification error counts. |
@@ -422,7 +472,7 @@ Except for separately identified third-party material, the project is licensed u
 
 ### Configuration and feature boundaries
 
-Configurations control `test_size`, `random_seed`, `model_params`, `parameter_grids` and `include_data_hash`; consult the [configuration schema](src/psyml/schemas/analysis_config.schema.json). Disabling fingerprints does not anonymize outputs: predictions still contain outcomes and predictions. The GUI imports and saves JSON configurations and exposes test fraction, seed, data fingerprint, fixed parameters and additional search grids through its forms and advanced JSON fields. No terminal is needed. Page 4, **Model & Prediction**, loads trusted PsyML models, automatically checks required features, predicts all rows, previews results and saves them in supported formats. A positive-class/threshold selector and dedicated time-series validation are not offered.
+Configurations control `test_size`, `random_seed`, `model_params`, `parameter_grids` and `include_data_hash`; consult the [configuration schema](src/psyml/schemas/analysis_config.schema.json). Permutation importance uses `permutation_importance` (default `false`) and `permutation_repeats` (1–100, default `10`); old configurations that omit them are off. Disabling fingerprints does not anonymize outputs: predictions still contain outcomes and predictions. The GUI imports and saves JSON configurations and exposes test fraction, seed, data fingerprint, fixed parameters and additional search grids through its forms and advanced JSON fields. No terminal is needed. Page 4, **Model & Prediction**, loads trusted PsyML models, automatically checks required features, predicts all rows, previews results and saves them in supported formats. A positive-class/threshold selector and dedicated time-series validation are not offered.
 
 ### Development and participation
 
@@ -500,6 +550,8 @@ Le même bouton accepte `best_parameters_configure.json`. Ce fichier fixe le mod
 
 Choisissez un fichier CSV, TSV, XLSX, XLS, SPSS SAV, Stata DTA, SAS7BDAT, XPT ou Parquet : l’aperçu se charge automatiquement. Après saisie d’un chemin, cliquez sur Charger l’aperçu. Vous restez sur la page 1 ; les prédicteurs sont dans le plan de recherche à droite. Vérifiez les dimensions, les types, les valeurs manquantes, les en-têtes et les caractères. Ne retenez que de vrais prédicteurs : les identifiants administratifs, clés de réponse et horodatages ne devraient généralement pas l’être. La cible et le groupe sont automatiquement exclus.
 
+En classification, un contrôle compact affiche aussi le **nombre de catégories observées de la cible, l’effectif de chaque catégorie et sa part parmi les valeurs non manquantes**, en précisant le total de lignes, le dénominateur non manquant et le nombre de manquants. Une cible entièrement manquante ne divise jamais par zéro et les catégories non observées ne sont pas comptées. Un indice heuristique signale les **colonnes identifiant/participant suspectées** (mot-clé du nom, ou valeurs entières/texte quasi uniques dès qu’il y a assez de lignes) avec la raison et le ratio. C’est une simple mention « à juger » : aucune colonne n’est supprimée, aucun rôle n’est modifié et l’analyse n’est jamais bloquée ; la colonne de groupe peut elle-même être un identifiant. Les effectifs proviennent du mode aperçu local ; l’aperçu par défaut ne renvoie aucune valeur.
+
 ![Écran français des données et variables](docs/images/fr/01-data.png)
 
 #### 2. Tâche, cible et groupes
@@ -561,6 +613,28 @@ Examinez d’abord les avertissements, puis le gain par rapport aux modèles Dum
 
 ![Résultats complets après sélection d’une validation](docs/images/fr/05-selected-result.png)
 
+#### 8.1 Importance par permutation (interprétation)
+
+Activez **Exporter l’importance par permutation** à la page 1 et réglez le nombre de permutations par variable (1–100, par défaut 10) ; la fonction est désactivée par défaut. Une fois activée, pour chaque pli externe de chaque validation, le modèle de pli choisi dans les plis internes est expliqué en permutant chaque variable uniquement sur les lignes de test externes de ce pli, avec la métrique de sélection courante pour mesurer la variation. L’analyse écrit :
+
+- `interpretations/<validation>/permutation_raw.csv` — une ligne par permutation (validation/fold/model_family/variable/repeat/metric/importance, etc.) ;
+- `interpretations/<validation>/permutation_folds.csv` — par pli : baseline, répétitions, moyenne, `repeat_std` (ddof=0) et lignes de test ;
+- `interpretations/<validation>/permutation_summary.csv` — moyenne équipondérée des moyennes de plis dans une validation et `between_fold_std` (ddof=1) ;
+- `interpretations/<validation>/permutation.json` — métrique et sens, seed/répétitions, lignes de test, portée du modèle de pli externe, table d’encodage et limites ;
+- `interpretations/<validation>/permutation_importance.png` — figure de classement signée avec ligne zéro et valeurs négatives.
+
+Les valeurs sont signées : MAE/RMSE signifie une augmentation de l’erreur après permutation, les autres métriques une baisse de performance ; les négatifs sont conservés, sans normalisation en pourcentages ni intervalle de confiance. `repeat_std` décrit la variation entre répétitions dans un pli et `between_fold_std` la variation entre plis ; elles ne sont jamais mélangées et la valeur inter-plis est vide pour un pli unique. Les variables corrélées partagent ou masquent l’attribution et la permutation ligne à ligne ne préserve pas la dépendance de mesures répétées/de groupe. Les plis absents ou en échec sont marqués partial/failed sans fabriquer de classement complet ; une validation entièrement en échec ne produit ni table de succès ni figure vide. Le commutateur, le résumé et l’accès à l’export restent dans les pages existantes et survivent au changement de langue ; la page des résultats bascule par validation et les validations indépendantes gardent des interprétations séparées, sans classement global ni étiquette de « meilleur modèle global ».
+
+#### 8.2 Interprétation des résultats (écart à la baseline, variabilité et échecs)
+
+La page des résultats affiche un bloc compact **Interprétation des résultats** et écrit `result_interpretation.json`, `interpretation_baseline_differences.csv` et `result_interpretation.md`. Il agrège uniquement les preuves déjà produites par les plis sélectionnés (plis par combinaison, `parameter_search.csv`, `model_comparison.csv`, `validation_summary.csv`) ; il ne réajuste aucun modèle, ne resélectionne ni famille ni paramètre et ne réinjecte jamais une comparaison descriptive dans la sélection ou le réglage.
+
+- **Comparaison à la baseline** : uniquement le `dummy` choisi par l’utilisateur et réussi, avec la même validation, le même ensemble de plis et la même métrique, et tous les scores de plis appariés finis ; sinon une raison de non-comparabilité explicite est renvoyée, sans inventer d’écart. Un dummy absent, en échec, incomplet ou sans métrique n’est jamais réentraîné automatiquement.
+- **Sens de l’écart** : métriques « plus grand est meilleur » = procédure−dummy, MAE/RMSE = dummy−procédure ; une valeur positive signifie donc toujours que la procédure fait mieux. Si un pli sélectionne le dummy lui-même, l’écart vaut 0 et le modèle du pli est indiqué — cas valide.
+- **Variabilité entre plis** : définition de résumé existante avec ddof=0 explicite ; un pli unique renvoie un écart-type `null` et une stabilité « non évaluable », sans seuil de significativité, fiabilité ou instabilité fabriqué.
+- **Échecs en couches** : candidats de recherche interne, modèle+validation externe et validation/procédure entière sont comptés séparément et restent traçables ; les raisons représentatives sont affichées et les enregistrements complets restent dans `parameter_search.csv`, `warnings.json` et les sous-dossiers en échec.
+- **Validations indépendantes** : chacune est résumée séparément ; la racine ne donne qu’un aperçu/index sans comparaison entre validations. L’état non comparé est explicite, un nouveau run ou un changement de validation efface les anciens résumés, et les anciennes sorties sans cette fonction s’ouvrent normalement.
+
 #### 9. Enregistrer un modèle et prédire de nouvelles données
 
 **Enregistrer le meilleur modèle** est activé par défaut à la page 1 (`save_best_model: true`, y compris les anciens JSON ; option CLI historique `--no-save-best-model` pour désactiver). Avec une validation principale, le Pipeline complet ajusté sur toutes les lignes analysées est enregistré dans `model/best_<modèle>.joblib` avec `model_metadata.json` (variables, prétraitement, paramètres et environnement). La page des résultats indique les chemins. Aucun enregistrement automatique en validation indépendante, sans modèle final global. Les métriques CV estiment la procédure de sélection et ne garantissent pas les performances futures.
@@ -596,6 +670,7 @@ Rapports et conseils utilisent des règles locales déterministes et fonctionnen
 | `methods_summary_zh.md` / `methods_summary.md` | Brouillons de méthodes chinois/anglais : prétraitement, sélection, paramètres finaux et limites. |
 | `reproducibility_report_zh.md` / `reproducibility_report.md` | Rapports chinois/anglais : environnement, configuration, plis, avertissements, paramètres et vérifications. |
 | `result.json` | État final, résumé GUI, famille/paramètres finaux, portée de l’évaluation et index des fichiers. |
+| `result_interpretation.json` / `interpretation_baseline_differences.csv` / `result_interpretation.md` | Interprétation : moyennes/écarts-types des plis, écart par rapport au dummy à plis et métrique identiques, nombre de plis appariés et échecs par niveau ; descriptif uniquement, jamais réinjecté dans la sélection. En mode indépendant, la racine n’écrit qu’un aperçu/index et chaque validation garde sa copie. |
 | `model/` | Pipeline final et model_metadata.json si l’enregistrement et une validation principale sont activés ; chargement à la page 4. Aucun modèle dans les sous-dossiers indépendants. |
 | `best_parameters.json` / `best_parameters_configure.json` | Hyperparamètres finaux effectifs (valeurs par défaut incluses) et recette exécutable de réentraînement fixe ; aucune validation indépendante. |
 | `predictions.csv` / `confusion_matrix.csv` | Observations et prédictions hors apprentissage, index de ligne et pli ; erreurs de classification. |
@@ -618,7 +693,7 @@ Sauf éléments tiers signalés séparément, le projet est sous [licence Apache
 
 ### Configuration et limites fonctionnelles
 
-Les configurations contrôlent `test_size`, `random_seed`, `model_params`, `parameter_grids` et `include_data_hash` ; voir le [schéma](src/psyml/schemas/analysis_config.schema.json). Désactiver l’empreinte n’anonymise pas les sorties : les prédictions contiennent encore valeurs observées et prédites. L’interface importe et enregistre les JSON et permet de régler proportion de test, graine, empreinte, paramètres fixes et grilles supplémentaires dans ses champs, dont des champs JSON avancés. Aucun terminal requis. La page 4, **Modèle et prédiction**, charge les modèles PsyML de confiance, vérifie automatiquement les variables, prédit toutes les lignes, affiche et exporte les résultats. Aucun choix de classe positive/seuil ni validation temporelle dédiée.
+Les configurations contrôlent `test_size`, `random_seed`, `model_params`, `parameter_grids` et `include_data_hash` ; voir le [schéma](src/psyml/schemas/analysis_config.schema.json). L’importance par permutation utilise `permutation_importance` (par défaut `false`) et `permutation_repeats` (1–100, par défaut `10`) ; les anciennes configurations sans ces clés restent désactivées. Désactiver l’empreinte n’anonymise pas les sorties : les prédictions contiennent encore valeurs observées et prédites. L’interface importe et enregistre les JSON et permet de régler proportion de test, graine, empreinte, paramètres fixes et grilles supplémentaires dans ses champs, dont des champs JSON avancés. Aucun terminal requis. La page 4, **Modèle et prédiction**, charge les modèles PsyML de confiance, vérifie automatiquement les variables, prédit toutes les lignes, affiche et exporte les résultats. Aucun choix de classe positive/seuil ni validation temporelle dédiée.
 
 ### Développement et participation
 

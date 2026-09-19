@@ -78,6 +78,16 @@ Python 预测接口位于 `psyml.prediction`：`load_model(path, trusted=True)`�
 
 `save_best_model` 默认为 true。主要验证运行的 `model_export` 记录保存状态和相对路径，`result.json.artifacts.saved_model` / `model_metadata` 提供文件索引；独立验证模式不自动保存。`best_parameters.json`、`result.json.effective_parameters` 与模型 metadata 的 best_parameters 含实际默认值；`result.json.best_parameters` 和固定参数配置保留参数覆盖，不能混为同一字段语义。
 
+### 数据检查与结果解读接口
+
+FR-007：`psyml.data.profiling` 是纯 helper；`profile_columns` / `column_profile` / `category_summary` / `identifier_signals` 从 DataFrame 生成逐列元数据（非缺失数、唯一数、近似唯一比例、可选取值计数与截断、以及有依据的疑似编号信号）。`protocol.dataframe_preview` 只在 `include_sample=True` 时附带取值，默认不返回值；GUI 第 1 页的 `gui/scripts/data_check_ui.gd` 消费该元数据，不从前 5 行估算，也不自动删除列或改变角色。
+
+FR-009：`psyml.reporting.interpretation` 的 `build_interpretation` 只聚合 runner 已算出的证据（procedure_results、逐组合折、tuning_rows、leaderboard、validation_summary），不增加任何模型拟合；`write_interpretation_outputs` 写 `result_interpretation.json`、`interpretation_baseline_differences.csv`、`result_interpretation.md`，并由 `result.json.artifacts` 索引。独立验证根目录由 `build_independent_interpretation` 只写概览索引。GUI 摘要在 `gui/scripts/result_interpretation_ui.gd`。核心回归在 `tests/test_profiling.py`、`tests/test_interpretation.py`；GUI 回归在 `gui/tests/test_data_check.gd`、`gui/tests/test_interpretation_results.gd`。基线只比较同验证、同折集合、同指标且已成功运行的 dummy，差值正负方向固定（正=更好），描述性统计不回流选择或调参。FR-008 仅完善三语研究者术语指南，不涉及 GUI 或划分算法。
+
+### 置换重要性接口
+
+`ExperimentConfig.permutation_importance`（默认 `false`）与 `permutation_repeats`（1–100，默认 `10`）控制本功能，旧配置缺省即关闭。置换引擎在 `psyml.evaluation.permutation`，产物写入在 `psyml.reporting.permutation`。runner 只把内层选出的外层折 Pipeline 与其测试行交给引擎，并在选择冻结后写 `interpretations/<验证>/`；结果按 `dict[validation, list[record]]` 分开保存，失败记录保留 `status=failed` 与 `error_type/error`，不伪造变量。`result.json.permutation`、`analysis_manifest.json.interpretations` 和 Methods/复现报告只索引实际存在的文件。核心回归在 `tests/test_permutation*.py`；GUI 设置与结果区在 `gui/scripts/permutation_ui.gd`，回归在 `gui/tests/test_permutation.gd`；`examples/quickstart/*_permutation_config.json` 提供可导入的分类/回归冒烟。默认保持 OFF，不改变选择、划分或评价含义。
+
 ## 修改时必须保留的行为
 
 - 编码、填补、缩放只在相应训练分区拟合；模型家族与参数在内层选择，不用外层排行榜挑最终模型。科研方法变化需在贡献说明中解释，不能只以测试通过代替科学论证。

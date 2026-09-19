@@ -1,5 +1,7 @@
 extends SceneTree
 
+const TestPaths = preload("res://tests/test_paths.gd")
+
 var failures := 0
 
 func _initialize() -> void:
@@ -31,7 +33,7 @@ func run() -> void:
 	imported.tuning_mode = "custom"
 	imported.parameter_grids = {"decision_tree": {"criterion": ["gini", "entropy"], "max_depth": [2, 4]}}
 	imported.figure_types = []
-	var temp := OS.get_temp_dir().path_join("psyml_config_import_test.json")
+	var temp := TestPaths.temp_dir().path_join("psyml_config_import_test.json")
 	var file := FileAccess.open(temp, FileAccess.WRITE)
 	file.store_string(JSON.stringify(imported))
 	file.close()

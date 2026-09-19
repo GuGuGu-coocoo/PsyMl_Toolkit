@@ -176,6 +176,8 @@ The ordinary R² formula does not apply when its denominator is zero. The curren
 
 **A group column does not automatically make every outer validation group-aware.** Repeated measurements require a strategy aligned with the research question. There is no dedicated time-series split at present. See the general [cross-validation guide](https://scikit-learn.org/stable/modules/cross_validation.html).
 
+**What random and grouped splitting mean in practice.** Random splits without a group column (`holdout`, `k_fold`, `stratified_k_fold`) separate rows at random, so records from the same participant can land in both training and test; you cannot claim that a person appears on one side only. Grouped splits (`holdout` with a group column, `group_k_fold`, `stratified_group_k_fold`, `leave_one_group_out`) keep a whole group on one side **within a single split**; **across folds** the same group may rotate to the other side, which is normal group cross-validation and does not break isolation. Only when the group column really is a participant identifier may you read this as "one person's records do not cross training and test"; a family, centre or batch column instead isolates those units, not individuals. **Selecting a group column alone does not isolate groups for an ordinary holdout or K-fold**: isolation depends on the chosen strategy (table above). The GUI always uses the professional method names, does not rename strategies into scenario presets, and does not change the splitting algorithm.
+
 ### Order of nested selection
 
 1. Set aside the current outer test fold.
@@ -239,7 +241,19 @@ Implementation: [persistence](../src/psyml/models/persistence.py), [effective pa
 | `residuals.png` | Predicted on x; residual = observed − predicted on y | Positive residuals indicate underprediction; negative residuals indicate overprediction. Curvature or a funnel can suggest missed structure or unequal error variability |
 | `residual_distribution.png` | Histogram of residuals | Look for shifts, heavy tails or extreme errors. A histogram alone cannot establish normality or independence |
 
-Figures use held-out predictions from the primary validation, or from the current independent child. Holdout includes only test observations; CV generally includes one outer prediction per retained observation. Classification labels Class 1, Class 2, etc. follow `confusion_matrix.csv` order and do not designate a GUI-selected clinical positive class. Select multiple figures or none; they are stored in the run's `figures/` directory. SHAP, feature-importance, ROC and confidence-interval plots are not currently exported.
+Figures use held-out predictions from the primary validation, or from the current independent child. Holdout includes only test observations; CV generally includes one outer prediction per retained observation. Classification labels Class 1, Class 2, etc. follow `confusion_matrix.csv` order and do not designate a GUI-selected clinical positive class. Select multiple figures or none; they are stored in the run's `figures/` directory. They are not SHAP, ROC or confidence-interval plots. Feature importance is exported only when `permutation_importance` is explicitly enabled, as the separate `interpretations/<validation>/permutation_importance.png` (next section).
+
+### Permutation importance (optional, `permutation_importance`)
+
+When enabled on page 1, for every outer fold of each validation the inner-selected fold model is explained by permuting each variable only on that fold's outer test rows, using the current `selection_metric` to measure the performance change. Results are written under `interpretations/<validation>/`:
+
+- `permutation_raw.csv` — one row per permutation (validation, fold, model_family, variable, repeat, metric, importance, direction, baseline_score, n_rows);
+- `permutation_folds.csv` — per-fold baseline, `repeats`, `mean`, `repeat_std` (ddof=0), `n_rows` and status/error;
+- `permutation_summary.csv` — equal-weight mean of fold means within one validation (`fold_mean_equal_weight`) and `between_fold_std` (ddof=1), plus successful/planned fold counts;
+- `permutation.json` — metric and direction, seed/repeats, held-out rows, `model_scope=outer_fold_model`, encoding map, limitations and failure reasons;
+- `permutation_importance.png` — signed ranking figure with a zero line.
+
+How to read it: `importance` is signed. For MAE/RMSE a positive value means the error increased; for other metrics it means performance dropped. Negatives are kept, values are not normalised to percentages and are not confidence intervals or R² percentages. `repeat_std` is within-fold repeat variation and `between_fold_std` is between-fold variation; never mix them, and the between-fold value is empty for a single fold. Correlated variables share or mask attribution, and row-wise permutation does not preserve repeated-measures/group structure, so group-data interpretation is weaker and needs design judgement. Missing or failed folds are marked partial/failed and never fabricate a complete ranking; an all-failed validation yields no success table or blank figure. This is the fold model's sensitivity to variable perturbation under one metric, not a causal effect, and not an explanation of the saved all-data model. No `interpretations/` files are created unless explicitly enabled.
 
 <a id="glossary"></a>
 

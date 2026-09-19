@@ -1,5 +1,7 @@
 extends SceneTree
 
+const TestPaths = preload("res://tests/test_paths.gd")
+
 func _initialize() -> void:
 	call_deferred("run")
 
@@ -17,7 +19,7 @@ func run() -> void:
 			push_error(main.status_detail)
 			quit(1)
 			return
-		main.output_edit.text = OS.get_temp_dir().path_join("psyml_native_smoke_" + str(Time.get_ticks_usec()))
+		main.output_edit.text = TestPaths.temp_dir().path_join("psyml_native_smoke_" + str(Time.get_ticks_usec()))
 		main._on_run_pressed()
 		var deadline := Time.get_ticks_msec() + 180000
 		while main.is_analysis_running and Time.get_ticks_msec() < deadline:

@@ -1,5 +1,6 @@
 """Configuration objects for a single PsyML experiment."""
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -51,6 +52,8 @@ class ExperimentConfig:
     figure_types: list[str] | None = None
     selection_protocol: str = "nested_family_v1"
     primary_validation: ValidationKind | Literal["first_selected"] | None = "first_selected"
+    permutation_importance: bool = False
+    permutation_repeats: int = 10
 
     def __post_init__(self) -> None:
         from psyml.models.catalog import normalize_parameter
@@ -68,6 +71,18 @@ class ExperimentConfig:
         })
         if not isinstance(self.save_best_model, bool):
             raise TypeError("save_best_model must be a boolean")
+        if not isinstance(self.permutation_importance, bool):
+            raise TypeError("permutation_importance must be a boolean")
+        repeats = self.permutation_repeats
+        if isinstance(repeats, bool) or not isinstance(repeats, (int, float)):
+            raise TypeError("permutation_repeats must be an integer")
+        if isinstance(repeats, float):
+            if not math.isfinite(repeats) or not repeats.is_integer():
+                raise ValueError("permutation_repeats must be an integer")
+            repeats = int(repeats)
+        if not 1 <= repeats <= 100:
+            raise ValueError("permutation_repeats must be between 1 and 100")
+        object.__setattr__(self, "permutation_repeats", repeats)
         allowed_figures = {"confusion_matrix", "class_distribution"} if self.task == "classification" else {
             "observed_vs_predicted", "residuals", "residual_distribution"
         }

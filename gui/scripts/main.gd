@@ -84,6 +84,9 @@ var validation_result_option: OptionButton
 var validation_result_entries: Dictionary = {}
 var checked_icon: Texture2D
 var unchecked_icon: Texture2D
+var permutation_ui
+var data_check_ui
+var interpretation_ui
 
 
 
@@ -230,6 +233,12 @@ func _bind_scene() -> void:
 	prediction_page = preload("res://scripts/prediction_page.gd").new()
 	add_child(prediction_page)
 	prediction_page.build(self)
+	permutation_ui = preload("res://scripts/permutation_ui.gd").new(self)
+	permutation_ui.build()
+	data_check_ui = preload("res://scripts/data_check_ui.gd").new(self)
+	data_check_ui.build()
+	interpretation_ui = preload("res://scripts/result_interpretation_ui.gd").new(self)
+	interpretation_ui.build()
 
 
 func _bind_data_tab() -> void:
@@ -441,6 +450,12 @@ func _apply_language() -> void:
 	tabs.set_tab_title(3, tr("TAB_RESULTS"))
 	if prediction_page != null:
 		prediction_page.refresh_language()
+	if permutation_ui != null:
+		permutation_ui.refresh_language()
+	if data_check_ui != null:
+		data_check_ui.refresh_language()
+	if interpretation_ui != null:
+		interpretation_ui.refresh_language()
 	_update_primary_validation()
 	_update_checks()
 	_update_tree_titles()
@@ -481,6 +496,8 @@ func _on_data_path_changed(path: String) -> void:
 		target_option.clear()
 		group_option.clear()
 		data_summary_label.text = tr("NO_DATA")
+		if data_check_ui != null:
+			data_check_ui.refresh()
 	_refresh_review()
 
 
@@ -506,6 +523,8 @@ func _request_preview() -> void:
 	pending_preview_path = data_path_edit.text
 	is_preview_loading = true
 	data_summary_label.text = tr("PREVIEW_LOADING")
+	if data_check_ui != null:
+		data_check_ui.refresh()
 	_update_action_states(false)
 	bridge.request_preview(data_path_edit.text, true)
 
@@ -548,6 +567,8 @@ func _on_preview_failed(error: Dictionary) -> void:
 	is_preview_loading = false
 	pending_preview_path = ""
 	data_summary_label.text = tr("NO_DATA")
+	if data_check_ui != null:
+		data_check_ui.refresh()
 	_refresh_review()
 	_show_core_error(error)
 
@@ -555,6 +576,8 @@ func _on_preview_failed(error: Dictionary) -> void:
 func _on_task_changed() -> void:
 	_populate_models()
 	_populate_parameter_editor()
+	if data_check_ui != null:
+		data_check_ui.refresh()
 	_refresh_review()
 
 
@@ -725,6 +748,8 @@ func _on_column_role_changed() -> void:
 		if column == target or column == group:
 			feature_list.deselect(index)
 	_update_validation_availability()
+	if data_check_ui != null:
+		data_check_ui.refresh()
 	_refresh_review()
 
 
@@ -816,7 +841,12 @@ func _build_config() -> Dictionary:
 		"max_candidates": int(max_candidates_spin.value),
 	}
 
-	return configuration_io.enrich(config) if configuration_io != null else config
+	var enriched = configuration_io.enrich(config) if configuration_io != null else config
+	if enriched is Dictionary and enriched.has("error"):
+		return enriched
+	if permutation_ui != null:
+		enriched = permutation_ui.enrich(enriched)
+	return enriched
 
 
 func _refresh_review() -> void:
@@ -833,7 +863,7 @@ func _refresh_review() -> void:
 
 
 func _analysis_inputs() -> Array[Control]:
-	return [
+	var controls: Array[Control] = [
 		data_path_edit,
 		browse_button,
 		preview_button,
@@ -855,6 +885,9 @@ func _analysis_inputs() -> Array[Control]:
 		choose_folder_button,
 		refresh_review_button,
 	]
+	if permutation_ui != null:
+		controls.append_array(permutation_ui.controls())
+	return controls
 
 
 func _set_control_interactive(control: Control, enabled: bool) -> void:
@@ -1042,6 +1075,10 @@ func _cleanup_pending_config() -> void:
 func _clear_results() -> void:
 	last_result_dir = ""
 	last_result_path = ""
+	if permutation_ui != null:
+		permutation_ui.clear()
+	if interpretation_ui != null:
+		interpretation_ui.clear()
 	validation_result_entries.clear()
 	validation_result_option.clear()
 	validation_result_option.hide()
@@ -1070,6 +1107,8 @@ func _load_results(result_path: String, navigate := true, as_child := false) -> 
 		last_result_path = result_path
 	last_result_dir = result_path.get_base_dir()
 	if parsed.get("evaluation_scope", "") == "independent_validations":
+		if interpretation_ui != null:
+			interpretation_ui.clear()
 		_load_independent_results(parsed, previous_validation)
 		best_result_label.text += "\n" + tr("MODEL_NOT_SAVED_INDEPENDENT")
 		if navigate:
@@ -1123,6 +1162,10 @@ func _load_results(result_path: String, navigate := true, as_child := false) -> 
 	figure_option.visible = figure_option.item_count > 0
 	if figure_option.item_count > 0:
 		_show_selected_figure(0)
+	if permutation_ui != null:
+		permutation_ui.load_result(parsed, last_result_dir)
+	if interpretation_ui != null:
+		interpretation_ui.load_result(parsed, last_result_dir)
 	if navigate:
 		tabs.current_tab = 3
 
@@ -1398,19 +1441,24 @@ func _update_checks() -> void:
 func _update_primary_validation() -> void:
 	if primary_validation_option == null:
 		return
-	var previous = "__initial__"
-	if primary_validation_option.selected >= 0:
-		previous = primary_validation_option.get_item_metadata(primary_validation_option.selected)
+	# Only a previously populated list can represent an explicit choice. An empty
+	# list (startup, or validations cleared) must not be mistaken for "no primary".
+	var had_choice := primary_validation_option.item_count > 1 and primary_validation_option.selected >= 0
+	var previous = primary_validation_option.get_item_metadata(primary_validation_option.selected) if had_choice else "__initial__"
+	var values := _selected_values(validation_list)
 	primary_validation_option.clear()
 	primary_validation_option.add_item(tr("NO_PRIMARY_VALIDATION"))
 	primary_validation_option.set_item_metadata(0, null)
-	for value in _selected_values(validation_list):
+	for value in values:
 		primary_validation_option.add_item(tr("PRIMARY_VALIDATION") + ": " + _validation_display(value))
 		var index := primary_validation_option.item_count - 1
 		primary_validation_option.set_item_metadata(index, value)
 		if value == previous:
 			primary_validation_option.select(index)
-	if previous != null and primary_validation_option.selected == 0 and primary_validation_option.item_count > 1:
+	# Default to the first selected validation unless the researcher explicitly
+	# chose "no primary" while options existed; explicit null must be preserved.
+	var explicit_no_primary := had_choice and previous == null
+	if primary_validation_option.selected == 0 and not values.is_empty() and not explicit_no_primary:
 		primary_validation_option.select(1)
 
 
@@ -1483,6 +1531,8 @@ func _clear_result_tables() -> void:
 
 func _load_independent_results(parsed: Dictionary, previous_validation) -> void:
 	_clear_result_tables()
+	if permutation_ui != null:
+		permutation_ui.clear()
 	validation_result_entries = parsed.get("validation_results", {})
 	validation_result_option.clear()
 	validation_result_option.add_item(tr("CHOOSE_VALIDATION_RESULT"))
@@ -1519,6 +1569,10 @@ func _on_validation_result_selected(index: int) -> void:
 		_load_results(last_result_path.get_base_dir().path_join(entry.result_path), false, true)
 	else:
 		_clear_result_tables()
+		if permutation_ui != null:
+			permutation_ui.clear()
+		if interpretation_ui != null:
+			interpretation_ui.clear()
 		last_result_dir = last_result_path.get_base_dir().path_join("validations").path_join(validation)
 		best_result_label.text = _validation_display(validation) + " — " + tr("VALIDATION_FAILED")
 		last_warnings = [str(entry.get("error", {}).get("message", ""))]

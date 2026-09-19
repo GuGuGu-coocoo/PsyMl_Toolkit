@@ -35,3 +35,27 @@ def test_portable_quickstart_train_save_predict(tmp_path, monkeypatch, task):
     assert len(predicted) == 10
     assert additions == (['predicted_class', 'probability_0', 'probability_1']
                          if task == 'classification' else ['predicted_value'])
+
+
+@pytest.mark.parametrize('task', ['classification', 'regression'])
+def test_portable_quickstart_permutation_configs_run(tmp_path, monkeypatch, task):
+    """The added permutation configs must import and produce real artefacts."""
+    copied = tmp_path / 'permutation'
+    shutil.copytree(KIT, copied)
+    monkeypatch.chdir(tmp_path)
+    imported = import_configuration(copied / f'{task}_permutation_config.json')
+    assert not imported['needs_data']
+    assert imported['config']['permutation_importance'] is True
+    assert imported['config']['permutation_repeats'] == 10
+    config = config_from_dict({**imported['config'], 'output_dir': str(tmp_path / task)})
+    result = run_experiment(config)
+    validation = 'group_k_fold'
+    assert validation in result.permutation_results
+    base = config.output_dir / 'interpretations' / validation
+    for name in ['permutation_raw.csv', 'permutation_folds.csv',
+                 'permutation_summary.csv', 'permutation.json',
+                 'permutation_importance.png']:
+        assert (base / name).is_file(), name
+    summary = pd.read_csv(base / 'permutation_summary.csv')
+    assert set(summary['variable']) == {'score', 'category'}
+    assert set(summary['status']) == {'completed'}

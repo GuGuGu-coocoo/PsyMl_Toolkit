@@ -35,6 +35,8 @@
     "model_export": {"type": "object"},
     "effective_parameters": {"type": "object"},
     "best_parameters": {"type": "object"},
-    "evaluated_combinations": {"type": "integer", "minimum": 0}
+    "evaluated_combinations": {"type": "integer", "minimum": 0},
+    "permutation": {"type": "object"},
+    "interpretation": {"type": "object"}
   }
 }

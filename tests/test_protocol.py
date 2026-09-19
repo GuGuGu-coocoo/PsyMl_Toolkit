@@ -71,6 +71,23 @@ def test_comparative_config_round_trip_and_schema(tmp_path):
     assert config_from_dict(payload) == config
 
 
+def test_permutation_importance_config_is_optional_and_round_trips(tmp_path):
+    config = _file_config(tmp_path)
+    legacy = config_to_dict(config)
+    legacy.pop("permutation_importance")
+    legacy.pop("permutation_repeats")
+    restored = config_from_dict(legacy)
+    assert restored.permutation_importance is False
+    assert restored.permutation_repeats == 10
+
+    enabled = ExperimentConfig(
+        **{**config.__dict__, "permutation_importance": True, "permutation_repeats": 25}
+    )
+    payload = config_to_dict(enabled)
+    jsonschema.validate(payload, _schema("analysis_config"))
+    assert config_from_dict(payload) == enabled
+
+
 def test_capabilities_and_privacy_first_preview(tmp_path, capsys):
     config = _file_config(tmp_path)
 

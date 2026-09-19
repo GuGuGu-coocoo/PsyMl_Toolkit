@@ -28,6 +28,10 @@
 
 若测试错误提示，请另存预测 CSV 的副本，删除 score 列或把其值改成文字后加载；预期会阻止预测。不要改动原始测试文件。旧的 `examples/synthetic/` 保留给现有开发测试；用户试用从本资料夹开始。
 
+### 置换重要性测试（可选）
+
+改导入 `classification_permutation_config.json` 或 `regression_permutation_config.json` 可检查新增的置换重要性（原有两个配置仍默认关闭，行为不变）。配置已开启“导出置换重要性”且重复次数为 10。在第 2 页运行后，第 3 页“置换重要性”区域应显示所选验证的汇总表与状态，并可点击“打开解释产物文件夹”查看 `interpretations/<验证>/`：其中含逐次 `permutation_raw.csv`、逐折 `permutation_folds.csv`、汇总 `permutation_summary.csv`、`permutation.json` 和有符号排序图 `permutation_importance.png`。数值有符号：MAE/RMSE 表示误差升高，其他指标表示性能下降；保留负值，不归一化为百分比，不是因果关系或置信区间，相关变量会共享或掩盖贡献。若选择多个验证，可用结果页的验证选择器切换查看各自的解释。
+
 ## English
 
 Keep or copy this entire folder so each JSON stays beside its training CSV. All data is synthetic and intended only for software testing.
@@ -49,6 +53,10 @@ Repeat with the regression JSON, its saved `best_ridge.joblib`, and `regression_
 
 For error testing, save a separate copy of prediction data and remove score or replace numbers with text; prediction should be blocked. Preserve the original files. `examples/synthetic/` remains for existing developer tests; start user testing here.
 
+### Permutation-importance test (optional)
+
+Import `classification_permutation_config.json` or `regression_permutation_config.json` to exercise the new permutation importance (the original two configs stay off by default and are unchanged). Both enable **Export permutation importance** with 10 repeats. After running on page 2, the page-3 **Permutation importance** block shows the selected validation's summary and status; **Open interpretation folder** reveals `interpretations/<validation>/` containing raw `permutation_raw.csv`, per-fold `permutation_folds.csv`, summary `permutation_summary.csv`, `permutation.json` and the signed figure `permutation_importance.png`. Values are signed (error increase for MAE/RMSE, otherwise performance drop), keep negatives, are not normalised percentages, not causal and not confidence intervals; correlated variables share or mask attribution. When several validations are selected, switch between them with the results-page validation selector.
+
 ## Français
 
 Conservez ou copiez ce dossier entier pour garder chaque JSON à côté de son CSV d’entraînement. Toutes les données sont synthétiques, destinées uniquement aux tests du logiciel.
@@ -69,3 +77,7 @@ Importez le JSON de classification à la page 1. Gardez l’enregistrement du me
 Recommencez avec le JSON de régression, son `best_ridge.joblib` et `regression_predict.csv` : 10 lignes, predicted_value ajouté, sans probabilités. Ne pas entraîner sur les fichiers `_predict.csv`. Leur ordre de variables diffère et sample_id teste la conservation des colonnes supplémentaires. Seuls score/category sont requis, sans cible ni groupe. Les valeurs prédites peuvent varier selon les réglages et versions ; ceci ne valide pas les performances réelles.
 
 Pour tester les erreurs, créez une copie des données à prédire, supprimez score ou remplacez les nombres par du texte : la prédiction doit être bloquée. Conservez les originaux. `examples/synthetic/` reste destiné aux tests de développement ; commencez les essais utilisateur ici.
+
+### Test de l’importance par permutation (facultatif)
+
+Importez `classification_permutation_config.json` ou `regression_permutation_config.json` pour essayer la nouvelle importance par permutation (les deux configurations d’origine restent désactivées par défaut et inchangées). Elles activent **Exporter l’importance par permutation** avec 10 répétitions. Après l’exécution (page 2), le bloc **Importance par permutation** (page 3) affiche le résumé et l’état de la validation choisie ; **Ouvrir le dossier d’interprétation** montre `interpretations/<validation>/` avec `permutation_raw.csv` (brut), `permutation_folds.csv` (par pli), `permutation_summary.csv` (récapitulatif), `permutation.json` et la figure signée `permutation_importance.png`. Les valeurs sont signées (augmentation de l’erreur pour MAE/RMSE, sinon baisse de performance), conservent les négatifs, ne sont ni des pourcentages normalisés, ni causales, ni des intervalles de confiance ; les variables corrélées partagent ou masquent l’attribution. Avec plusieurs validations, utilisez le sélecteur de la page des résultats.

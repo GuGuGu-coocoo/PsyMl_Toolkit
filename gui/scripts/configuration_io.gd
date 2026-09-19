@@ -223,6 +223,8 @@ func apply_configuration(config: Dictionary, preview: Dictionary) -> void:
 	for child in main.figure_choices.get_children():
 		if child is CheckBox:
 			child.button_pressed = child.get_meta("figure") in figures
+	if main.permutation_ui != null:
+		main.permutation_ui.apply_configuration(config)
 	# Results always use a new local folder, avoiding overwrites or foreign-machine paths.
 	main.run_folder_name = ""
 	main._refresh_review()

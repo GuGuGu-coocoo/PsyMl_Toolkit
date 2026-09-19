@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import numbers
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
@@ -29,12 +30,22 @@ from psyml.evaluation.metrics import (
     classification_metrics,
     regression_metrics,
 )
+from psyml.evaluation.permutation import (
+    _resolve_direction,
+    extract_feature_encoding,
+    permutation_importance,
+)
 from psyml.models.catalog import quick_parameter_grid, supported_models
 from psyml.models.factory import build_model
 from psyml.models.parameters import effective_parameters
 from psyml.models.persistence import save_final_model
 from psyml.preprocessing.pipeline import build_preprocessor
+from psyml.reporting.interpretation import (
+    build_interpretation,
+    write_interpretation_outputs,
+)
 from psyml.reporting.output import write_result_summary, write_results, write_study_outputs
+from psyml.reporting.permutation import permutation_status, write_permutation_outputs
 from psyml.reporting.research import write_research_outputs
 from psyml.validation.split import make_validation_splits
 
@@ -62,6 +73,8 @@ class ExperimentResult:
     selection_trace: pd.DataFrame = field(default_factory=pd.DataFrame)
     validation_summary: pd.DataFrame = field(default_factory=pd.DataFrame)
     validation_results: dict[str, ExperimentResult] = field(default_factory=dict)
+    permutation_results: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    interpretation: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -73,6 +86,27 @@ class _WorkItem:
     test_index: list[int]
     inner_splits: list[tuple[list[int], list[int]]]
     candidates: list[dict[str, Any]]
+
+
+@dataclass
+class _CachedFoldModel:
+    """The one inner-selected, outer-fitted pipeline guarded for interpretation.
+
+    The cache is keyed by ``(validation, fold)`` and replaced only when a later
+    family wins the training-only inner comparison, so outer metrics can never
+    change which model is explained.
+    """
+
+    validation: str
+    fold_number: int
+    model_name: str
+    model: Pipeline
+    test_index: list[int]
+    selection_objective: float
+
+
+class _PermutationCallbackError(Exception):
+    """Wrap a user progress-callback failure so cancellation still propagates."""
 
 
 class _ProgressTracker:
@@ -400,6 +434,7 @@ def _make_work_items(
     )
     final_inner = _inner_splits(config, features, target, groups, 0) if needs_search else []
     final_tuning_budget = 0
+    permutation_budget = 0
     for validation in config.selected_validations():
         outer_splits = make_validation_splits(
             features,
@@ -411,6 +446,11 @@ def _make_work_items(
             config.random_seed,
             groups,
         )
+        if config.permutation_importance:
+            # One interpretation per validation fold, one permutation per feature and repeat.
+            permutation_budget += (
+                len(outer_splits) * features.shape[1] * config.permutation_repeats
+            )
         for model_name in config.selected_models():
             if model_name not in supported_models(config.task):
                 raise ValueError(f"Unsupported {config.task} model: {model_name}")
@@ -444,7 +484,7 @@ def _make_work_items(
                     )
                 )
                 total_tasks += 1 + len(candidates) * len(inner)
-    return work_items, total_tasks + final_tuning_budget
+    return work_items, total_tasks + final_tuning_budget + permutation_budget
 
 
 def _choose_parameters(
@@ -534,6 +574,135 @@ def _selection_record(winner: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _json_safe_index(value: Any) -> Any:
+    """Convert a raw row/group label to a JSON-serialisable, traceable value."""
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, numbers.Integral):
+        return int(value)
+    if isinstance(value, numbers.Real):
+        number = float(value)
+        return number if math.isfinite(number) else str(number)
+    return str(value)
+
+
+def _fold_permutation_record(
+    config: ExperimentConfig,
+    validation: str,
+    fold_number: int,
+    cached: _CachedFoldModel,
+    features: pd.DataFrame,
+    target: pd.Series,
+    groups: pd.Series | None,
+    tracker: _ProgressTracker,
+    warnings: list[str],
+    budget: int,
+) -> dict[str, Any]:
+    """Explain exactly one inner-selected outer-fold model on its held-out rows.
+
+    The engine only ever receives the fitted fold pipeline and the outer test
+    frame; training/full rows and the final full-data model are never involved.
+    """
+    test_index = cached.test_index
+    test_x = features.iloc[test_index]
+    test_y = target.iloc[test_index]
+    heldout_index = [_json_safe_index(value) for value in features.index[test_index]]
+    context: dict[str, Any] = {
+        "validation": validation,
+        "fold": fold_number,
+        "model_family": cached.model_name,
+        "model_scope": "outer_fold_model",
+        "heldout_row_indices": heldout_index,
+    }
+    record: dict[str, Any] = {
+        "status": "failed",
+        "validation": validation,
+        "fold": fold_number,
+        "model_family": cached.model_name,
+        "model_scope": "outer_fold_model",
+        "heldout_row_indices": heldout_index,
+        "context": context,
+    }
+    if groups is not None:
+        heldout_groups = [_json_safe_index(value) for value in groups.iloc[test_index]]
+        context["heldout_groups"] = heldout_groups
+        record["heldout_groups"] = heldout_groups
+
+    advanced = 0
+
+    def _on_permutation(payload: dict[str, Any]) -> None:
+        nonlocal advanced
+        advanced += 1
+        try:
+            tracker.advance(
+                phase="permutation_importance",
+                message=(
+                    f"Permutation {payload['permutation']}/{payload['total']} "
+                    f"for {payload['variable']}"
+                ),
+                current_model=cached.model_name,
+                current_validation=validation,
+                current_fold=fold_number,
+                variable=payload["variable"],
+                repeat=payload["repeat"],
+                permutation=payload["permutation"],
+                permutation_total=payload["total"],
+            )
+        except Exception as error:
+            # Wrap so cancellation escapes the scientific try/except below intact.
+            raise _PermutationCallbackError(str(error)) from error
+
+    try:
+        engine_result = permutation_importance(
+            cached.model,
+            test_x,
+            test_y,
+            metric=config.resolved_selection_metric(),
+            context=context,
+            seed=config.random_seed,
+            repeats=config.permutation_repeats,
+            progress_callback=_on_permutation,
+        )
+    except _PermutationCallbackError:
+        raise
+    except Exception as error:  # noqa: BLE001
+        warnings.append(
+            f"Permutation importance failed for {validation}/fold {fold_number}/"
+            f"{cached.model_name}: {type(error).__name__}: {error}"
+        )
+        tracker.skip(max(budget - advanced, 0))
+        return {
+            **record,
+            "n_rows": len(test_index),
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+
+    try:
+        feature_encoding = extract_feature_encoding(cached.model, test_x)
+    except Exception as error:  # noqa: BLE001
+        # Encoding is descriptive metadata; a mapping failure must not discard valid importances.
+        feature_encoding = {
+            "status": "unavailable",
+            "reason": f"{type(error).__name__}: {error}",
+        }
+    return {
+        **record,
+        "status": "completed",
+        "context": engine_result["context"],
+        "metric": engine_result["metric"],
+        "direction": engine_result["direction"],
+        "baseline_score": engine_result["baseline_score"],
+        "seed": engine_result["seed"],
+        "repeats": engine_result["repeats"],
+        "n_rows": engine_result["n_rows"],
+        "permutation_scheme": engine_result["permutation_scheme"],
+        "variables": engine_result["variables"],
+        "metadata": engine_result["metadata"],
+        "feature_encoding": feature_encoding,
+    }
+
+
 def run_experiment(
     config: ExperimentConfig,
     frame: pd.DataFrame | None = None,
@@ -584,6 +753,10 @@ def _run_prioritized(
     combo_predictions: dict[tuple[str, str], list[pd.DataFrame]] = {}
     combo_errors: dict[tuple[str, str], list[str]] = {}
     outer_results: dict[tuple[str, int, str], tuple[dict, pd.DataFrame]] = {}
+    # Held in memory only while permutation importance is enabled and released after
+    # interpretation; fold pipelines are never placed in the returned result.
+    fold_model_cache: dict[tuple[str, int], _CachedFoldModel] = {}
+    selection_metric = config.resolved_selection_metric()
 
     for work in work_items:
         key = (work.validation, work.model_name)
@@ -653,6 +826,39 @@ def _run_prioritized(
                 combo_folds[key][-1],
                 combo_predictions[key][-1],
             )
+            if config.permutation_importance:
+                family_search = len(config.selected_models()) > 1
+                if family_search:
+                    family_rows = [
+                        row
+                        for row in tuning_rows
+                        if row["validation"] == work.validation
+                        and row["outer_fold"] == work.fold_number
+                        and row["model"] == work.model_name
+                        and row["status"] == "completed"
+                        and math.isfinite(row["score"])
+                    ]
+                    if family_rows:
+                        family_winner = max(
+                            family_rows,
+                            key=lambda row: _objective(selection_metric, row["score"]),
+                        )
+                        objective = _objective(selection_metric, family_winner["score"])
+                    else:
+                        objective = -math.inf
+                else:
+                    # A single family is always the explained model.
+                    objective = math.inf
+                cached = fold_model_cache.get((work.validation, work.fold_number))
+                if cached is None or objective > cached.selection_objective:
+                    fold_model_cache[(work.validation, work.fold_number)] = _CachedFoldModel(
+                        validation=work.validation,
+                        fold_number=work.fold_number,
+                        model_name=work.model_name,
+                        model=model,
+                        test_index=list(work.test_index),
+                        selection_objective=objective,
+                    )
         except Exception as error:  # noqa: BLE001
             combo_errors.setdefault(key, []).append(f"{type(error).__name__}: {error}")
         tracker.advance(
@@ -792,6 +998,118 @@ def _run_prioritized(
                     "n_folds": 0,
                 }
             )
+
+    # Interpret each completed validation fold with the inner-selected outer-fold
+    # pipeline, after procedure results and selection are frozen. Results are kept
+    # per validation and never aggregated across validations.
+    permutation_results: dict[str, list[dict[str, Any]]] = {}
+    planned_folds: dict[str, dict[int, dict[str, Any]]] = {}
+    request_context: dict[str, Any] = {}
+    if config.permutation_importance:
+        fold_budget = features.shape[1] * config.permutation_repeats
+        folds_by_validation = {
+            validation: sorted({w.fold_number for w in work_items if w.validation == validation})
+            for validation in config.selected_validations()
+        }
+        # Known work plan: every selected validation keeps its planned folds,
+        # candidate families and held-out row counts even if its selection
+        # procedure later fails and no interpretation runs.
+        for validation in config.selected_validations():
+            entries: dict[int, dict[str, Any]] = {}
+            for work in work_items:
+                if work.validation != validation:
+                    continue
+                entry = entries.setdefault(
+                    work.fold_number,
+                    {"model_families": set(), "n_rows": len(work.test_index)},
+                )
+                entry["model_families"].add(work.model_name)
+            planned_folds[validation] = {
+                fold: {
+                    "model_family": (
+                        next(iter(entry["model_families"]))
+                        if len(entry["model_families"]) == 1
+                        else None
+                    ),
+                    "model_families": sorted(entry["model_families"]),
+                    "n_rows": entry["n_rows"],
+                }
+                for fold, entry in entries.items()
+            }
+        for validation in config.selected_validations():
+            records: list[dict[str, Any]] = []
+            validation_folds = folds_by_validation[validation]
+            if validation in procedure_results:
+                for fold_number in validation_folds:
+                    cached = fold_model_cache.get((validation, fold_number))
+                    if cached is None:
+                        tracker.skip(fold_budget)
+                        continue
+                    planned_entry = planned_folds.setdefault(validation, {}).setdefault(
+                        fold_number, {}
+                    )
+                    planned_entry["model_family"] = cached.model_name
+                    planned_entry["n_rows"] = len(cached.test_index)
+                    records.append(
+                        _fold_permutation_record(
+                            config,
+                            validation,
+                            fold_number,
+                            cached,
+                            features,
+                            target,
+                            groups,
+                            tracker,
+                            warnings,
+                            fold_budget,
+                        )
+                    )
+            else:
+                tracker.skip(fold_budget * len(validation_folds))
+            permutation_results[validation] = records
+        fold_model_cache.clear()
+        try:
+            direction = _resolve_direction(metric)
+        except (TypeError, ValueError):
+            direction = None
+        request_context = {
+            "metric": metric,
+            "direction": direction,
+            "seed": config.random_seed,
+            "repeats": config.permutation_repeats,
+        }
+
+    # Persist interpretation artefacts exactly when the feature is enabled so
+    # OFF runs never create interpretation files and never break old outputs.
+    permutation_artifacts: dict[str, str] = {}
+    permutation_index: dict[str, dict[str, Any]] = {}
+    if config.permutation_importance:
+        procedure_status = {
+            str(row["validation"]): str(row["status"]) for row in validation_rows
+        }
+        permutation_artifacts = write_permutation_outputs(
+            output_dir,
+            permutation_results,
+            validation_status=procedure_status,
+            request_context=request_context,
+            planned_folds=planned_folds,
+        )
+        for validation, records in permutation_results.items():
+            status, successful, failed = permutation_status(
+                records, procedure_status.get(validation)
+            )
+            permutation_index[validation] = {
+                "status": status,
+                "n_folds_planned": len(planned_folds.get(validation, {}))
+                or len({record.get("fold") for record in records}),
+                "n_folds_successful": successful,
+                "n_folds_failed": failed,
+                "artifacts": {
+                    key: value
+                    for key, value in permutation_artifacts.items()
+                    if key.startswith(f"permutation_{validation}_")
+                },
+            }
     metrics, fold_metrics, predictions = procedure_results[primary_validation]
     _, metric_summary = _summaries(fold_metrics)
 
@@ -839,6 +1157,17 @@ def _run_prioritized(
         ],
     )
     validation_summary = pd.DataFrame(validation_rows)
+    # Concise interpretation of already-computed evidence. Built after procedure
+    # results and selection are frozen, so it cannot flow back into selection.
+    interpretation = build_interpretation(
+        config=config,
+        procedure_results=procedure_results,
+        combo_folds=combo_folds,
+        tuning_rows=tuning_rows,
+        leaderboard=leaderboard,
+        validation_summary=validation_summary,
+    )
+    interpretation_artifacts = write_interpretation_outputs(output_dir, interpretation)
     final_model = _build_pipeline(config, features, best["model"], best_params, target, groups)
     final_model.fit(features, target)
     actual_params = effective_parameters(final_model.named_steps["model"])
@@ -900,27 +1229,39 @@ def _run_prioritized(
         predictions=predictions,
         warnings=warnings,
         confusion=confusion,
+        permutation_artifacts=permutation_artifacts,
+        permutation_index=permutation_index,
     )
     model_export = (save_final_model(final_model, executed_config, features)
                     if config.save_best_model else {"status": "disabled"})
+    study_summary: dict[str, Any] = {
+        "evaluation_scope": "nested_selection_procedure"
+        if family_search
+        else "prespecified_family",
+        "selection_protocol": "nested_family_v1",
+        "best_model": best["model"],
+        "best_validation": best["validation"],
+        "selection_metric": metric,
+        "best_parameters": best_params,
+        "effective_parameters": actual_params,
+        "model_export": model_export,
+        "evaluated_combinations": len(ranked_rows),
+    }
+    if config.permutation_importance:
+        study_summary["permutation"] = {
+            "enabled": True,
+            "data_scope": "outer_test",
+            "model_scope": "outer_fold_model",
+            "validations": permutation_index,
+        }
     write_result_summary(
         output_dir,
         executed_config,
         metrics,
         warnings,
-        study_summary={
-            "evaluation_scope": "nested_selection_procedure"
-            if family_search
-            else "prespecified_family",
-            "selection_protocol": "nested_family_v1",
-            "best_model": best["model"],
-            "best_validation": best["validation"],
-            "selection_metric": metric,
-            "best_parameters": best_params,
-            "effective_parameters": actual_params,
-            "model_export": model_export,
-            "evaluated_combinations": len(ranked_rows),
-        },
+        study_summary=study_summary,
+        permutation_artifacts=permutation_artifacts,
+        interpretation_artifacts=interpretation_artifacts,
     )
     return ExperimentResult(
         metrics=metrics,
@@ -939,8 +1280,9 @@ def _run_prioritized(
         model_export=model_export,
         selection_trace=selection_trace,
         validation_summary=validation_summary,
+        permutation_results=permutation_results,
+        interpretation=interpretation,
     )
-
 
 
 def _run_independent_validations(

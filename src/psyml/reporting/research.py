@@ -59,6 +59,8 @@ def _manifest(
     frame: pd.DataFrame,
     analyzed_rows: int,
     feature_columns: int,
+    permutation_artifacts: dict[str, str] | None = None,
+    permutation_index: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     dependencies = {
         "matplotlib": _package_version("matplotlib"),
@@ -92,6 +94,14 @@ def _manifest(
             "feature_columns": feature_columns,
             "sha256": fingerprint[0] if fingerprint else None,
             "hash_basis": fingerprint[1] if fingerprint else None,
+        },
+        "interpretations": {
+            "permutation_importance_enabled": bool(config.permutation_importance),
+            "permutation_repeats": config.permutation_repeats,
+            "data_scope": "outer_test",
+            "model_scope": "outer_fold_model",
+            "validations": permutation_index or {},
+            "files": permutation_artifacts or {},
         },
     }
 
@@ -368,6 +378,50 @@ def _write_figure(
     plt.close(figure)
 
 
+def _permutation_note(
+    config: ExperimentConfig, permutation_index: dict[str, Any] | None
+) -> str:
+    if not config.permutation_importance:
+        return ""
+    lines = [
+        "",
+        "## Permutation importance (row-wise marginal)",
+        "",
+        (
+            f"Permutation importance used `{config.resolved_selection_metric()}` with "
+            f"{config.permutation_repeats} repeat(s) per variable. It explains each "
+            "inner-selected outer-fold model on that fold's held-out rows only; the final "
+            "full-data model and training rows are never used. Values are signed "
+            "(error increase for MAE/RMSE, otherwise performance decrease). They are not a "
+            "percentage of explained variance, not a causal effect and not a confidence "
+            "interval. Negative importances are retained and not normalised. Correlated "
+            "variables share or mask attribution, and rowwise permutation does not preserve "
+            "within-group or repeated-measures dependence."
+        ),
+        "",
+        "| Validation | Status | Successful folds | Planned folds |",
+        "| --- | --- | --- | --- |",
+    ]
+    for validation, entry in (permutation_index or {}).items():
+        lines.append(
+            f"| {validation} | {entry.get('status')} | "
+            f"{entry.get('n_folds_successful', 0)} | {entry.get('n_folds_planned', 0)} |"
+        )
+    lines.extend(
+        [
+            "",
+            (
+                "Raw repeats, per-fold means, equal-weight cross-fold summaries, JSON "
+                "metadata and the signed ranking figure are under "
+                "`interpretations/<validation>/`. Repeat SD and between-fold SD are kept "
+                "separate and are descriptive, not inferential."
+            ),
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def write_research_outputs(
     output_dir: Path,
     config: ExperimentConfig,
@@ -378,9 +432,18 @@ def write_research_outputs(
     predictions: pd.DataFrame,
     warnings: list[str],
     confusion: pd.DataFrame | None,
+    permutation_artifacts: dict[str, str] | None = None,
+    permutation_index: dict[str, Any] | None = None,
 ) -> None:
     """Write manifest, faithful narrative reports, and privacy-conscious figures."""
-    manifest = _manifest(config, source_frame, analyzed_rows, feature_columns)
+    manifest = _manifest(
+        config,
+        source_frame,
+        analyzed_rows,
+        feature_columns,
+        permutation_artifacts=permutation_artifacts,
+        permutation_index=permutation_index,
+    )
     (output_dir / "analysis_manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -388,12 +451,14 @@ def write_research_outputs(
     metric_names = [
         column for column in fold_metrics.columns if column not in {"fold", "model", "validation"}
     ]
+    permutation_note = _permutation_note(config, permutation_index)
     (output_dir / "methods_summary.md").write_text(
-        _methods_summary(config, analyzed_rows, feature_columns, metric_names),
+        _methods_summary(config, analyzed_rows, feature_columns, metric_names)
+        + permutation_note,
         encoding="utf-8",
     )
     (output_dir / "reproducibility_report.md").write_text(
-        _reproducibility_report(config, manifest, fold_metrics, warnings),
+        _reproducibility_report(config, manifest, fold_metrics, warnings) + permutation_note,
         encoding="utf-8",
     )
     _write_companion_outputs(output_dir, config, manifest, fold_metrics, warnings)

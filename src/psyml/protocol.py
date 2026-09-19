@@ -73,6 +73,8 @@ def result_payload(
     warnings: list[str],
     *,
     study_summary: dict[str, Any] | None = None,
+    permutation_artifacts: dict[str, str] | None = None,
+    interpretation_artifacts: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Build a stable machine-readable result summary."""
     artifacts = {
@@ -99,6 +101,10 @@ def result_payload(
     }
     if config.task == "classification":
         artifacts["confusion_matrix"] = "confusion_matrix.csv"
+    if permutation_artifacts:
+        artifacts.update(permutation_artifacts)
+    if interpretation_artifacts:
+        artifacts.update(interpretation_artifacts)
 
     figures = config.figure_types if config.figure_types is not None else [
         "confusion_matrix" if config.task == "classification" else "observed_vs_predicted"
@@ -224,22 +230,20 @@ def preview_payload(
 
 
 def dataframe_preview(frame, *, rows=5, include_sample=True):
-    """Shared training/prediction preview, with identical column and sample semantics."""
+    """Shared training/prediction preview, with identical column and sample semantics.
+
+    Column metadata always includes non-missing counts, unique counts and an
+    identifier hint. Raw category values are only enumerated when
+    ``include_sample`` is true, so the privacy-first default leaks no values.
+    """
+    from psyml.data.profiling import profile_columns
+
     payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "row_count": len(frame),
         "column_count": len(frame.columns),
-        "columns": [],
+        "columns": profile_columns(frame, include_values=include_sample),
     }
-    for position, column in enumerate(frame.columns):
-        series = frame.iloc[:, position]
-        payload["columns"].append(
-            {
-                "name": str(column),
-                "dtype": str(series.dtype),
-                "missing_count": int(series.isna().sum()),
-            }
-        )
     if include_sample:
         payload["sample"] = [
             {str(column): _json_value(value) for column, value in row.items()}

@@ -1,5 +1,7 @@
 extends SceneTree
 
+const TestPaths = preload("res://tests/test_paths.gd")
+
 
 func _initialize() -> void:
 	call_deferred("_capture")
@@ -19,7 +21,7 @@ func _capture() -> void:
 	var image := root.get_viewport().get_texture().get_image()
 	var output_path := OS.get_environment("PSYML_SCREENSHOT_PATH")
 	if output_path.is_empty():
-		output_path = OS.get_temp_dir().path_join("psyml-ui.png")
+		output_path = TestPaths.temp_dir().path_join("psyml-ui.png")
 	var error := image.save_png(output_path)
 	if error != OK:
 		push_error("Could not save screenshot: %s" % error_string(error))

@@ -67,7 +67,8 @@ def inline(text: str, base: str) -> str:
     return re.sub(r"`([^`]+)`", r'<font color="#334a88">\1</font>', text)
 
 
-def render(source: Path, text: str, target: Path, title: str) -> None:
+def render(source: Path, text: str, target: Path, title: str,
+           label: str = "v0.2.0", base_ref: str = "v0.2.0") -> None:
     body = ParagraphStyle(
         "body", fontName="PsyMLCJK", fontSize=10, leading=16,
         wordWrap="CJK", spaceAfter=7, alignment=TA_LEFT,
@@ -80,13 +81,18 @@ def render(source: Path, text: str, target: Path, title: str) -> None:
             textColor=BLUE, spaceBefore=14, spaceAfter=9, keepWithNext=True,
         ) for n in range(1, 7)
     }
-    base = "https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/v0.2.0/"
+    base = f"https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/{base_ref}/"
     base += source.relative_to(ROOT).as_posix()
-    story = [Paragraph(title, heading[1]), Paragraph("PsyML Toolkit · v0.2.0", body)]
+    story = [Paragraph(title, heading[1]), Paragraph(f"PsyML Toolkit · {label}", body)]
     story.append(Paragraph(
-        "本文可离线阅读。蓝色链接指向 v0.2.0 的仓库文件或外部资料，需要联网。"
+        "本文可离线阅读。蓝色链接指向对应仓库文件或外部资料，需要联网。"
         "软件操作均在图形界面中完成，无需输入命令。", small,
     ))
+    if label != "v0.2.0":
+        story.append(Paragraph(
+            f"<b>开发版 QA 文档（{label}）：</b>本文件由当前开发源码生成，描述尚未发布的功能，"
+            "不适用于 v0.2.0 下载包；发布版请以下载包内 PDF 为准。", small,
+        ))
     if source.name == "README.md":
         story.append(Paragraph("收到分享包后，从这里开始", heading[2]))
         story.append(Paragraph(
@@ -174,7 +180,7 @@ def render(source: Path, text: str, target: Path, title: str) -> None:
         canvas.saveState()
         canvas.setFont("PsyMLCJK", 8)
         canvas.setFillColor(colors.HexColor("#667085"))
-        canvas.drawString(48, 818, "PsyML Toolkit v0.2.0 · " + title)
+        canvas.drawString(48, 818, f"PsyML Toolkit {label} · " + title)
         canvas.drawRightString(547, 25, str(doc.page))
         canvas.restoreState()
 
@@ -189,19 +195,27 @@ def render(source: Path, text: str, target: Path, title: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--font", type=Path, required=True)
+    parser.add_argument("--label", default="v0.2.0",
+                        help="Version label shown in the PDF; non-default marks a QA document")
+    parser.add_argument("--base-ref", default="v0.2.0",
+                        help="Git ref used for source links")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "output/pdf")
     args = parser.parse_args()
     pdfmetrics.registerFont(TTFont("PsyMLCJK", str(args.font)))
     pdfmetrics.registerFontFamily("PsyMLCJK", normal="PsyMLCJK", bold="PsyMLCJK")
     readme = ROOT / "README.md"
     guide = ROOT / "docs/RESEARCHER_GUIDE_ZH.md"
+    suffix = "" if args.label == "v0.2.0" else "_" + args.label
     chinese = readme.read_text(encoding="utf-8").split('<a id="chinese"></a>')[1]
     chinese = chinese.split('<a id="english"></a>')[0].replace("## 中文", "", 1)
-    render(readme, chinese, ROOT / "output/pdf/README_ZH.pdf", "中文版使用说明")
+    render(readme, chinese, args.output_dir / f"README_ZH{suffix}.pdf", "中文版使用说明",
+           args.label, args.base_ref)
     guide_text = guide.read_text(encoding="utf-8").split("\n", 1)[1]
-    render(guide, guide_text, ROOT / "output/pdf/RESEARCHER_GUIDE_ZH.pdf", "模型、指标、结果与术语")
+    render(guide, guide_text, args.output_dir / f"RESEARCHER_GUIDE_ZH{suffix}.pdf",
+           "模型、指标、结果与术语", args.label, args.base_ref)
     manifest = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in [Path(__file__), readme, guide, *sorted((ROOT / "docs/images/zh").glob("*.png"))]}
-    (ROOT / "output/pdf/sources.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (args.output_dir / f"sources{suffix}.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("PSYML_RELEASE_PDFS_OK")
 
 

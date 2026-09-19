@@ -47,3 +47,6 @@ docs/PSYML_TOOLKIT_DEVELOPMENT_PLAN.md
 
 # Local agent instructions
 /AGENTS.md
+
+# Local agent execution state
+/.agent/
