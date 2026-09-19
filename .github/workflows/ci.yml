@@ -61,7 +61,7 @@ jobs:
         run: uv run --extra explain python -c "import os, sys; open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8').write('PSYML_PYTHON=' + sys.executable + '\n')"
 
       - name: Validate Godot project
-        run: godot --headless --editor --path gui --quit
+        run: uv run --extra explain python tools/run_gui_tests.py --validate
 
       - name: Test the Godot GUI suite
         run: uv run --extra explain python tools/run_gui_tests.py

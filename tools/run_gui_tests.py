@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -38,6 +39,81 @@ GROUPS: tuple[Group, ...] = (
     ("explanation", "test_explanation.gd", "PSYML_EXPLANATION_UI_OK"),
     ("coefficients", "test_coefficients.gd", "PSYML_COEFFICIENTS_UI_OK"),
 )
+
+
+@dataclass
+class GodotChoice:
+    path: Path | None
+    origin: str
+    tried: list[str]
+
+
+def resolve_executable(
+    value: str,
+    *,
+    environ: Mapping[str, str] | None = None,
+    which: Callable[[str], str | None] = shutil.which,
+) -> Path | None:
+    """Resolve a Godot path or command name to the real executable file.
+
+    ``shutil.which`` only expands ``PATHEXT`` suffixes on Windows, so it misses
+    the extensionless ``godot`` link that setup-godot creates there; the exact
+    name is also checked in every PATH directory. Links are resolved to the file
+    they point at, so the Windows link ends up as the real ``.exe``.
+    """
+    name = value.strip().strip('"')
+    if not name:
+        return None
+    candidate = Path(os.path.expandvars(os.path.expanduser(name)))
+    if candidate.is_file():
+        return candidate.resolve()
+    found = which(name)
+    if found and Path(found).is_file():
+        return Path(found).resolve()
+    if os.path.dirname(name):
+        return None
+    path_value = (environ if environ is not None else os.environ).get("PATH", "")
+    for directory in path_value.split(os.pathsep):
+        if not directory:
+            continue
+        entry = Path(directory) / name
+        # On Windows any existing file is executable; elsewhere require +x.
+        if entry.is_file() and (os.name == "nt" or os.access(entry, os.X_OK)):
+            return entry.resolve()
+    return None
+
+
+def select_godot(
+    explicit: str | None = None,
+    *,
+    environ: Mapping[str, str] | None = None,
+    which: Callable[[str], str | None] = shutil.which,
+) -> GodotChoice:
+    """Pick the Godot executable: --godot, then GODOT/GODOT4, then PATH."""
+    env = environ if environ is not None else os.environ
+    if explicit:
+        tried = [f"--godot={explicit}"]
+        resolved = resolve_executable(explicit, environ=env, which=which)
+        return GodotChoice(resolved, "--godot", tried)
+    tried: list[str] = []
+    for variable in ("GODOT", "GODOT4"):
+        value = env.get(variable, "").strip()
+        if not value:
+            continue
+        tried.append(f"{variable}={value}")
+        resolved = resolve_executable(value, environ=env, which=which)
+        if resolved is not None:
+            return GodotChoice(resolved, variable, tried)
+    tried.append("PATH command 'godot'")
+    resolved = resolve_executable("godot", environ=env, which=which)
+    return GodotChoice(resolved, "PATH", tried)
+
+
+def missing_godot_message(tried: list[str]) -> str:
+    return (
+        "Godot executable not found (tried: " + ", ".join(tried) + "); "
+        "pass --godot <path-or-command> or set GODOT to a Godot 4.7.2 executable"
+    )
 
 
 @dataclass
@@ -68,6 +144,62 @@ def evaluate_group(returncode: int, output: str, marker: str) -> list[str]:
             problems.append(f"failure marker: {line.strip()[:160]}")
             break
     return problems
+
+
+def build_validate_command(godot: str) -> list[str]:
+    return [godot, "--headless", "--editor", "--path", str(GUI), "--quit"]
+
+
+def evaluate_validate(returncode: int, output: str) -> list[str]:
+    """Return the reasons an editor validation run must not be trusted."""
+    problems: list[str] = []
+    if returncode != 0:
+        problems.append(f"exit code {returncode}")
+    if "Godot Engine v" not in output:
+        problems.append("missing Godot version banner in output")
+    if "SCRIPT ERROR" in output:
+        problems.append("SCRIPT ERROR in Godot output")
+    for line in output.splitlines():
+        if "_FAILURE" in line:
+            problems.append(f"failure marker: {line.strip()[:160]}")
+            break
+    return problems
+
+
+def validate_project(
+    godot: str,
+    timeout: float,
+    *,
+    run=subprocess.run,
+    stream=sys.stdout,
+) -> int:
+    """Load the project with the resolved executable and wait for it to exit."""
+    command = build_validate_command(godot)
+    print("$ " + " ".join(command))
+    started = time.monotonic()
+    try:
+        completed = run(
+            command,
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as error:
+        output = _text(error.stdout) + _text(error.stderr)
+        _stream_output(stream, output)
+        print(f"PSYML_GODOT_VALIDATE_FAILED problems=timeout after {timeout:g}s", file=sys.stderr)
+        return 1
+    output = _text(completed.stdout) + _text(completed.stderr)
+    _stream_output(stream, output)
+    problems = evaluate_validate(completed.returncode, output)
+    if problems:
+        print("PSYML_GODOT_VALIDATE_FAILED problems=" + "; ".join(problems), file=sys.stderr)
+        return 1
+    print(f"PSYML_GODOT_VALIDATE_OK ({time.monotonic() - started:.1f}s)")
+    return 0
 
 
 def _text(value: object) -> str:
@@ -136,14 +268,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the headless Godot GUI test groups.")
     parser.add_argument(
         "--godot",
-        default="godot",
-        help="Godot 4.7.2 executable (default: godot on PATH)",
+        default=None,
+        help=(
+            "Godot 4.7.2 executable path or command; overrides GODOT/GODOT4 "
+            "(default: GODOT, then GODOT4, then godot on PATH)"
+        ),
     )
     parser.add_argument(
         "--timeout",
         type=float,
         default=DEFAULT_TIMEOUT,
-        help=f"seconds allowed per group (default: {DEFAULT_TIMEOUT:g})",
+        help=f"seconds allowed per Godot run (default: {DEFAULT_TIMEOUT:g})",
     )
     parser.add_argument(
         "--group",
@@ -157,6 +292,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="print the group names, scripts and markers, then exit",
     )
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="only load the Godot project with --editor --quit, then exit",
+    )
     args = parser.parse_args(argv)
 
     if args.list_groups:
@@ -164,24 +304,30 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{name}\t{script}\t{marker}")
         return 0
 
-    known = {name for name, _, _ in GROUPS}
-    unknown = [name for name in args.group if name not in known]
-    if unknown:
-        print(f"Unknown group(s): {', '.join(unknown)}", file=sys.stderr)
-        return 2
-    requested = set(args.group)
+    requested: set[str] = set()
+    if not args.validate:
+        known = {name for name, _, _ in GROUPS}
+        unknown = [name for name in args.group if name not in known]
+        if unknown:
+            print(f"Unknown group(s): {', '.join(unknown)}", file=sys.stderr)
+            return 2
+        requested = set(args.group)
     selected = [group for group in GROUPS if not requested or group[0] in requested]
 
-    godot = shutil.which(args.godot) or args.godot
-    if not Path(godot).exists():
-        print(f"Godot executable not found: {args.godot}", file=sys.stderr)
+    choice = select_godot(args.godot)
+    if choice.path is None:
+        print(missing_godot_message(choice.tried), file=sys.stderr)
         return 2
+    godot = str(choice.path)
+    print(f"Godot: {godot} (from {choice.origin})")
+    if args.validate:
+        print(f"Timeout: {args.timeout:g}s")
+        return validate_project(godot, args.timeout)
     missing = [script for _, script, _ in selected if not (GUI / "tests" / script).is_file()]
     if missing:
         print(f"Missing GUI test script(s): {', '.join(missing)}", file=sys.stderr)
         return 2
 
-    print(f"Godot: {godot}")
     print(f"PSYML_PYTHON: {os.environ.get('PSYML_PYTHON', '<unset>')}")
     print(f"Timeout per group: {args.timeout:g}s")
 

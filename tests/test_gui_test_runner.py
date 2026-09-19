@@ -1,11 +1,31 @@
-"""Tests for the GUI test runner: group configuration, markers and timeouts."""
+"""Tests for the GUI test runner: groups, markers, timeouts and Godot resolution."""
 
 import io
+import os
+import subprocess
 import sys
+from pathlib import Path
+
+import pytest
 
 from tools import run_gui_tests as runner
 
 MARKER = "PSYML_FAKE_OK"
+BANNER = "Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org\n"
+
+
+def _fake_executable(directory: Path, name: str) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / name
+    path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+def _completed(returncode: int = 0, stdout: str = "", stderr: str = ""):
+    return subprocess.CompletedProcess(args=["godot"], returncode=returncode,
+                                       stdout=stdout, stderr=stderr)
+
 
 
 def test_group_list_covers_every_headless_suite_with_unique_markers():
@@ -86,3 +106,150 @@ def test_list_groups_and_unknown_group_are_handled(capsys):
     assert "coefficients\ttest_coefficients.gd" in listed
     assert runner.main(["--group", "does-not-exist"]) == 2
     assert "Unknown group" in capsys.readouterr().err
+
+
+def test_explicit_godot_argument_wins_over_environment(tmp_path):
+    explicit = _fake_executable(tmp_path / "Godot 4.7.2 with spaces", "Godot_v4.7.2.exe")
+    environment = {"GODOT": str(tmp_path / "installer" / "godot")}
+
+    choice = runner.select_godot(str(explicit), environ=environment, which=lambda _: None)
+
+    assert choice.path == explicit.resolve()
+    assert choice.origin == "--godot"
+    assert choice.tried == [f"--godot={explicit}"]
+
+
+def test_extensionless_godot_link_resolves_to_the_real_executable(tmp_path):
+    install = tmp_path / "Godot 4.7.2 win64"
+    target = _fake_executable(install, "Godot_v4.7.2-stable_win64.exe")
+    link = install / "godot"
+    try:
+        link.symlink_to(target)
+    except OSError:
+        pytest.skip("symlinks are not available in this environment")
+
+    choice = runner.select_godot(environ={"GODOT": str(link)}, which=lambda _: None)
+
+    assert choice.path == target.resolve()
+    assert choice.path.suffix == ".exe"
+    assert choice.origin == "GODOT"
+    assert choice.tried == [f"GODOT={link}"]
+
+
+def test_godot4_is_used_when_godot_is_not_set(tmp_path):
+    executable = _fake_executable(tmp_path / "godot4", "godot.exe")
+
+    choice = runner.select_godot(environ={"GODOT4": str(executable)}, which=lambda _: None)
+
+    assert choice.path == executable.resolve()
+    assert choice.origin == "GODOT4"
+
+
+def test_path_fallback_accepts_extensionless_command(tmp_path):
+    directory = tmp_path / "bin"
+    executable = _fake_executable(directory, "godot")
+
+    # shutil.which misses the extensionless entry on Windows (PATHEXT only).
+    choice = runner.select_godot(environ={"PATH": str(directory)}, which=lambda _: None)
+
+    assert choice.path == executable.resolve()
+    assert choice.origin == "PATH"
+    assert choice.tried == ["PATH command 'godot'"]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Windows os.access ignores the executable bit")
+def test_path_fallback_rejects_non_executable_file(tmp_path):
+    directory = tmp_path / "bin"
+    directory.mkdir()
+    (directory / "godot").write_text("not executable", encoding="utf-8")
+
+    choice = runner.select_godot(environ={"PATH": str(directory)}, which=lambda _: None)
+
+    assert choice.path is None
+
+
+def test_missing_candidates_report_where_they_were_tried(tmp_path, capsys):
+    missing = str(tmp_path / "Godot_v4.7.2-stable_win64.exe")
+
+    assert runner.main(["--validate", "--godot", missing, "--timeout", "1"]) == 2
+    stderr = capsys.readouterr().err
+
+    assert "Godot executable not found" in stderr
+    assert missing in stderr
+    assert f"--godot={missing}" in stderr
+
+
+def test_no_candidates_reports_all_locations():
+    choice = runner.select_godot(environ={"PATH": ""}, which=lambda _: None)
+
+    assert choice.path is None
+    message = runner.missing_godot_message(choice.tried)
+    assert "PATH command 'godot'" in message
+
+
+def test_broken_link_is_not_accepted(tmp_path):
+    link = tmp_path / "godot"
+    try:
+        link.symlink_to(tmp_path / "missing.exe")
+    except OSError:
+        pytest.skip("symlinks are not available in this environment")
+
+    choice = runner.select_godot(str(link), environ={}, which=lambda _: None)
+
+    assert choice.path is None
+
+
+def test_validate_mode_uses_resolved_executable(tmp_path, monkeypatch, capsys):
+    directory = tmp_path / "bin"
+    executable = _fake_executable(directory, "godot")
+    seen = {}
+
+    def fake_validate(godot, timeout):
+        seen["godot"] = godot
+        seen["timeout"] = timeout
+        return 0
+
+    monkeypatch.setattr(runner, "validate_project", fake_validate)
+    monkeypatch.setenv("PATH", str(directory))
+    monkeypatch.delenv("GODOT", raising=False)
+    monkeypatch.delenv("GODOT4", raising=False)
+
+    assert runner.main(["--validate", "--timeout", "1"]) == 0
+    assert seen == {"godot": str(executable.resolve()), "timeout": 1.0}
+    assert str(executable.resolve()) in capsys.readouterr().out
+
+
+def test_validate_accepts_a_real_editor_run(capsys):
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        return _completed(stdout=BANNER + "[ DONE ] first_scan_filesystem\n")
+
+    assert runner.validate_project("godot", 30.0, run=fake_run, stream=io.StringIO()) == 0
+    assert calls[0] == runner.build_validate_command("godot")
+    assert "PSYML_GODOT_VALIDATE_OK" in capsys.readouterr().out
+
+
+def test_validate_rejects_a_silent_stub(capsys):
+    def fake_run(command, **kwargs):
+        return _completed(stdout="", stderr="")
+
+    assert runner.validate_project("godot", 30.0, run=fake_run, stream=io.StringIO()) == 1
+    assert "PSYML_GODOT_VALIDATE_FAILED" in capsys.readouterr().err
+
+
+def test_validate_rejects_script_error_with_exit_zero(capsys):
+    def fake_run(command, **kwargs):
+        return _completed(stdout=BANNER + "SCRIPT ERROR: fake\n")
+
+    assert runner.validate_project("godot", 30.0, run=fake_run, stream=io.StringIO()) == 1
+    assert "SCRIPT ERROR" in capsys.readouterr().err
+
+
+def test_validate_timeout_is_not_success(capsys):
+    def fake_run(command, **kwargs):
+        raise subprocess.TimeoutExpired(command, 30.0)
+
+    assert runner.validate_project("godot", 30.0, run=fake_run, stream=io.StringIO()) == 1
+    assert "timeout" in capsys.readouterr().err
