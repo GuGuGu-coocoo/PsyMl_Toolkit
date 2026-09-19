@@ -1102,7 +1102,10 @@ func _clear_results() -> void:
 
 
 func _load_results(result_path: String, navigate := true, as_child := false) -> void:
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(result_path))
+	# The core reports Windows paths with `\` separators (pathlib); canonicalize
+	# once so directories compare and display consistently on every platform.
+	result_path = CoreBridge.canonical_path(result_path)
+	var parsed = CoreBridge.parse_json_document(FileAccess.get_file_as_string(result_path))
 	if not parsed is Dictionary or parsed.get("status", "") not in ["completed", "completed_with_errors"] or not parsed.has("metrics") or not parsed.has("artifacts"):
 		_clear_results()
 		_show_error("Invalid or incomplete result.json")

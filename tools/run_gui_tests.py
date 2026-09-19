@@ -13,6 +13,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -21,6 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 GUI = ROOT / "gui"
 DEFAULT_TIMEOUT = 600.0
+DEFAULT_LOG_DIR = ROOT / "tmp" / "ci-gui"
 
 Group = tuple[str, str, str]
 
@@ -260,6 +262,130 @@ def _stream_output(stream, output: str) -> None:
     stream.write(output)
     if not output.endswith("\n"):
         stream.write("\n")
+    stream.flush()
+
+
+def _pump_lines(source, sink: Callable[[str], None]) -> None:
+    """Forward every line as it arrives; a hung child still shows progress."""
+    try:
+        for line in source:
+            sink(line)
+    finally:
+        source.close()
+
+
+def run_group_streaming(
+    godot: str,
+    group: Group,
+    timeout: float,
+    *,
+    stream=sys.stdout,
+    log_path: Path | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> GroupResult:
+    """Run one group while streaming output to the console and a log file.
+
+    The capture-based ``run_group`` keeps an injectable runner for tests; this
+    path is what ``main`` uses so a timed-out or crashing group still leaves its
+    diagnostics in ``log_path`` instead of losing everything buffered in memory.
+    """
+    name, script, marker = group
+    command = build_command(godot, script)
+    env = dict(os.environ if environ is None else environ)
+    log_file = None
+    if log_path is not None:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        env["PSYML_GUI_LOG_DIR"] = str(log_path.parent)
+        log_file = log_path.open("w", encoding="utf-8", errors="replace")
+
+    collected: list[str] = []
+
+    def sink(text: str) -> None:
+        collected.append(text)
+        stream.write(text)
+        stream.flush()
+        if log_file is not None:
+            log_file.write(text)
+            log_file.flush()
+
+    if log_file is not None:
+        log_file.write("$ " + " ".join(command) + "\n")
+        log_file.flush()
+    started = time.monotonic()
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+            env=env,
+        )
+    except OSError as error:
+        if log_file is not None:
+            log_file.write(f"failed to start: {error}\n")
+            log_file.close()
+        return GroupResult(
+            name=name,
+            passed=False,
+            duration=time.monotonic() - started,
+            returncode=None,
+            problems=[f"could not start Godot: {error}"],
+        )
+    reader = threading.Thread(target=_pump_lines, args=(process.stdout, sink), daemon=True)
+    reader.start()
+    timed_out = False
+    try:
+        returncode: int | None = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        process.kill()
+        process.wait()
+        returncode = None
+    reader.join(timeout=30.0)
+    if log_file is not None:
+        log_file.close()
+    output = "".join(collected)
+    if timed_out:
+        return GroupResult(
+            name=name,
+            passed=False,
+            duration=time.monotonic() - started,
+            returncode=None,
+            problems=[f"timeout after {timeout:g}s"],
+            output=output,
+        )
+    problems = evaluate_group(returncode, output, marker)
+    return GroupResult(
+        name=name,
+        passed=not problems,
+        duration=time.monotonic() - started,
+        returncode=returncode,
+        problems=problems,
+        output=output,
+    )
+
+
+def resolve_log_dir(value: str | None) -> Path:
+    if value:
+        return Path(value).expanduser().absolute()
+    configured = os.environ.get("PSYML_GUI_LOG_DIR", "").strip()
+    if configured:
+        return Path(configured).expanduser().absolute()
+    return DEFAULT_LOG_DIR
+
+
+def _clear_stale_logs(directory: Path) -> None:
+    if not directory.is_dir():
+        return
+    stale = list(directory.glob("[0-9][0-9]-*.log"))
+    stale.append(directory / "ui_flow_failure.txt")
+    for path in stale:
+        if path.is_file():
+            path.unlink()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -286,6 +412,14 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         metavar="NAME",
         help="run only this group (repeatable; see --list-groups)",
+    )
+    parser.add_argument(
+        "--log-dir",
+        default=None,
+        help=(
+            "directory for per-group logs (default: PSYML_GUI_LOG_DIR, then "
+            f"{DEFAULT_LOG_DIR})"
+        ),
     )
     parser.add_argument(
         "--list-groups",
@@ -330,19 +464,25 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"PSYML_PYTHON: {os.environ.get('PSYML_PYTHON', '<unset>')}")
     print(f"Timeout per group: {args.timeout:g}s")
+    log_dir = resolve_log_dir(args.log_dir)
+    _clear_stale_logs(log_dir)
+    print(f"Per-group logs: {log_dir}")
 
     failures: list[GroupResult] = []
     for index, group in enumerate(selected, start=1):
         name, script, _ = group
         print(f"\n[{index}/{len(selected)}] {name}")
         print("$ " + " ".join(build_command(godot, script)))
-        result = run_group(godot, group, args.timeout)
+        log_path = log_dir / f"{index:02d}-{name}.log"
+        result = run_group_streaming(godot, group, args.timeout, log_path=log_path)
         status = "PASS" if result.passed else "FAIL"
         print(f"[{index}/{len(selected)}] {name}: {status} ({result.duration:.1f}s)")
         if not result.passed:
             failures.append(result)
             for problem in result.problems:
                 print(f"  - {problem}")
+            print(f"  log: {log_path}")
+        sys.stdout.flush()
 
     if failures:
         summary = "; ".join(f"{result.name}: {'; '.join(result.problems)}" for result in failures)

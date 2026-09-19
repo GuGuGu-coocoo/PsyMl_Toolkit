@@ -65,3 +65,12 @@ jobs:
 
       - name: Test the Godot GUI suite
         run: uv run --extra explain python tools/run_gui_tests.py
+
+      - name: Keep GUI test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gui-test-logs-${{ matrix.os }}-py3.12
+          path: tmp/ci-gui
+          if-no-files-found: ignore
+          retention-days: 7

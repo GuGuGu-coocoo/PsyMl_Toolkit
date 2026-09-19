@@ -14,16 +14,68 @@ signal coefficients_failed(error: Dictionary, generation: int)
 signal coefficients_cancelled(generation: int)
 
 const MAX_DIAGNOSTIC_CHARS := 65536
+const PIPE_READ_CHUNK := 4096
+const PIPE_READ_ROUNDS := 32
+const MAX_STREAM_PENDING_BYTES := 65536
 
 var _preview_thread: Thread
 var _process_data: Dictionary = {}
 var _saw_terminal_event := false
 var _pending_terminal_event: Dictionary = {}
+var _analysis_stdout_partial := ""
+var _analysis_stdout_pending := PackedByteArray()
+var _analysis_stderr_pending := PackedByteArray()
+var _analysis_stderr_tail := ""
+var _analysis_last_exit_code := -1
 var _explain_data: Dictionary = {}
 var _explain_stdout := ""
 var _explain_stderr := ""
+var _explain_stdout_pending := PackedByteArray()
+var _explain_stderr_pending := PackedByteArray()
 var _explain_generation := 0
 var _task_kind := "explanation"
+
+
+static func canonical_path(path: String) -> String:
+	# Canonical form for comparing or showing paths that come back from the
+	# core: Windows pathlib emits `\` separators while Godot joins with `/`.
+	return path.simplify_path()
+
+
+static func parse_json_document(text: String):
+	# The instance API returns the parse error instead of logging one; the
+	# static JSON.parse_string prints engine errors for expected noise lines.
+	var json := JSON.new()
+	if json.parse(text) != OK:
+		return null
+	return json.data
+
+
+static func utf8_complete_prefix_length(buffer: PackedByteArray) -> int:
+	# Length of the longest valid UTF-8 prefix; a short trailing multi-byte
+	# sequence stays buffered so decoding never emits replacement characters.
+	var size := buffer.size()
+	if size == 0:
+		return 0
+	var index := size - 1
+	var scanned := 0
+	while index >= 0 and scanned < 4:
+		var byte := buffer[index]
+		if byte & 0xC0 == 0x80:
+			index -= 1
+			scanned += 1
+			continue
+		var expected := 1
+		if byte & 0xE0 == 0xC0:
+			expected = 2
+		elif byte & 0xF0 == 0xE0:
+			expected = 3
+		elif byte & 0xF8 == 0xF0:
+			expected = 4
+		if size - index < expected:
+			return index
+		return size
+	return size
 
 
 static func bundle_directory() -> String:
@@ -70,7 +122,7 @@ func execute_json_sync(arguments: PackedStringArray) -> Dictionary:
 	var combined := "\n".join(output)
 	var lines := combined.split("\n", false)
 	for index in range(lines.size() - 1, -1, -1):
-		var parsed = JSON.parse_string(lines[index])
+		var parsed = parse_json_document(lines[index])
 		if parsed is Dictionary:
 			if exit_code != 0 and not parsed.has("error"):
 				return {"error": {"code": "process_failed", "message": combined}}
@@ -124,6 +176,11 @@ func start_analysis(config_path: String) -> bool:
 		return false
 	_saw_terminal_event = false
 	_pending_terminal_event = {}
+	_analysis_stdout_partial = ""
+	_analysis_stdout_pending = PackedByteArray()
+	_analysis_stderr_pending = PackedByteArray()
+	_analysis_stderr_tail = ""
+	_analysis_last_exit_code = -1
 	set_process(true)
 	return true
 
@@ -162,12 +219,15 @@ func _process(_delta: float) -> void:
 
 
 func _poll_analysis() -> void:
-	_read_available_lines()
+	_drain_analysis_streams()
+	if _process_data.is_empty():
+		return
 	if OS.is_process_running(_process_data["pid"]):
 		return
-	_read_available_lines()
+	# Final drain after exit; a closed pipe simply returns no bytes.
+	_drain_analysis_streams()
 	var exit_code := OS.get_process_exit_code(_process_data["pid"])
-	var stderr_text: String = _process_data["stderr"].get_as_text()
+	_analysis_last_exit_code = exit_code
 	if not _pending_terminal_event.is_empty() and (exit_code == 0 or _pending_terminal_event.get("event") != "completed"):
 		var terminal_event := _pending_terminal_event
 		_cleanup_process()
@@ -175,12 +235,14 @@ func _poll_analysis() -> void:
 		return
 	if exit_code != 0 or not _saw_terminal_event:
 		_cleanup_process()
+		var stderr_text := _analysis_stderr_tail
+		var message := stderr_text if not stderr_text.strip_edges().is_empty() else "Process exited without a valid completion event."
 		event_received.emit(
 			{
 				"schema_version": "1.0",
 				"event": "failed",
 				"progress": 0.0,
-				"error": {"code": "process_failed", "message": stderr_text if not stderr_text.is_empty() else "Process exited without a valid completion event."},
+				"error": {"code": "process_failed", "message": message},
 			}
 		)
 	else:
@@ -208,6 +270,8 @@ func _start_task(kind: String, arguments: PackedStringArray, command_override :=
 	_explain_generation += 1
 	_explain_stdout = ""
 	_explain_stderr = ""
+	_explain_stdout_pending = PackedByteArray()
+	_explain_stderr_pending = PackedByteArray()
 	_explain_data = OS.execute_with_pipe(python_executable(), command, false)
 	if _explain_data.is_empty():
 		_explain_data = {}
@@ -253,15 +317,11 @@ func cancel_explanation() -> void:
 
 func _poll_explanation() -> void:
 	var generation := _explain_generation
-	_explain_stdout += _drain_fragments(_explain_data["stdio"])
-	if _explain_data.has("stderr"):
-		_explain_stderr = _bounded_tail(_explain_stderr + _drain_fragments(_explain_data["stderr"]))
+	_drain_explanation_streams()
 	if OS.is_process_running(_explain_data["pid"]):
 		return
 	# Final tail after exit.
-	_explain_stdout += _drain_fragments(_explain_data["stdio"])
-	if _explain_data.has("stderr"):
-		_explain_stderr = _bounded_tail(_explain_stderr + _drain_fragments(_explain_data["stderr"]))
+	_drain_explanation_streams()
 	var exit_code := OS.get_process_exit_code(_explain_data["pid"])
 	_cleanup_explanation()
 	if generation != _explain_generation:
@@ -284,7 +344,7 @@ func _poll_explanation() -> void:
 func _parse_complete_json(text: String):
 	if text.strip_edges().is_empty():
 		return null
-	var parsed = JSON.parse_string(text)
+	var parsed = parse_json_document(text)
 	if parsed is Dictionary:
 		return parsed
 	# Fall back to the last complete line (multi-line framing).
@@ -292,7 +352,7 @@ func _parse_complete_json(text: String):
 	for index in range(lines.size() - 1, -1, -1):
 		if lines[index].strip_edges().is_empty():
 			continue
-		parsed = JSON.parse_string(lines[index])
+		parsed = parse_json_document(lines[index])
 		if parsed is Dictionary:
 			return parsed
 	return null
@@ -304,36 +364,105 @@ func _bounded_tail(text: String) -> String:
 	return text.substr(text.length() - MAX_DIAGNOSTIC_CHARS)
 
 
-func _drain_fragments(stream: FileAccess) -> String:
-	# Accumulate every available fragment; partial JSON chunks are retained
-	# across polls instead of keeping only the last line.
-	var buffer := ""
-	while true:
-		var line := stream.get_line()
-		if line.is_empty():
+func _read_stream_text(stream: FileAccess, pending: PackedByteArray) -> Dictionary:
+	# Non-blocking byte reads. Pipes must never use get_as_text()/get_length():
+	# on Windows those call PeekNamedPipe and print engine errors once the
+	# writer has closed, and get_line() can drop a fragment without newline.
+	var collected := PackedByteArray()
+	for _round in range(PIPE_READ_ROUNDS):
+		var chunk := stream.get_buffer(PIPE_READ_CHUNK)
+		if chunk.is_empty():
 			break
-		buffer += line
-	return buffer
+		collected.append_array(chunk)
+	if not collected.is_empty():
+		pending.append_array(collected)
+	var text := ""
+	if not pending.is_empty():
+		var complete := utf8_complete_prefix_length(pending)
+		if complete > 0:
+			text = pending.slice(0, complete).get_string_from_utf8()
+			pending = pending.slice(complete)
+		if pending.size() > MAX_STREAM_PENDING_BYTES:
+			pending = pending.slice(pending.size() - MAX_STREAM_PENDING_BYTES)
+	return {"text": text, "pending": pending}
 
 
-func _read_available_lines() -> void:
-	var stdio: FileAccess = _process_data["stdio"]
+func _drain_analysis_stdout() -> void:
+	var read := _read_stream_text(_process_data["stdio"], _analysis_stdout_pending)
+	_analysis_stdout_pending = read["pending"]
+	var text := str(read["text"])
+	if not text.is_empty():
+		_consume_analysis_stdout(text)
+
+
+func _consume_analysis_stdout(text: String) -> void:
+	# Buffer partial writes so a JSON event is only parsed when its line
+	# arrived completely, including the last event before the process exits.
+	_analysis_stdout_partial = _bounded_tail(_analysis_stdout_partial + text)
 	while true:
-		var line := stdio.get_line()
-		if line.is_empty():
+		var newline := _analysis_stdout_partial.find("\n")
+		if newline < 0:
 			break
-		var payload = JSON.parse_string(line)
-		if payload is Dictionary:
-			if payload.get("event", "") in ["completed", "failed", "cancelled"]:
-				_saw_terminal_event = true
-				_pending_terminal_event = payload
-			else:
-				event_received.emit(payload)
+		var line := _analysis_stdout_partial.substr(0, newline)
+		_analysis_stdout_partial = _analysis_stdout_partial.substr(newline + 1)
+		_dispatch_analysis_line(line)
+
+
+func _dispatch_analysis_line(line: String) -> void:
+	var payload = parse_json_document(line)
+	if not payload is Dictionary:
+		return
+	if payload.get("event", "") in ["completed", "failed", "cancelled"]:
+		_saw_terminal_event = true
+		_pending_terminal_event = payload
+	else:
+		event_received.emit(payload)
+
+
+func _drain_analysis_stderr() -> void:
+	var read := _read_stream_text(_process_data["stderr"], _analysis_stderr_pending)
+	_analysis_stderr_pending = read["pending"]
+	var text := str(read["text"])
+	if not text.is_empty():
+		_analysis_stderr_tail = _bounded_tail(_analysis_stderr_tail + text)
+
+
+func _drain_analysis_streams() -> void:
+	_drain_analysis_stdout()
+	if _process_data.has("stderr"):
+		_drain_analysis_stderr()
+
+
+func _drain_explanation_streams() -> void:
+	var stdout_read := _read_stream_text(_explain_data["stdio"], _explain_stdout_pending)
+	_explain_stdout_pending = stdout_read["pending"]
+	var stdout_text := str(stdout_read["text"])
+	if not stdout_text.is_empty():
+		_explain_stdout += stdout_text
+	if _explain_data.has("stderr"):
+		var stderr_read := _read_stream_text(_explain_data["stderr"], _explain_stderr_pending)
+		_explain_stderr_pending = stderr_read["pending"]
+		var stderr_text := str(stderr_read["text"])
+		if not stderr_text.is_empty():
+			_explain_stderr = _bounded_tail(_explain_stderr + stderr_text)
 
 
 func _cleanup_process() -> void:
 	_process_data = {}
 	_pending_terminal_event = {}
+	_analysis_stdout_partial = ""
+	_analysis_stdout_pending = PackedByteArray()
+	_analysis_stderr_pending = PackedByteArray()
+
+
+func last_process_exit_code() -> int:
+	return _analysis_last_exit_code
+
+
+func last_stderr_tail(limit: int = 4000) -> String:
+	if limit <= 0 or _analysis_stderr_tail.length() <= limit:
+		return _analysis_stderr_tail
+	return _analysis_stderr_tail.substr(_analysis_stderr_tail.length() - limit)
 
 
 func _cleanup_explanation() -> void:

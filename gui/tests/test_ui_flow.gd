@@ -106,15 +106,8 @@ func _run_test() -> void:
 	await _capture_state(main, "07-running.png")
 	result_dir = main._build_config().output_dir
 	var result_path := result_dir.path_join("result.json")
-	var run_deadline := Time.get_ticks_msec() + 30000
-	while (
-		(not FileAccess.file_exists(result_path) or main.last_result_dir != result_dir)
-		and Time.get_ticks_msec() < run_deadline
-	):
-		await create_timer(0.05).timeout
-	if not FileAccess.file_exists(result_path) or main.last_result_dir != result_dir:
-		push_error(main.status_label.text)
-		quit(1)
+	var finished := await _wait_for_result(main, result_dir, result_path, "classification")
+	if not finished:
 		return
 	var result = JSON.parse_string(FileAccess.get_file_as_string(result_path))
 	assert(result.status == "completed")
@@ -148,21 +141,10 @@ func _run_test() -> void:
 	assert(main.figure_view.texture == null)
 	regression_dir = main._build_config().output_dir
 	var regression_result_path := regression_dir.path_join("result.json")
-	var regression_deadline := Time.get_ticks_msec() + 30000
-	while (
-		(
-			not FileAccess.file_exists(regression_result_path)
-			or main.last_result_dir != regression_dir
-		)
-		and Time.get_ticks_msec() < regression_deadline
-	):
-		await create_timer(0.05).timeout
-	if (
-		not FileAccess.file_exists(regression_result_path)
-		or main.last_result_dir != regression_dir
-	):
-		push_error(main.status_label.text)
-		quit(1)
+	var regression_finished := await _wait_for_result(
+		main, regression_dir, regression_result_path, "regression"
+	)
+	if not regression_finished:
 		return
 	var regression_result = JSON.parse_string(
 		FileAccess.get_file_as_string(regression_result_path)
@@ -236,6 +218,56 @@ func _run_test() -> void:
 	assert(main.comparison_tree.get_column_title(0) == "Rang")
 	print("PSYML_GODOT_UI_FLOW_OK")
 	quit(0)
+
+
+func _wait_for_result(main, result_dir: String, result_path: String, label: String) -> bool:
+	var expected := CoreBridge.canonical_path(result_dir)
+	var deadline := TestPaths.run_deadline_msec()
+	while Time.get_ticks_msec() < deadline:
+		if FileAccess.file_exists(result_path) and main.last_result_dir == expected:
+			break
+		if main.status_key in ["ERROR", "CANCELLED"]:
+			break
+		await create_timer(0.05).timeout
+	if FileAccess.file_exists(result_path) and main.last_result_dir == expected:
+		return true
+	var diagnostic := _diagnostic_text(main, label, result_dir, result_path)
+	var diagnostic_path := TestPaths.log_directory().path_join("ui_flow_failure.txt")
+	var file := FileAccess.open(diagnostic_path, FileAccess.WRITE)
+	if file != null:
+		file.store_string(diagnostic)
+		file.close()
+	for line in diagnostic.split("\n"):
+		if not line.is_empty():
+			printerr("PSYML_UI_FLOW_DIAGNOSTIC " + line)
+	push_error("PSYML_UI_FLOW_TIMEOUT " + label + " expected=" + expected)
+	quit(1)
+	return false
+
+
+func _diagnostic_text(main, label: String, result_dir: String, result_path: String) -> String:
+	var stderr_tail: String = main.bridge.last_stderr_tail(2000)
+	var lines := [
+		"label=" + label,
+		"status_key=" + str(main.status_key),
+		"status_label=" + str(main.status_label.text),
+		"status_detail=" + str(main.status_detail),
+		"expected_dir=" + CoreBridge.canonical_path(result_dir),
+		"actual_dir=" + CoreBridge.canonical_path(str(main.last_result_dir)),
+		"expected_dir_raw=" + result_dir,
+		"actual_dir_raw=" + str(main.last_result_dir),
+		"result_file_exists=" + ("yes" if FileAccess.file_exists(result_path) else "no"),
+		"result_path=" + CoreBridge.canonical_path(result_path),
+		"last_result_path=" + str(main.last_result_path),
+		"bridge_running=" + ("yes" if main.bridge.is_running() else "no"),
+		"bridge_last_exit_code=" + str(main.bridge.last_process_exit_code()),
+		"pending_config=" + str(main.pending_config_path),
+		"language=" + TranslationServer.get_locale(),
+		"stderr_tail_begin",
+		stderr_tail,
+		"stderr_tail_end",
+	]
+	return "\n".join(lines)
 
 
 func _capture_state(main: Control, filename: String) -> void:

@@ -13,3 +13,23 @@ static func temp_dir() -> String:
 		path = ProjectSettings.globalize_path("res://../tmp/phase-A-worker/gui")
 	DirAccess.make_dir_recursive_absolute(path)
 	return path
+
+
+static func run_deadline_msec() -> int:
+	# One finite, CI-configurable wait for a real analysis run. The default
+	# stays at 30s; only a slow machine may raise it, never the assertions.
+	var configured := OS.get_environment("PSYML_TEST_RUN_TIMEOUT_SECONDS")
+	var seconds := configured.to_float()
+	if seconds <= 0.0:
+		seconds = 30.0
+	return Time.get_ticks_msec() + int(seconds * 1000.0)
+
+
+static func log_directory() -> String:
+	# The GUI runner exports this so per-group logs and failure diagnostics
+	# land in the same directory before CI uploads them on failure.
+	var configured := OS.get_environment("PSYML_GUI_LOG_DIR")
+	if not configured.is_empty():
+		DirAccess.make_dir_recursive_absolute(configured)
+		return configured
+	return temp_dir()

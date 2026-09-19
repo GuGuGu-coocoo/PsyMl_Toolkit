@@ -264,3 +264,26 @@ func _test_bridge_framing(main) -> void:
 		await create_timer(0.05).timeout
 	_expect(not failure["error"].is_empty())
 	_expect(str(failure["error"]["message"]).length() <= 66000)
+
+	# A Unicode payload written in fragments that cut through multi-byte
+	# characters, with no trailing newline, must still arrive exactly. The
+	# bytes are produced from escapes so the Windows command line stays ASCII.
+	ready["payload"] = {}
+	failure["error"] = {}
+	var unicode_script := "import sys, time\n"
+	unicode_script += "payload = b'{\"schema_version\": \"1.0\", \"ok\": true, \"note\": \"'"
+	unicode_script += " + b'\\xe4\\xb8\\xad\\xe6\\x96\\x87' + b'\"}'\n"
+	unicode_script += "for i in range(0, len(payload), 4):\n"
+	unicode_script += "    sys.stdout.buffer.write(payload[i:i+4])\n"
+	unicode_script += "    sys.stdout.buffer.flush()\n"
+	unicode_script += "    time.sleep(0.01)\n"
+	_expect(bridge.start_explanation(PackedStringArray(), PackedStringArray(["-c", unicode_script])))
+	deadline = Time.get_ticks_msec() + 30000
+	while (
+		ready["payload"].is_empty()
+		and failure["error"].is_empty()
+		and Time.get_ticks_msec() < deadline
+	):
+		await create_timer(0.05).timeout
+	_expect(not ready["payload"].is_empty(), str(failure["error"]))
+	_expect(ready["payload"].get("note", "") == "中文", str(ready["payload"]))

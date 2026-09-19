@@ -100,6 +100,70 @@ def test_timeout_is_reported_instead_of_hanging(tmp_path, monkeypatch):
     assert result.duration < 15.0
 
 
+def _streaming_fake(tmp_path, monkeypatch, body, **kwargs):
+    script = tmp_path / "fake_godot.py"
+    script.write_text(body, encoding="utf-8")
+    monkeypatch.setattr(runner, "build_command", lambda godot, gd: [sys.executable, str(script)])
+    group = ("fake", "test_bridge.gd", MARKER)
+    stream = io.StringIO()
+    log_path = tmp_path / "01-fake.log"
+    result = runner.run_group_streaming(
+        "fake-godot",
+        group,
+        kwargs.pop("timeout", 30.0),
+        stream=stream,
+        log_path=log_path,
+        **kwargs,
+    )
+    return result, stream.getvalue(), log_path
+
+
+def test_streaming_group_writes_log_and_exports_log_dir(tmp_path, monkeypatch):
+    body = (
+        "import os\n"
+        "print('LOGDIR=' + os.environ.get('PSYML_GUI_LOG_DIR', 'unset'))\n"
+        f"print('{MARKER}')\n"
+    )
+    result, streamed, log_path = _streaming_fake(tmp_path, monkeypatch, body)
+
+    assert result.passed is True
+    assert MARKER in streamed
+    logged = log_path.read_text(encoding="utf-8")
+    assert MARKER in logged
+    assert "$ " in logged.splitlines()[0]
+    assert f"LOGDIR={tmp_path}" in logged
+
+
+def test_streaming_timeout_keeps_partial_diagnostics_in_log(tmp_path, monkeypatch):
+    body = "import sys, time\nprint('early diagnostic', flush=True)\ntime.sleep(30)\n"
+    result, _streamed, log_path = _streaming_fake(
+        tmp_path, monkeypatch, body, timeout=0.5
+    )
+
+    assert result.passed is False
+    assert result.problems == ["timeout after 0.5s"]
+    assert result.duration < 15.0
+    assert "early diagnostic" in log_path.read_text(encoding="utf-8")
+
+
+def test_main_writes_per_group_logs_and_clears_stale_ones(tmp_path, monkeypatch):
+    script = tmp_path / "fake_godot.py"
+    script.write_text("print('PSYML_GODOT_BRIDGE_OK')\n", encoding="utf-8")
+    monkeypatch.setattr(runner, "build_command", lambda godot, gd: [sys.executable, str(script)])
+    monkeypatch.setenv("GODOT", sys.executable)
+    stale = tmp_path / "01-bridge.log"
+    stale.write_text("old run\n", encoding="utf-8")
+    failure_note = tmp_path / "ui_flow_failure.txt"
+    failure_note.write_text("old failure\n", encoding="utf-8")
+
+    assert runner.main(["--group", "bridge", "--log-dir", str(tmp_path)]) == 0
+
+    logged = stale.read_text(encoding="utf-8")
+    assert "PSYML_GODOT_BRIDGE_OK" in logged
+    assert "old run" not in logged
+    assert not failure_note.exists()
+
+
 def test_list_groups_and_unknown_group_are_handled(capsys):
     assert runner.main(["--list-groups"]) == 0
     listed = capsys.readouterr().out
