@@ -23,7 +23,12 @@ SENSITIVE_PATTERNS = {
 }
 SECRET_PATTERNS = {
     "AWS access key": re.compile(r"AKIA[0-9A-Z]{16}"),
-    "GitHub token": re.compile(r"gh[pousr]_[A-Za-z0-9_]{20,}"),
+    # A real token starts and ends at a token boundary. Without these
+    # lookarounds the prefix also matched inside identifiers such as
+    # ``test_signal_outweighs_noise_reproducible_and_no_mutation`` (``ghs_noise…``).
+    "GitHub token": re.compile(
+        r"(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9_]{20,}(?![A-Za-z0-9_])"
+    ),
     "private key": re.compile(r"BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY"),
 }
 

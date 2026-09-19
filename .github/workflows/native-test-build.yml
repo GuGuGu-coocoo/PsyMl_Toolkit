@@ -20,14 +20,14 @@ jobs:
         with:
           python-version: '3.12.13'
           enable-cache: true
-      - run: uv sync --locked --group dev --group build
+      - run: uv sync --locked --group dev --group build --extra explain
       - uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789
         with:
           version: 4.7.2
           use-dotnet: false
           include-templates: true
       - name: Build and smoke-test offline application
-        run: uv run --group build python tools/build_native.py
+        run: uv run --group build --extra explain python tools/build_native.py --permutation-smoke --explain-smoke --coefficients-smoke
       - name: Inspect generated build metadata
         if: always()
         shell: bash

@@ -31,13 +31,13 @@ jobs:
           enable-cache: true
 
       - name: Install locked environment
-        run: uv sync --locked --group dev
+        run: uv sync --locked --group dev --extra explain
 
       - name: Lint
         run: uv run ruff check src tests tools
 
       - name: Test
-        run: uv run pytest -q
+        run: uv run --extra explain pytest -q
 
       - name: Audit tracked research fixtures
         if: runner.os == 'Linux'
@@ -58,28 +58,10 @@ jobs:
 
       - name: Expose the locked Python environment to Godot
         shell: bash
-        run: uv run python -c "import os, sys; open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8').write('PSYML_PYTHON=' + sys.executable + '\n')"
+        run: uv run --extra explain python -c "import os, sys; open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8').write('PSYML_PYTHON=' + sys.executable + '\n')"
 
       - name: Validate Godot project
         run: godot --headless --editor --path gui --quit
 
-      - name: Test Godot/Core bridge
-        run: godot --headless --path gui --script res://tests/test_bridge.gd
-
-      - name: Test complete Godot workflow
-        run: godot --headless --path gui --script res://tests/test_ui_flow.gd
-
-      - name: Test researcher feedback interactions
-        run: godot --headless --path gui --script res://tests/test_feedback.gd
-
-      - name: Test task-specific parameter state
-        run: godot --headless --path gui --script res://tests/test_parameter_context.gd
-
-      - name: Test independent validation result switching
-        run: godot --headless --path gui --script res://tests/test_independent_results.gd
-
-      - name: Test GUI configuration import and save
-        run: godot --headless --path gui --script res://tests/test_config_import.gd
-
-      - name: Test model loading and batch prediction UI
-        run: godot --headless --path gui --script res://tests/test_prediction.gd
+      - name: Test the Godot GUI suite
+        run: uv run --extra explain python tools/run_gui_tests.py
