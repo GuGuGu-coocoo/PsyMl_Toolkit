@@ -19,7 +19,17 @@ from psyml.protocol import (
     schema_text,
 )
 
-COMMANDS = {"capabilities", "preview", "run", "schema", "import-config", "model-info", "predict", "export-table"}
+COMMANDS = {
+    "capabilities",
+    "preview",
+    "run",
+    "schema",
+    "import-config",
+    "model-info",
+    "predict",
+    "export-table",
+    "explain",
+}
 
 
 class CancellationRequested(BaseException):
@@ -101,6 +111,30 @@ def build_parser() -> argparse.ArgumentParser:
     export_parser.add_argument("--input", required=True, type=Path)
     export_parser.add_argument("--output", required=True, type=Path)
     export_parser.add_argument("--overwrite", action="store_true")
+
+    explain_parser = commands.add_parser(
+        "explain", help="Explain one prediction row with approximate single-sample SHAP"
+    )
+    explain_parser.add_argument("--model", required=True, type=Path)
+    explain_parser.add_argument("--input", required=True, type=Path,
+                                help="Data containing the row to explain")
+    explain_parser.add_argument("--background", required=True, type=Path,
+                                help="Reference data sampled as the explanation background")
+    explain_parser.add_argument("--row", required=True, type=int,
+                                help="1-based row position in the input, excluding the header")
+    explain_parser.add_argument("--class-index", type=int, dest="class_index",
+                                help="Class position in model classes (classification only)")
+    explain_parser.add_argument("--background-size", type=int, default=50, dest="background_size")
+    explain_parser.add_argument("--cycles", type=int, default=5)
+    explain_parser.add_argument("--seed", type=int, default=42)
+    explain_parser.add_argument("--output-dir", type=Path, dest="output_dir")
+    explain_parser.add_argument("--trust-model", action="store_true")
+    explain_parser.add_argument("--check-only", action="store_true", dest="check_only")
+    explain_parser.add_argument("--feature", action="append",
+                                help="Ordered manual mapping; repeat")
+    explain_parser.add_argument("--overwrite", action="store_true",
+                                help="Not supported in this version; explanation output must "
+                                     "be a new or empty directory")
 
     import_parser = commands.add_parser("import-config", help="Validate a desktop configuration")
     import_parser.add_argument("--config", required=True, type=Path)
@@ -222,6 +256,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command in {"model-info", "predict", "export-table"}:
             _print_json(_prediction_command(args))
+        elif args.command == "explain":
+            _print_json(_explanation_command(args))
         elif args.command == "import-config":
             from psyml.gui_config import import_configuration
 
@@ -282,4 +318,59 @@ def _prediction_command(args):
     save_dataframe(predicted, args.output, overwrite=args.overwrite)
     payload.update(predictions=dataframe_preview(predicted), prediction_columns=columns,
                    output_path=str(args.output))
+    return payload
+
+
+def _explanation_command(args):
+    from psyml.data.io import load_dataframe
+    from psyml.explanation import explain_row, plan_explanation, write_explanation
+    from psyml.prediction import load_model
+
+    loaded = load_model(args.model, trusted=args.trust_model)
+    sample = load_dataframe(args.input)
+    background = load_dataframe(args.background)
+    common = {
+        "row_position": args.row,
+        "mapping": args.feature,
+        "class_index": args.class_index,
+        "background_size": args.background_size,
+        "cycles": args.cycles,
+        "seed": args.seed,
+    }
+    payload = {"model": loaded.metadata, "warnings": loaded.notices}
+    if args.check_only:
+        payload.update(
+            explanation=plan_explanation(loaded, sample, background, **common),
+            check_only=True,
+        )
+        return payload
+    if args.output_dir is None:
+        raise ValueError(
+            "Explanation requires --output-dir (or --check-only for a validation check)."
+        )
+    if args.overwrite:
+        raise ValueError(
+            "--overwrite is not supported for explanations in this version; "
+            "choose a new or empty output directory."
+        )
+    protected = {args.input.resolve(), args.background.resolve(), args.model.resolve(),
+                 (args.model.parent / 'model_metadata.json').resolve()}
+    if args.output_dir.resolve() in protected:
+        raise ValueError("Choose a separate explanation directory; preserve the input and model files.")
+    result = explain_row(
+        loaded,
+        sample,
+        background,
+        model_file=args.model,
+        input_file=args.input,
+        background_file=args.background,
+        **common,
+    )
+    artifacts = write_explanation(
+        result,
+        args.output_dir,
+        protected_paths=(args.input, args.background, args.model,
+                         args.model.parent / 'model_metadata.json'),
+    )
+    payload.update(explanation=result, artifacts=artifacts, output_dir=str(args.output_dir))
     return payload

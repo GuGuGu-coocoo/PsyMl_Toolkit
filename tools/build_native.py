@@ -29,6 +29,8 @@ def main():
                         help="Version label for the package name and BUILD.json")
     parser.add_argument("--permutation-smoke", action="store_true",
                         help="Run bundled-core permutation classification/regression smoke")
+    parser.add_argument("--explain-smoke", action="store_true",
+                        help="Run bundled-core single-sample explanation classification/regression smoke")
     args = parser.parse_args()
     if not args.output_dir.is_absolute():
         args.output_dir = ROOT / args.output_dir
@@ -56,10 +58,13 @@ def main():
                "--specpath", str(ROOT / "tmp/native"), "--paths", str(ROOT / "src"),
                "--collect-submodules", "psyml", "--collect-data", "psyml",
                "--recursive-copy-metadata", "psyml-toolkit",
-               "--collect-all", "pyreadstat", "--hidden-import", "openpyxl",
+               "--collect-all", "pyreadstat", "--collect-all", "numba",
+               "--collect-all", "llvmlite", "--collect-all", "shap",
+               "--hidden-import", "openpyxl",
                "--hidden-import", "xlrd", "--hidden-import", "pyarrow.parquet"]
     for package in ["psyml-toolkit", "numpy", "pandas", "matplotlib", "scikit-learn",
-                    "scipy", "pyarrow", "pyreadstat", "openpyxl", "xlrd"]:
+                    "scipy", "pyarrow", "pyreadstat", "openpyxl", "xlrd",
+                    "shap", "numba", "llvmlite", "slicer", "tqdm"]:
         command.extend(["--copy-metadata", package])
     command.append(str(ROOT / "tools/frozen_core.py"))
     if not args.reuse_core:
@@ -145,6 +150,37 @@ def main():
                 if not (interpretation / name).is_file():
                     raise RuntimeError(f"missing bundled-core permutation artefact: {name}")
         print("PSYML_PERMUTATION_BUNDLE_OK")
+    if args.explain_smoke:
+        quickstart = destination / "examples/quickstart"
+        for task in ["classification", "regression"]:
+            run_dir = quickstart / f"results/quickstart_{task}"
+            shutil.rmtree(run_dir, ignore_errors=True)
+            subprocess.run(
+                [str(core), "run", "--config", f"{task}_config.json"],
+                cwd=quickstart, env=environment, check=True, capture_output=True,
+                text=True, timeout=600)
+            models = sorted((run_dir / "model").glob("best_*.joblib"))
+            if len(models) != 1:
+                raise RuntimeError(f"expected one saved {task} model, found {models}")
+            data = quickstart / f"{task}_predict.csv"
+            out = quickstart / f"results/quickstart_{task}_explain"
+            shutil.rmtree(out, ignore_errors=True)
+            arguments = [str(core), "explain", "--model", str(models[0]),
+                         "--input", str(data), "--background", str(data),
+                         "--row", "1", "--background-size", "20", "--cycles", "3",
+                         "--trust-model", "--output-dir", str(out)]
+            if task == "classification":
+                arguments.extend(["--class-index", "0"])
+            subprocess.run(arguments, cwd=quickstart, env=environment, check=True,
+                           capture_output=True, text=True, timeout=600)
+            for name in ["shap_explanation.json", "shap_contributions.csv",
+                         "shap_waterfall.png", "shap_explanation_notes.md"]:
+                if not (out / name).is_file():
+                    raise RuntimeError(f"missing bundled-core explanation artefact: {name}")
+            explanation = json.loads((out / "shap_explanation.json").read_text(encoding="utf-8"))
+            if explanation["reconstruction_abs_error"] > 1e-6:
+                raise RuntimeError("bundled-core explanation reconstruction failed")
+        print("PSYML_EXPLANATION_BUNDLE_OK")
     archive = Path(str(destination) + ".zip")
     if mac:
         run("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", destination, archive)

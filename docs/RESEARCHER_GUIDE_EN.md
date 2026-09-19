@@ -229,7 +229,13 @@ Outputs preserve original row order and all input columns, adding `predicted_cla
 
 Nine input formats are supported; export CSV, TSV, XLSX, SAV, DTA, XPT or Parquet. XLS/SAS7BDAT are read-only, so the GUI defaults to XLSX. Statistical-format limits can prevent export; try XLSX or Parquet. Keep the model and metadata together. Corruption, hash mismatch or a different scikit-learn version causes errors; missing metadata triggers recovery where possible, without guaranteeing completeness.
 
-Implementation: [persistence](../src/psyml/models/persistence.py), [effective parameters](../src/psyml/models/parameters.py), [prediction](../src/psyml/prediction.py).
+### Single-sample SHAP explanation (optional, FR-004)
+
+Once a model and data pass the page-4 check, you can explain one sample: choose a background reference file, the 1-based sample row, the background row count (default 50, 1–100) and permutation cycles (default 5, 1–20); for classification also choose the class and see its original label. The computation runs in a cancellable subprocess, may be slow on the first run, and can be stopped at any time. The result block shows a cumulative waterfall that steps from the baseline value to the model output (signed direction, original names and values, top N plus an "other N (sum)" bar while the CSV keeps every contribution) together with **Open waterfall image**, **Open results folder** and **Export explanation…** controls. **Export explanation…** writes only to a new or empty folder and never overwrites existing files (a non-empty destination gets a unique new subdirectory, and the current results folder cannot be the destination; the CLI `explain --output-dir` also requires a new/empty directory and rejects `--overwrite`). Artifacts are `shap_explanation.json`, `shap_contributions.csv`, `shap_waterfall.png` and `shap_explanation_notes.md`, satisfying `base + Σφ = selected output` (tolerance 1e-7/1e-6); completed artifacts stay on disk when the row/class/settings change or the page closes.
+
+These are **approximate** finite-permutation SHAP values: not exact SHAP, not causal, not outer test performance, and marginal background replacement does not preserve predictor correlation. The first release supports classification `logistic_regression`/`decision_tree`/`random_forest` and regression `linear_regression`/`ridge`/`lasso`/`elastic_net`/`decision_tree`/`random_forest`, and only accepts saved models with PsyML export metadata (`psyml_version`/`fit_scope`) and the standard `preprocess`+`model` structure; external or custom-preprocess models report a clear unsupported reason. Ordinary prediction is unaffected. Without the optional `explain` dependencies this section is unavailable.
+
+Implementation: [persistence](../src/psyml/models/persistence.py), [effective parameters](../src/psyml/models/parameters.py), [prediction](../src/psyml/prediction.py), [explanation](../src/psyml/explanation.py).
 
 ### Figures
 

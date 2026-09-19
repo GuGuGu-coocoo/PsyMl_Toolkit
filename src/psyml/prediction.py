@@ -185,9 +185,15 @@ def compatibility_check(loaded: LoadedModel, frame: pd.DataFrame, mapping=None) 
             'warnings': loaded.notices, 'n_features': metadata['n_features']}
 
 
-def predict_dataframe(loaded, frame, mapping=None):
-    """Append native predictions, keeping original values, target, row order and index."""
-    check = compatibility_check(loaded, frame, mapping)
+def model_input(loaded: LoadedModel, frame: pd.DataFrame, mapping=None, *, check=None):
+    """Build the exact object passed to ``model.predict`` for a checked frame.
+
+    Single source of truth for the inference input path (column order, numeric
+    coercion, manual-mapping conversion) so explanation and plain prediction
+    cannot drift apart.
+    """
+    if check is None:
+        check = compatibility_check(loaded, frame, mapping)
     if not check['compatible']:
         raise ValueError(' '.join(error['message'] for error in check['errors']))
     features = frame.loc[:, check['feature_order']].copy()
@@ -196,6 +202,13 @@ def predict_dataframe(loaded, frame, mapping=None):
             features[name] = pd.to_numeric(features[name])
     if check['manual_mapping']:
         features = features.to_numpy()
+    return features
+
+
+def predict_dataframe(loaded, frame, mapping=None):
+    """Append native predictions, keeping original values, target, row order and index."""
+    check = compatibility_check(loaded, frame, mapping)
+    features = model_input(loaded, frame, mapping, check=check)
     try:
         predicted = np.asarray(loaded.model.predict(features))
         probabilities = (np.asarray(loaded.model.predict_proba(features))

@@ -103,6 +103,17 @@ FR-009 : `build_interpretation` dans `psyml.reporting.interpretation` n’agrèg
 
 Une PR doit expliquer problème, comportement obtenu, vérifications et limites. Évitez les refactorisations sans rapport ; explicitez les conséquences scientifiques, de compatibilité ou de dépendances. Les contributions suivent [Apache-2.0](../LICENSE). N’envoyez jamais de données de participants, documents non publiés ou identifiants. Les commandes de développement ne sont pas des étapes obligatoires pour les chercheurs.
 
+## Extension facultative d'explication
+
+La fonctionnalité FR-004 dépend de `shap`, `numba` et `llvmlite`, exclus de l'installation par défaut afin de préserver le démarrage à froid et la taille du paquet pour l'analyse et la prédiction ordinaires. Installer uniquement si nécessaire :
+
+```bash
+uv sync --extra explain
+uv pip install -e ".[explain]"   # équivalent pip/venv
+```
+
+`pyproject.toml` fixe les versions SHAP adaptées à Python (3.10 → 0.49.x, 3.11 → 0.51.x, 3.12 → 0.52.x) ; `uv.lock` les enregistre sans mettre à jour scikit-learn ni d'autres dépendances. `tools/build_native.py` intègre shap/numba/llvmlite au noyau, copie leurs licences dans `tools/licenses/` et `--explain-smoke` vérifie l'explication et la reconstruction en classification/régression. Windows n'est pas exécuté sur ce Mac.
+
 ## Construction et publication
 
 [build_native.py](../tools/build_native.py) utilise PyInstaller pour le noyau et Godot pour l’interface, sur le système cible avec les modèles d’export correspondants. Cibles : macOS avec puce Apple et Windows x64. Une construction Mac ne valide pas Windows.

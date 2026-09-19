@@ -2,6 +2,7 @@ extends Node
 ## Local inference UI; the core owns schema validation and prediction semantics.
 
 const DataPreview = preload("res://scripts/data_preview.gd")
+const EXPLANATION_EXPORT_ORDER := ["csv", "png", "notes", "json"]
 var main: Control
 var bridge: CoreBridge
 var page: ScrollContainer
@@ -41,6 +42,33 @@ var operation := ""
 var busy := false
 var error_message := ""
 var export_path := ""
+var background_button: Button
+var background_label: Label
+var background_dialog: FileDialog
+var explain_row: SpinBox
+var explain_class: OptionButton
+var explain_class_box: VBoxContainer
+var explain_background_size: SpinBox
+var explain_cycles: SpinBox
+var explain_button: Button
+var explain_cancel_button: Button
+var explain_status: Label
+var explain_summary: Label
+var explain_tree: Tree
+var explain_view: TextureRect
+var explain_open_button: Button
+var explain_folder_button: Button
+var explain_export_button: Button
+var explain_export_dialog: FileDialog
+var background_path := ""
+var explain_busy := false
+var explanation: Dictionary = {}
+var explain_error := ""
+var explain_output_dir := ""
+var explain_artifacts: Dictionary = {}
+var explain_request := 0
+var explain_staging_root := ""
+var explain_note := ""
 
 
 func build(owner: Control) -> void:
@@ -66,11 +94,14 @@ func build(owner: Control) -> void:
 	content.add_child(trust)
 	main.translated_controls.append({"node": trust, "key": "TRUST_MODEL"})
 	trust.toggled.connect(func(value):
+		if explain_busy:
+			return
 		if not value:
 			model_path = ""
 			metadata = {}
 			compatibility = {}
 			_clear_predictions()
+			_clear_explanation()
 		refresh_language())
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 20)
@@ -112,9 +143,58 @@ func build(owner: Control) -> void:
 	result_summary = label(content, "PREDICTION_RESULTS")
 	result_tree = tree(content, 180)
 	label(content, "PREDICTION_SCIENCE")
+	label(content, "EXPLAIN_HEADING").add_theme_font_size_override("font_size", 20)
+	label(content, "EXPLAIN_HELP")
+	var explain_options := HBoxContainer.new()
+	explain_options.add_theme_constant_override("separation", 14)
+	content.add_child(explain_options)
+	background_button = button(explain_options, "LOAD_BACKGROUND")
+	background_label = label(explain_options, "NO_BACKGROUND")
+	var row_box := VBoxContainer.new()
+	explain_options.add_child(row_box)
+	label(row_box, "EXPLAIN_ROW")
+	explain_row = _spin(row_box, 1, 100000, 1)
+	explain_class_box = VBoxContainer.new()
+	explain_options.add_child(explain_class_box)
+	label(explain_class_box, "EXPLAIN_CLASS")
+	explain_class = OptionButton.new()
+	explain_class.custom_minimum_size.x = 120
+	explain_class_box.add_child(explain_class)
+	var size_box := VBoxContainer.new()
+	explain_options.add_child(size_box)
+	label(size_box, "EXPLAIN_BACKGROUND_SIZE")
+	explain_background_size = _spin(size_box, 1, 100, 50)
+	var cycles_box := VBoxContainer.new()
+	explain_options.add_child(cycles_box)
+	label(cycles_box, "EXPLAIN_CYCLES")
+	explain_cycles = _spin(cycles_box, 1, 20, 5)
+	var explain_actions := HBoxContainer.new()
+	content.add_child(explain_actions)
+	explain_button = button(explain_actions, "RUN_EXPLANATION")
+	explain_cancel_button = button(explain_actions, "CANCEL_EXPLANATION")
+	var explain_deliver := HBoxContainer.new()
+	explain_deliver.add_theme_constant_override("separation", 14)
+	content.add_child(explain_deliver)
+	explain_open_button = button(explain_deliver, "OPEN_WATERFALL")
+	explain_folder_button = button(explain_deliver, "OPEN_RESULTS_FOLDER")
+	explain_export_button = button(explain_deliver, "EXPORT_EXPLANATION")
+	explain_status = label(content, "EXPLAIN_WAITING")
+	explain_summary = label(content, "EXPLAIN_RESULTS")
+	explain_view = TextureRect.new()
+	explain_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	explain_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	explain_view.custom_minimum_size.y = 220
+	explain_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	explain_view.hide()
+	content.add_child(explain_view)
+	explain_tree = tree(content, 200)
+	explain_tree.columns = 4
+	label(content, "EXPLAIN_SCIENCE")
 	model_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, PackedStringArray(["*.joblib,*.pkl ; sklearn / joblib"]))
 	data_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, main.file_dialog.filters)
 	export_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_SAVE_FILE, PackedStringArray())
+	background_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, main.file_dialog.filters)
+	explain_export_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_DIR, PackedStringArray())
 	model_button.pressed.connect(func():
 		model_dialog.title = tr("LOAD_MODEL")
 		model_dialog.popup_centered_ratio(0.8))
@@ -128,6 +208,41 @@ func build(owner: Control) -> void:
 	predict_button.pressed.connect(run_prediction)
 	export_button.pressed.connect(_choose_export)
 	export_dialog.file_selected.connect(export_predictions)
+	background_button.pressed.connect(func():
+		background_dialog.title = tr("LOAD_BACKGROUND")
+		if background_path.is_empty():
+			background_dialog.current_dir = input_path.get_base_dir() if not input_path.is_empty() else CoreBridge.quickstart_directory()
+		background_dialog.popup_centered_ratio(0.8))
+	background_dialog.file_selected.connect(load_background)
+	explain_button.pressed.connect(run_explanation)
+	explain_cancel_button.pressed.connect(cancel_explanation)
+	explain_open_button.pressed.connect(open_waterfall)
+	explain_folder_button.pressed.connect(open_explanation_folder)
+	explain_export_button.pressed.connect(_choose_explanation_export)
+	explain_export_dialog.dir_selected.connect(export_explanation)
+	explain_row.value_changed.connect(func(_value):
+		if explain_busy:
+			return
+		_clear_explanation()
+		refresh_language())
+	explain_class.item_selected.connect(func(_index):
+		if explain_busy:
+			return
+		_clear_explanation()
+		refresh_language())
+	explain_background_size.value_changed.connect(func(_value):
+		if explain_busy:
+			return
+		_clear_explanation()
+		refresh_language())
+	explain_cycles.value_changed.connect(func(_value):
+		if explain_busy:
+			return
+		_clear_explanation()
+		refresh_language())
+	bridge.explanation_ready.connect(_explanation_response)
+	bridge.explanation_failed.connect(_explanation_failed)
+	bridge.explanation_cancelled.connect(_explanation_cancelled)
 	main._configure_readable_controls(page)
 
 
@@ -156,6 +271,17 @@ func tree(parent: Node, height: int) -> Tree:
 	return control
 
 
+func _spin(parent: Node, minimum: int, maximum: int, value: int) -> SpinBox:
+	var control := SpinBox.new()
+	control.min_value = minimum
+	control.max_value = maximum
+	control.step = 1
+	control.value = value
+	control.custom_minimum_size.x = 90
+	parent.add_child(control)
+	return control
+
+
 func _request(kind: String, arguments: PackedStringArray) -> void:
 	operation = kind
 	busy = true
@@ -165,7 +291,7 @@ func _request(kind: String, arguments: PackedStringArray) -> void:
 
 
 func load_model(path: String) -> void:
-	if busy or not trust.button_pressed:
+	if busy or explain_busy or not trust.button_pressed:
 		return
 	model_path = path
 	metadata = {}
@@ -173,17 +299,19 @@ func load_model(path: String) -> void:
 	compatibility = {}
 	mapping.clear()
 	_clear_predictions()
+	_clear_explanation()
 	_request("model", PackedStringArray(["model-info", "--model", path, "--trust-model"]))
 
 
 func load_data(path: String) -> void:
-	if busy:
+	if busy or explain_busy:
 		return
 	input_path = path
 	data = {}
 	compatibility = {}
 	mapping.clear()
 	_clear_predictions()
+	_clear_explanation()
 	_request("data", PackedStringArray(["preview", "--input", path, "--include-sample"]))
 
 
@@ -217,6 +345,7 @@ func _response(payload: Dictionary) -> void:
 			metadata = payload.model
 			model_notices = payload.get("warnings", [])
 			_build_mapping()
+			_build_explanation_classes()
 			_check()
 		"data":
 			data = payload
@@ -228,6 +357,7 @@ func _response(payload: Dictionary) -> void:
 			data = payload.preview
 			compatibility = payload.compatibility
 			default_suffix = payload.default_output_suffix
+			_build_explanation_classes()
 		"predict":
 			metadata = payload.model
 			model_notices = payload.get("warnings", [])
@@ -235,13 +365,14 @@ func _response(payload: Dictionary) -> void:
 			compatibility = payload.compatibility
 			predictions = payload.predictions
 			result_path = payload.output_path
+			_build_explanation_classes()
 		"export":
 			export_path = payload.output_path
 	refresh_language()
 
 
 func run_prediction() -> void:
-	if busy or not compatibility.get("compatible", false) or not trust.button_pressed:
+	if busy or explain_busy or not compatibility.get("compatible", false) or not trust.button_pressed:
 		return
 	_clear_predictions()
 	var directory := ProjectSettings.globalize_path("user://prediction")
@@ -283,7 +414,7 @@ func _build_mapping() -> void:
 
 
 func confirm_mapping() -> void:
-	if busy:
+	if busy or explain_busy:
 		return
 	mapping.clear()
 	for option in mapping_options:
@@ -293,7 +424,7 @@ func confirm_mapping() -> void:
 
 
 func _choose_export() -> void:
-	if busy or predictions.is_empty():
+	if busy or explain_busy or predictions.is_empty():
 		return
 	var filters := PackedStringArray()
 	var formats: Array = main.capabilities.get("output_formats", [".csv", ".xlsx", ".parquet"])
@@ -309,7 +440,7 @@ func _choose_export() -> void:
 
 
 func export_predictions(path: String) -> void:
-	if busy or predictions.is_empty():
+	if busy or explain_busy or predictions.is_empty():
 		return
 	if path in [input_path, model_path, model_path.get_base_dir().path_join("model_metadata.json")]:
 		error_message = tr("PRESERVE_SOURCE")
@@ -327,17 +458,321 @@ func _clear_predictions() -> void:
 	predictions = {}
 
 
+func load_background(path: String) -> void:
+	if busy or explain_busy:
+		return
+	background_path = path
+	_clear_explanation()
+	refresh_language()
+
+
+func _build_explanation_classes() -> void:
+	explain_class.clear()
+	var classes: Array = metadata.get("classes") if metadata.get("classes") is Array else []
+	for index in range(classes.size()):
+		explain_class.add_item(tr("CLASS_INDEX_LABEL") % [index, str(classes[index])])
+		explain_class.set_item_metadata(index, index)
+	if classes.is_empty():
+		explain_class.add_item(tr("UNAVAILABLE"))
+
+
+func run_explanation() -> void:
+	if busy or explain_busy or not trust.button_pressed:
+		return
+	if metadata.is_empty() or input_path.is_empty() or not compatibility.get("compatible", false):
+		return
+	if background_path.is_empty():
+		explain_error = tr("EXPLAIN_BACKGROUND_REQUIRED")
+		refresh_language()
+		return
+	if metadata.get("task") == "classification" and explain_class.selected < 0:
+		explain_error = tr("EXPLAIN_CLASS_REQUIRED")
+		refresh_language()
+		return
+	var directory := ProjectSettings.globalize_path("user://explanation")
+	DirAccess.make_dir_recursive_absolute(directory)
+	explain_staging_root = directory
+	_cleanup_owned_staging()
+	_clear_explanation()
+	explain_output_dir = directory.path_join("explain_%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()])
+	var args := PackedStringArray([
+		"explain", "--model", model_path, "--input", input_path,
+		"--background", background_path, "--row", str(int(explain_row.value)),
+		"--background-size", str(int(explain_background_size.value)),
+		"--cycles", str(int(explain_cycles.value)), "--seed", "42",
+		"--trust-model", "--output-dir", explain_output_dir])
+	for name in mapping:
+		args.append_array(["--feature", name])
+	if metadata.get("task") == "classification":
+		args.append_array(["--class-index", str(int(explain_class.get_item_metadata(explain_class.selected)))])
+	explain_busy = true
+	explain_error = ""
+	refresh_language()
+	if not bridge.start_explanation(args):
+		explain_busy = false
+		refresh_language()
+		return
+	explain_request = bridge.explanation_generation()
+
+
+func cancel_explanation() -> void:
+	if not explain_busy:
+		return
+	explain_busy = false
+	bridge.cancel_explanation()
+
+
+func _explanation_response(payload: Dictionary, generation: int) -> void:
+	if generation != explain_request:
+		return
+	explain_busy = false
+	if payload.has("error"):
+		explain_error = str(payload.error.get("message", tr("EXPLAIN_FAILED")))
+		explanation = {}
+		explain_artifacts = {}
+		refresh_language()
+		return
+	explanation = payload.get("explanation", {})
+	explain_artifacts = payload.get("artifacts", {})
+	if payload.get("output_dir"):
+		explain_output_dir = str(payload.output_dir)
+	if explanation.is_empty():
+		explain_error = tr("EXPLAIN_FAILED")
+	refresh_language()
+
+
+func _explanation_failed(error: Dictionary, generation: int) -> void:
+	if generation != explain_request:
+		return
+	explain_busy = false
+	explanation = {}
+	explain_artifacts = {}
+	explain_error = str(error.get("message", tr("EXPLAIN_FAILED")))
+	refresh_language()
+
+
+func _explanation_cancelled(generation: int) -> void:
+	if generation != explain_request:
+		return
+	explain_busy = false
+	explanation = {}
+	explain_artifacts = {}
+	explain_error = tr("EXPLAIN_CANCELLED")
+	refresh_language()
+
+
+func _cleanup_owned_staging() -> void:
+	# Remove only this tool's own incomplete staging directories; never touch
+	# completed explanation output directories.
+	if explain_staging_root.is_empty():
+		return
+	var directory := DirAccess.open(explain_staging_root)
+	if directory == null:
+		return
+	for name in directory.get_directories():
+		if name.begins_with(".psyml-explanation-staging-"):
+			DirAccess.remove_absolute(explain_staging_root.path_join(name))
+
+
+func open_waterfall() -> void:
+	var path := str(explain_artifacts.get("png", ""))
+	if path.is_empty() or not FileAccess.file_exists(path):
+		explain_error = tr("EXPLAIN_NO_ARTIFACT")
+		refresh_language()
+		return
+	OS.shell_open(path)
+
+
+func open_explanation_folder() -> void:
+	if explain_output_dir.is_empty() or not DirAccess.dir_exists_absolute(explain_output_dir):
+		explain_error = tr("EXPLAIN_NO_ARTIFACT")
+		refresh_language()
+		return
+	OS.shell_open(explain_output_dir)
+
+
+func _choose_explanation_export() -> void:
+	if explain_artifacts.is_empty():
+		explain_error = tr("EXPLAIN_NO_ARTIFACT")
+		refresh_language()
+		return
+	explain_export_dialog.title = tr("EXPORT_EXPLANATION")
+	explain_export_dialog.popup_centered_ratio(0.8)
+
+
+func _explanation_source_dir() -> String:
+	for key in EXPLANATION_EXPORT_ORDER:
+		if explain_artifacts.has(key):
+			return str(explain_artifacts[key]).get_base_dir()
+	return ""
+
+
+func _explanation_file_ready(path: String) -> bool:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return false
+	var length := file.get_length()
+	file.close()
+	return length > 0
+
+
+func _explanation_directory_empty(path: String) -> bool:
+	var directory := DirAccess.open(path)
+	if directory == null:
+		return false
+	return directory.get_files().is_empty() and directory.get_directories().is_empty()
+
+
+func _explanation_index_matches_at(json_path: String) -> bool:
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(json_path))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return false
+	var index = parsed.get("artifacts", {})
+	if typeof(index) != TYPE_DICTIONARY:
+		return false
+	for key in EXPLANATION_EXPORT_ORDER:
+		if str(index.get(key, "")) != str(explain_artifacts[key]).get_file():
+			return false
+	return true
+
+
+func export_explanation(directory: String) -> void:
+	# Delivery is all-or-nothing and never overwrites existing files: the target
+	# is a new/empty directory, or a unique new subdirectory of the chosen
+	# folder. Every source artifact is checked first, the JSON completion marker
+	# is copied last and re-verified, and a failed copy removes only the files it
+	# created and reports an error without a success marker.
+	explain_error = ""
+	explain_note = ""
+	if explain_artifacts.is_empty():
+		explain_error = tr("EXPLAIN_NO_ARTIFACT")
+		refresh_language()
+		return
+	for key in EXPLANATION_EXPORT_ORDER:
+		if not explain_artifacts.has(key) or not _explanation_file_ready(str(explain_artifacts[key])):
+			explain_error = tr("EXPLAIN_EXPORT_INCOMPLETE")
+			refresh_language()
+			return
+	var source_dir := _explanation_source_dir().simplify_path()
+	var base := directory.simplify_path()
+	if source_dir != "" and base == source_dir:
+		explain_error = tr("EXPLAIN_EXPORT_SAME_DIR")
+		refresh_language()
+		return
+	var target := base
+	var created_target := false
+	if not DirAccess.dir_exists_absolute(target):
+		DirAccess.make_dir_recursive_absolute(target)
+		if not DirAccess.dir_exists_absolute(target):
+			explain_error = tr("EXPLAIN_EXPORT_FAILED")
+			refresh_language()
+			return
+		created_target = true
+	elif not _explanation_directory_empty(target):
+		target = base.path_join("psyml-explanation-%d-%d" % [OS.get_process_id(), Time.get_ticks_usec()])
+		DirAccess.make_dir_recursive_absolute(target)
+		if not DirAccess.dir_exists_absolute(target):
+			explain_error = tr("EXPLAIN_EXPORT_FAILED")
+			refresh_language()
+			return
+		created_target = true
+	if not _explanation_index_matches_at(str(explain_artifacts["json"])):
+		if created_target and _explanation_directory_empty(target):
+			DirAccess.remove_absolute(target)
+		explain_error = tr("EXPLAIN_EXPORT_INCOMPLETE")
+		refresh_language()
+		return
+	for key in EXPLANATION_EXPORT_ORDER:
+		var destination := target.path_join(str(explain_artifacts[key]).get_file())
+		if FileAccess.file_exists(destination):
+			if created_target and _explanation_directory_empty(target):
+				DirAccess.remove_absolute(target)
+			explain_error = tr("EXPLAIN_EXPORT_EXISTS")
+			refresh_language()
+			return
+	var written: Array[String] = []
+	var failed := false
+	for key in EXPLANATION_EXPORT_ORDER:
+		var source := str(explain_artifacts[key])
+		var destination := target.path_join(source.get_file())
+		if DirAccess.copy_absolute(source, destination) != OK or not _explanation_file_ready(destination):
+			failed = true
+			break
+		written.append(destination)
+	if not failed:
+		var copied_json := target.path_join(str(explain_artifacts["json"]).get_file())
+		if not _explanation_index_matches_at(copied_json):
+			failed = true
+	if failed:
+		for path in written:
+			DirAccess.remove_absolute(path)
+		if created_target and _explanation_directory_empty(target):
+			DirAccess.remove_absolute(target)
+		explain_error = tr("EXPLAIN_EXPORT_FAILED")
+		refresh_language()
+		return
+	explain_note = tr("EXPLAIN_EXPORTED") + " " + target
+	refresh_language()
+
+
+func _clear_explanation() -> void:
+	# Clears the UI only; completed artifacts stay on disk and remain accessible.
+	explanation = {}
+	explain_error = ""
+	explain_artifacts = {}
+	explain_output_dir = ""
+	explain_note = ""
+
+
+func _fill_explanation_tree() -> void:
+	explain_tree.clear()
+	for index in range(4):
+		explain_tree.set_column_title(index, tr(["COL_FEATURE", "COL_VALUE", "COL_CONTRIBUTION", "COL_DIRECTION"][index]))
+	var root := explain_tree.create_item()
+	explain_summary.text = tr("EXPLAIN_RESULTS")
+	if explanation.is_empty():
+		_update_explanation_artifacts()
+		return
+	var base := str(explanation.get("base_value", ""))
+	var output := str(explanation.get("model_output", ""))
+	var error := String.num(float(explanation.get("reconstruction_abs_error", 0.0)), 10)
+	explain_summary.text += " · " + (tr("EXPLAIN_SUMMARY") % [base, output, error])
+	if explanation.get("task", "") == "classification":
+		explain_summary.text += " · " + tr("EXPLAIN_TARGET") + ": " + str(explanation.get("target_class", ""))
+	for record in explanation.get("sample_features", []):
+		var item := explain_tree.create_item(root)
+		item.set_text(0, str(record.get("name", "")))
+		item.set_text(1, "<missing>" if record.get("missing", false) else str(record.get("value", "")))
+		item.set_text(2, String.num(float(record.get("contribution", 0.0)), 6))
+		item.set_text(3, tr("DIRECTION_POSITIVE") if str(record.get("direction", "")) == "positive" else tr("DIRECTION_NEGATIVE"))
+		item.set_tooltip_text(0, str(record.get("name", "")))
+		item.set_tooltip_text(1, str(record.get("value", "")))
+	_update_explanation_artifacts()
+
+
+func _update_explanation_artifacts() -> void:
+	explain_view.texture = null
+	explain_view.hide()
+	var png := str(explain_artifacts.get("png", ""))
+	if png.is_empty() or not FileAccess.file_exists(png):
+		return
+	var image := Image.load_from_file(png)
+	if image != null:
+		explain_view.texture = ImageTexture.create_from_image(image)
+		explain_view.show()
+
+
 func refresh_language() -> void:
 	main.tabs.set_tab_title(4, tr("TAB_PREDICTION"))
-	model_button.disabled = busy or not trust.button_pressed
-	trust.disabled = busy
-	data_button.disabled = busy
-	predict_button.disabled = busy or not trust.button_pressed or not compatibility.get("compatible", false)
-	export_button.disabled = busy or predictions.is_empty()
+	model_button.disabled = busy or explain_busy or not trust.button_pressed
+	trust.disabled = busy or explain_busy
+	data_button.disabled = busy or explain_busy
+	predict_button.disabled = busy or explain_busy or not trust.button_pressed or not compatibility.get("compatible", false)
+	export_button.disabled = busy or explain_busy or predictions.is_empty()
 	for option in mapping_options:
-		option.disabled = busy
+		option.disabled = busy or explain_busy
 	if is_instance_valid(mapping_confirm):
-		mapping_confirm.disabled = busy
+		mapping_confirm.disabled = busy or explain_busy
 		mapping_confirm.text = tr("CONFIRM_MAPPING")
 	mapping_toggle.visible = not metadata.is_empty() and metadata.get("feature_names", []).is_empty()
 	if not mapping_toggle.visible:
@@ -394,7 +829,41 @@ func refresh_language() -> void:
 			status.text += "\n" + tr("MODEL_METADATA_FALLBACK")
 		if not export_path.is_empty():
 			status.text = tr("PREDICTION_EXPORTED") + " " + export_path
+	background_button.disabled = busy or explain_busy
+	background_label.tooltip_text = background_path
+	background_label.text = background_path.get_file() if not background_path.is_empty() else tr("NO_BACKGROUND")
+	explain_row.editable = not (busy or explain_busy)
+	explain_row.max_value = maxi(1, int(data.get("row_count", 1)))
+	if explain_row.value > explain_row.max_value:
+		explain_row.value = explain_row.max_value
+	var classification: bool = str(metadata.get("task", "")) == "classification"
+	explain_class_box.visible = classification
+	explain_class.disabled = busy or explain_busy
+	explain_background_size.editable = not (busy or explain_busy)
+	explain_cycles.editable = not (busy or explain_busy)
+	var ready: bool = (not busy and not explain_busy and trust.button_pressed
+		and not metadata.is_empty() and not input_path.is_empty()
+		and compatibility.get("compatible", false) and not background_path.is_empty())
+	explain_button.disabled = not ready
+	explain_cancel_button.disabled = not explain_busy
+	explain_open_button.disabled = explain_busy or not explain_artifacts.has("png")
+	explain_folder_button.disabled = explain_busy or explain_artifacts.is_empty()
+	explain_export_button.disabled = explain_busy or explain_artifacts.is_empty()
+	if explain_busy:
+		explain_status.text = tr("EXPLAIN_BUSY")
+	elif not explain_error.is_empty():
+		explain_status.text = explain_error
+	elif not explain_note.is_empty():
+		explain_status.text = explain_note
+	elif not explanation.is_empty():
+		explain_status.text = tr("EXPLAIN_DONE")
+	else:
+		explain_status.text = tr("EXPLAIN_WAITING")
+	_fill_explanation_tree()
 
 
 func _exit_tree() -> void:
+	if explain_busy:
+		bridge.cancel_explanation()
+	_clear_explanation()
 	_clear_predictions()

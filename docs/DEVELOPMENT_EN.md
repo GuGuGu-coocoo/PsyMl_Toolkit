@@ -103,6 +103,17 @@ FR-009: `build_interpretation` in `psyml.reporting.interpretation` aggregates on
 
 PRs should explain the problem, resulting behavior, validation and limitations. Avoid unrelated refactoring; identify scientific, compatibility and dependency impacts. Contributions follow [Apache-2.0](../LICENSE). Never upload participant data, unpublished material or credentials. Keep developer commands out of researcher instructions.
 
+## Optional single-sample explanation extra
+
+The FR-004 explanation feature depends on `shap`, `numba` and `llvmlite`, kept out of the default install so ordinary analysis and prediction retain their cold-start and package size. Install them only when needed:
+
+```bash
+uv sync --extra explain
+uv pip install -e ".[explain]"   # pip/venv equivalent
+```
+
+`pyproject.toml` pins version-appropriate SHAP releases per Python (3.10 → 0.49.x, 3.11 → 0.51.x, 3.12 → 0.52.x). `uv.lock` records them without upgrading unrelated dependencies such as scikit-learn. `tools/build_native.py` bundles shap/numba/llvmlite into the core, copies their licenses into `tools/licenses/`, and `--explain-smoke` checks bundled classification/regression explanation and reconstruction. Windows is not executed on this Mac.
+
 ## Building and release maintenance
 
 [build_native.py](../tools/build_native.py) freezes the core with PyInstaller and exports Godot on the target OS. Matching Godot export templates are required. Targets are Apple Silicon macOS and Windows x64; a Mac build does not validate Windows.

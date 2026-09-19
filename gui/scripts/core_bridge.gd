@@ -6,11 +6,20 @@ signal response_ready(payload: Dictionary)
 signal preview_ready(payload: Dictionary)
 signal preview_failed(error: Dictionary)
 signal event_received(payload: Dictionary)
+signal explanation_ready(payload: Dictionary, generation: int)
+signal explanation_failed(error: Dictionary, generation: int)
+signal explanation_cancelled(generation: int)
+
+const MAX_DIAGNOSTIC_CHARS := 65536
 
 var _preview_thread: Thread
 var _process_data: Dictionary = {}
 var _saw_terminal_event := false
 var _pending_terminal_event: Dictionary = {}
+var _explain_data: Dictionary = {}
+var _explain_stdout := ""
+var _explain_stderr := ""
+var _explain_generation := 0
 
 
 static func bundle_directory() -> String:
@@ -140,9 +149,15 @@ func cancel_analysis() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _process_data.is_empty():
+	if not _process_data.is_empty():
+		_poll_analysis()
+	if not _explain_data.is_empty():
+		_poll_explanation()
+	if _process_data.is_empty() and _explain_data.is_empty():
 		set_process(false)
-		return
+
+
+func _poll_analysis() -> void:
 	_read_available_lines()
 	if OS.is_process_running(_process_data["pid"]):
 		return
@@ -168,6 +183,112 @@ func _process(_delta: float) -> void:
 		_cleanup_process()
 
 
+func start_explanation(arguments: PackedStringArray, command_override := PackedStringArray()) -> bool:
+	if is_explaining():
+		return false
+	var command := PackedStringArray()
+	if command_override.is_empty():
+		command.append_array(_command_prefix())
+		command.append_array(arguments)
+	else:
+		command = command_override
+	_explain_generation += 1
+	_explain_stdout = ""
+	_explain_stderr = ""
+	_explain_data = OS.execute_with_pipe(python_executable(), command, false)
+	if _explain_data.is_empty():
+		_explain_data = {}
+		explanation_failed.emit(
+			{
+				"code": "process_start_failed",
+				"message": "Could not start the PsyML Python process.",
+			},
+			_explain_generation,
+		)
+		return false
+	set_process(true)
+	return true
+
+
+func explanation_generation() -> int:
+	return _explain_generation
+
+
+func is_explaining() -> bool:
+	return not _explain_data.is_empty() and OS.is_process_running(_explain_data["pid"])
+
+
+func cancel_explanation() -> void:
+	if _explain_data.is_empty():
+		return
+	if OS.is_process_running(_explain_data["pid"]):
+		OS.kill(_explain_data["pid"])
+	_cleanup_explanation()
+	explanation_cancelled.emit(_explain_generation)
+
+
+func _poll_explanation() -> void:
+	var generation := _explain_generation
+	_explain_stdout += _drain_fragments(_explain_data["stdio"])
+	if _explain_data.has("stderr"):
+		_explain_stderr = _bounded_tail(_explain_stderr + _drain_fragments(_explain_data["stderr"]))
+	if OS.is_process_running(_explain_data["pid"]):
+		return
+	# Final tail after exit.
+	_explain_stdout += _drain_fragments(_explain_data["stdio"])
+	if _explain_data.has("stderr"):
+		_explain_stderr = _bounded_tail(_explain_stderr + _drain_fragments(_explain_data["stderr"]))
+	var exit_code := OS.get_process_exit_code(_explain_data["pid"])
+	_cleanup_explanation()
+	if generation != _explain_generation:
+		return
+	var payload = _parse_complete_json(_explain_stdout)
+	if exit_code == 0 and payload is Dictionary:
+		explanation_ready.emit(payload, generation)
+		return
+	var message := _explain_stderr.strip_edges()
+	if payload is Dictionary and payload.has("error"):
+		message = str(payload.error.get("message", message))
+	if message.is_empty():
+		message = "Explanation exited without a valid result."
+	explanation_failed.emit({"code": "explanation_failed", "message": message}, generation)
+
+
+func _parse_complete_json(text: String):
+	if text.strip_edges().is_empty():
+		return null
+	var parsed = JSON.parse_string(text)
+	if parsed is Dictionary:
+		return parsed
+	# Fall back to the last complete line (multi-line framing).
+	var lines := text.split("\n")
+	for index in range(lines.size() - 1, -1, -1):
+		if lines[index].strip_edges().is_empty():
+			continue
+		parsed = JSON.parse_string(lines[index])
+		if parsed is Dictionary:
+			return parsed
+	return null
+
+
+func _bounded_tail(text: String) -> String:
+	if text.length() <= MAX_DIAGNOSTIC_CHARS:
+		return text
+	return text.substr(text.length() - MAX_DIAGNOSTIC_CHARS)
+
+
+func _drain_fragments(stream: FileAccess) -> String:
+	# Accumulate every available fragment; partial JSON chunks are retained
+	# across polls instead of keeping only the last line.
+	var buffer := ""
+	while true:
+		var line := stream.get_line()
+		if line.is_empty():
+			break
+		buffer += line
+	return buffer
+
+
 func _read_available_lines() -> void:
 	var stdio: FileAccess = _process_data["stdio"]
 	while true:
@@ -186,7 +307,10 @@ func _read_available_lines() -> void:
 func _cleanup_process() -> void:
 	_process_data = {}
 	_pending_terminal_event = {}
-	set_process(false)
+
+
+func _cleanup_explanation() -> void:
+	_explain_data = {}
 
 
 func _exit_tree() -> void:
@@ -194,6 +318,8 @@ func _exit_tree() -> void:
 		_preview_thread.wait_to_finish()
 	if is_running():
 		OS.kill(_process_data["pid"])
+	if not _explain_data.is_empty() and OS.is_process_running(_explain_data["pid"]):
+		OS.kill(_explain_data["pid"])
 
 
 func request_json(arguments: PackedStringArray) -> void:

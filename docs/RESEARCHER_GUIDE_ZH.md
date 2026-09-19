@@ -229,7 +229,13 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 支持 9 种输入格式；导出为 CSV、TSV、XLSX、SAV、DTA、XPT 或 Parquet。XLS、SAS7BDAT 仅支持读取，GUI 默认改存 XLSX。统计格式限制可能使导出失败，可改用 XLSX 或 Parquet。模型与元数据应成对保留；损坏、校验不匹配或 scikit-learn 版本不一致会报错，缺少元数据时尝试恢复信息但不保证完整。
 
-实现见[模型保存](../src/psyml/models/persistence.py)、[有效参数](../src/psyml/models/parameters.py)与[预测核心](../src/psyml/prediction.py)。
+### 单样本 SHAP 解释（可选，FR-004）
+
+第 4 页在模型与数据检查通过后可解释单个样本：选择背景参考文件、1 起始的样本行号、背景行数（默认 50，1–100）与排列轮数（默认 5，1–20）；分类再选择要解释的类别并显示原始标签。计算在可取消子进程中运行，首次可能较慢，可随时取消。结果区显示从基准值逐项累加到模型输出的**累计瀑布图**（正负方向、原始变量名与值、TopN 与“其余 N 项之和”，CSV 保留全部贡献），并提供“打开瀑布图”“打开结果文件夹”“导出解释结果…”控件；“导出解释结果…”只写入新建或空文件夹，不覆盖已有文件（目标非空时新建唯一子目录，当前结果目录不可作为目标；CLI `explain --output-dir` 同样要求新建/空目录且拒绝 `--overwrite`）。产物为 `shap_explanation.json`、`shap_contributions.csv`、`shap_waterfall.png` 与 `shap_explanation_notes.md`，满足 `base + Σφ = 所选输出`（容差 1e-7/1e-6），且切换行/类别/设置或关闭页面时已完成产物保留在磁盘。
+
+这是有限排列的**近似** SHAP：不是精确 SHAP、不是因果效应，也不是外层测试性能；背景替换不保持变量相关结构。首版仅支持分类 `logistic_regression`、`decision_tree`、`random_forest` 与回归 `linear_regression`、`ridge`、`lasso`、`elastic_net`、`decision_tree`、`random_forest`，且仅接受带 PsyML 导出元数据（`psyml_version`/`fit_scope`）与标准 `preprocess`+`model` 结构的保存模型；缺少元数据或自定义预处理的外来模型明确提示不支持，普通预测不受影响。未安装 `explain` 可选依赖时该区不可用。
+
+实现见[模型保存](../src/psyml/models/persistence.py)、[有效参数](../src/psyml/models/parameters.py)与[预测核心](../src/psyml/prediction.py)；解释核心见[explanation.py](../src/psyml/explanation.py)。
 
 ### 图形（figures）
 

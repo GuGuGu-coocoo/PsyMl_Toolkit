@@ -103,6 +103,17 @@ FR-009：`psyml.reporting.interpretation` 的 `build_interpretation` 只聚合 r
 
 提交 PR 时说明解决的问题、行为变化、验证结果和已知限制。避免无关重构；涉及科学行为、协议兼容性或依赖变动时明确说明影响。贡献遵循 [Apache-2.0 许可证](../LICENSE)，不上传参与者数据、未公开研究资料或凭据。不要将开发者说明误写为“研究者必须运行命令”。
 
+## 可选单样本解释依赖（explain extra）
+
+FR-004 单样本解释依赖 `shap`、`numba`、`llvmlite`，默认不安装，以免普通分析与预测增加冷启动和包体。需要时再装：
+
+```bash
+uv sync --extra explain
+uv pip install -e ".[explain]"   # pip/venv 等价写法
+```
+
+`pyproject.toml` 按 Python 版本固定 SHAP（3.10 → 0.49.x，3.11 → 0.51.x，3.12 → 0.52.x），`uv.lock` 记录且不升级 scikit-learn 等无关依赖。`tools/build_native.py` 会把 shap/numba/llvmlite 打包进核心、把许可证复制到 `tools/licenses/`，`--explain-smoke` 检查包内分类/回归解释与重建。本机为 Mac，Windows 未执行。
+
 ## 构建与发布维护
 
 [build_native.py](../tools/build_native.py) 在目标操作系统构建独立应用，使用 PyInstaller 打包核心、Godot 导出 GUI；需要匹配的 Godot 导出模板。支持 Apple 芯片 macOS 和 Windows x64，不能把 Mac 本机构建当成 Windows 验证。
