@@ -152,6 +152,20 @@ def _pipeline_estimator(model: Any) -> Any:
     return model
 
 
+def _is_identity_passthrough(transform: Any) -> bool:
+    """True for the sk-learn identity transform ColumnTransformer builds for 'passthrough'.
+
+    A fitted ``ColumnTransformer`` replaces the ``'passthrough'`` string with a
+    ``FunctionTransformer`` whose ``func``/``inverse_func`` are ``None``. Only that
+    exact identity is accepted; any custom function stays unsupported.
+    """
+    return (
+        isinstance(transform, FunctionTransformer)
+        and getattr(transform, "func", None) is None
+        and getattr(transform, "inverse_func", None) is None
+    )
+
+
 def _pipeline_structure_reason(model: Pipeline) -> str | None:
     """Return why a fitted pipeline is not a known PsyML pipeline, or ``None``."""
     steps = list(model.steps)
@@ -173,7 +187,7 @@ def _pipeline_structure_reason(model: Pipeline) -> str | None:
             continue
         if name not in ("numeric", "categorical"):
             return f"Unsupported preprocessor block '{name}'."
-        if transform == "passthrough":
+        if transform == "passthrough" or _is_identity_passthrough(transform):
             if name != "numeric":
                 return "A passthrough categorical block is not a supported PsyML preprocessor."
             continue

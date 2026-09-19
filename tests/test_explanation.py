@@ -605,6 +605,36 @@ def test_missing_provenance_or_fit_scope_is_rejected():
     assert not support.supported and "fit scope" in support.reason
 
 
+def test_drop_none_identity_passthrough_is_supported_by_shared_structure_check():
+    """The shared structure check accepts sklearn's fitted identity passthrough."""
+    from psyml.explanation import _pipeline_structure_reason
+
+    rng = np.random.default_rng(11)
+    features = pd.DataFrame({
+        "x": rng.normal(size=48),
+        "y": rng.normal(size=48),
+        "group": (["a", "b"] * 24),
+    })
+    target = 2.0 * features["x"] - features["y"]
+    preprocessor = build_preprocessor(features, missing_strategy="drop", scaling="none")
+    pipeline = Pipeline([("preprocess", preprocessor), ("model", LinearRegression())])
+    pipeline.fit(features, target)
+    assert _pipeline_structure_reason(pipeline) is None
+
+    loaded = make_loaded("regression", LinearRegression(), features, target)
+    loaded.model = pipeline
+    loaded.metadata["estimator_class"] = (
+        "sklearn.linear_model._base.LinearRegression"
+    )
+    support = model_support(loaded)
+    assert support.supported, support.reason
+    plan = plan_explanation(
+        loaded, features.iloc[[0]], features.iloc[:5], row_position=1,
+        background_size=5, cycles=1,
+    )
+    assert plan["supported"] and plan["task"] == "regression"
+
+
 def test_authentic_saved_psyml_model_is_supported(tmp_path):
     from psyml import ExperimentConfig
     from psyml.prediction import load_model

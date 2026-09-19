@@ -74,6 +74,23 @@ func _run() -> void:
 	_expect(not page.explain_error.is_empty(), "missing background must be reported")
 	page.load_background(predict_input)
 	_expect(page.explain_error.is_empty())
+	# The background path label must stay on one line: a wrapped/auto-wrapping label
+	# inside the control row is the layout bug that squeezed the path into a column.
+	# Check both a normal 1280-wide window and a narrower one.
+	for width in [1280, 900]:
+		root.size = Vector2i(width, 800)
+		await process_frame
+		await process_frame
+		_expect(page.background_label.get_line_count() <= 1,
+			"background path label wrapped at width %d" % width)
+		_expect(page.background_label.size.x >= 100.0,
+			"background path label collapsed to a column at width %d" % width)
+		_expect(page.background_label.size.y < 60.0,
+			"background path label grew vertically at width %d" % width)
+		_expect(page.background_button.size.y < 60.0,
+			"background button stretched at width %d" % width)
+	root.size = Vector2i(1280, 1000)
+	await process_frame
 	_expect(not page.explain_button.disabled, "explain should be enabled once ready")
 	_expect(page.explain_class_box.visible and page.explain_class.item_count >= 2)
 	page.explain_row.value = 1

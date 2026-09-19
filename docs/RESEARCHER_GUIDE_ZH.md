@@ -237,6 +237,12 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 实现见[模型保存](../src/psyml/models/persistence.py)、[有效参数](../src/psyml/models/parameters.py)与[预测核心](../src/psyml/prediction.py)；解释核心见[explanation.py](../src/psyml/explanation.py)。
 
+### 拟合系数与截距（FR-005）
+
+第 4 页“拟合系数与截距”区只读取**已拟合模型**在**预处理后坐标空间**（缺失填补、缩放、独热编码之后）的参数，不重新拟合、不回流调参、也不换算回原始单位。首版支持回归 `linear_regression`、`ridge`、`lasso`、`elastic_net`、`svr`（`kernel='linear'`）与分类 `logistic_regression`、`lda`、`svm`（`kernel='linear'`，仅二分类）；多类 SVC 的成对系数、非线性核、树、KNN、MLP 与 stacking 给出具体不支持原因。若已加载兼容预测数据，会在同一流水线与容差（1e-7/1e-6）下重建回归预测或分类决策分数并显示核验状态；无数据时明确标注未核验。界面逐输出轴显示截距、输出单位与拟合范围，并区分“未提供核验数据”与“核验失败”；核验失败会拒绝发布任何系数产物（显示具体原因，不显示提取完成、不可导出）。`coefficients.json` 记录被删除的全缺失列及原因、逐原始列映射、`drop_idx_` 与逐列类别映射，训练 dtype 来源为保存元数据或明确 unknown。分类输出轴：二分类 logistic 为 `classes_[1]` 相对 `classes_[0]` 的 log-odds，多类 logistic 为各类 softmax logit，线性 SVC 仅为 margin（不是概率或 log-odds）；类别保存真实标签、类型与索引。结果可导出到新建/空目录或唯一子目录（绝不覆盖，JSON 最后写）；常规分析也会在 `coefficients/` 写入 `coefficients.csv`、`coefficients.json` 与 `coefficients_notes.md`，并标注 `fit_scope=all_analyzed_rows`。这些是最终全数据模型的拟合参数，不提供 p 值、置信区间、显著性、因果或定义明确的标准化效应；普通预测、超参数区与 SHAP 区不受影响。CLI 等价命令为 `psyml coefficients --model … --trust-model [--input …] [--output-dir …]`，另有 `--check-only`，且不需要 `explain` 可选依赖。
+
+实现见[coefficients.py](../src/psyml/models/coefficients.py)。
+
 ### 图形（figures）
 
 | 图形文件 | 轴或内容 | 核查问题 |

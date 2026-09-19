@@ -47,6 +47,9 @@ def save_final_model(pipeline, config, features) -> dict:
             column: "numeric" if column in features.select_dtypes(include="number")
             else "categorical" for column in features.columns
         },
+        # Non-participant dtype information so a later, trusted coefficient export can
+        # report the training dtypes without re-reading any participant rows.
+        "feature_dtypes": {column: str(dtype) for column, dtype in features.dtypes.items()},
         "n_features": len(features.columns),
         "best_parameters": effective_parameters(estimator),
         "parameter_overrides": config.model_params,

@@ -114,6 +114,10 @@ uv pip install -e ".[explain]"   # pip/venv 等价写法
 
 `pyproject.toml` 按 Python 版本固定 SHAP（3.10 → 0.49.x，3.11 → 0.51.x，3.12 → 0.52.x），`uv.lock` 记录且不升级 scikit-learn 等无关依赖。`tools/build_native.py` 会把 shap/numba/llvmlite 打包进核心、把许可证复制到 `tools/licenses/`，`--explain-smoke` 检查包内分类/回归解释与重建。本机为 Mac，Windows 未执行。
 
+## 拟合系数（FR-005，无额外依赖）
+
+[coefficients.py](../src/psyml/models/coefficients.py) 只从已拟合的 PsyML `preprocess`+`model` 流水线读取 `coef_`/`intercept_`，按 `ColumnTransformer.output_indices_` 与各子步骤（imputer `statistics_`、scaler `mean_/scale_` 或 `min_/scale_/data_min_/data_max_`、OneHotEncoder `categories_`）生成精确的变换特征/来源列/类别映射，并对样本以同一 pipeline `transform` 重建 `predict`（回归）或 `decision_function`（分类）进行核验（atol 1e-7 / rtol 1e-6）。它从不 fit、不改变模型、不回流调参，也不换算回原始单位。报告还完整记录 `input_features`/`dropped_features`（全缺失列及原因、原始序号、缺失策略）、`encoding.per_source`（逐列类别与 `drop_idx_`）与训练 dtype 来源（保存元数据或明确 unknown）。使用提供的样本且核验失败（误差超限/形状不符/非有限）时返回 `status=error` 并拒绝写出成功产物；无样本则保持未核验状态，二者在 CLI/GUI 中分开显示。常规 runner 在 `coefficients/` 写出 CSV/JSON/notes；CLI 为 `psyml coefficients`（沿用 trust/hash/version 与 `model_input`，只写新/空目录，JSON 最后）。加载模型路径会校验 PsyML 来源（`psyml_version`/`fit_scope`）与估计器类型，未知模型给出明确原因且普通预测不受影响。测试见 `tests/test_coefficients.py`、`tests/test_coefficients_cli.py` 与 `gui/tests/test_coefficients.gd`；`--coefficients-smoke` 检查本机包内分类/回归提取。
+
 ## 构建与发布维护
 
 [build_native.py](../tools/build_native.py) 在目标操作系统构建独立应用，使用 PyInstaller 打包核心、Godot 导出 GUI；需要匹配的 Godot 导出模板。支持 Apple 芯片 macOS 和 Windows x64，不能把 Mac 本机构建当成 Windows 验证。

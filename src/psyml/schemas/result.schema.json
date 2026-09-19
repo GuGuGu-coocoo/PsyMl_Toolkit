@@ -37,6 +37,7 @@
     "best_parameters": {"type": "object"},
     "evaluated_combinations": {"type": "integer", "minimum": 0},
     "permutation": {"type": "object"},
-    "interpretation": {"type": "object"}
+    "interpretation": {"type": "object"},
+    "coefficients": {"type": "object"}
   }
 }

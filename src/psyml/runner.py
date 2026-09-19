@@ -36,6 +36,11 @@ from psyml.evaluation.permutation import (
     permutation_importance,
 )
 from psyml.models.catalog import quick_parameter_grid, supported_models
+from psyml.models.coefficients import (
+    COEFFICIENT_SCHEMA_VERSION,
+    build_coefficient_report,
+    write_coefficients,
+)
 from psyml.models.factory import build_model
 from psyml.models.parameters import effective_parameters
 from psyml.models.persistence import save_final_model
@@ -75,6 +80,7 @@ class ExperimentResult:
     validation_results: dict[str, ExperimentResult] = field(default_factory=dict)
     permutation_results: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     interpretation: dict[str, Any] = field(default_factory=dict)
+    coefficient_report: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -1232,6 +1238,46 @@ def _run_prioritized(
         permutation_artifacts=permutation_artifacts,
         permutation_index=permutation_index,
     )
+    # Fitted coefficients of the final all-analyzed-rows model. This is extraction
+    # only: it never fits, tunes or changes the model, and a failure here must not
+    # discard the already-successful analysis.
+    coefficient_report: dict[str, Any] = {}
+    coefficient_artifacts: dict[str, str] = {}
+    try:
+        coefficient_report = build_coefficient_report(
+            final_model,
+            task=config.task,
+            feature_names=list(features.columns),
+            feature_dtypes={column: str(dtype) for column, dtype in features.dtypes.items()},
+            feature_dtypes_source="training_frame",
+            verify_frame=features,
+            provenance={"fit_scope": "all_analyzed_rows"},
+        )
+        if coefficient_report.get("status") == "available":
+            written = write_coefficients(
+                coefficient_report,
+                output_dir / "coefficients",
+                protected_paths=(config.input_path,),
+            )
+            coefficient_artifacts = {
+                name: str(Path(path).relative_to(output_dir))
+                for name, path in written.items()
+            }
+            coefficient_report["artifacts"] = coefficient_artifacts
+        elif coefficient_report.get("status") == "error":
+            warnings.append(
+                "Fitted coefficients were not published: "
+                + str(coefficient_report.get("reason"))
+            )
+        # Unsupported estimators are recorded in the result summary (status/reason),
+        # not as warnings: many valid models simply have no linear coefficient row.
+    except Exception as error:  # noqa: BLE001 - optional output must not lose the analysis
+        coefficient_report = {
+            "schema_version": COEFFICIENT_SCHEMA_VERSION,
+            "status": "error",
+            "reason": str(error),
+        }
+        warnings.append(f"Fitted coefficients could not be written: {error}")
     model_export = (save_final_model(final_model, executed_config, features)
                     if config.save_best_model else {"status": "disabled"})
     study_summary: dict[str, Any] = {
@@ -1254,6 +1300,23 @@ def _run_prioritized(
             "model_scope": "outer_fold_model",
             "validations": permutation_index,
         }
+    if coefficient_report:
+        available = coefficient_report.get("status") == "available"
+        study_summary["coefficients"] = {
+            "status": coefficient_report.get("status"),
+            "reason": coefficient_report.get("reason"),
+            "family": coefficient_report.get("family"),
+            "fit_scope": (
+                coefficient_report.get("model", {}).get("fit_scope") if available else None
+            ),
+            "data_scope": "final_all_analyzed_rows_model" if available else None,
+            "model_scope": "deployment_model" if available else None,
+            "output_unit": (
+                coefficient_report.get("output", {}).get("unit") if available else None
+            ),
+            "verification": coefficient_report.get("verification"),
+            "artifacts": coefficient_artifacts,
+        }
     write_result_summary(
         output_dir,
         executed_config,
@@ -1262,6 +1325,7 @@ def _run_prioritized(
         study_summary=study_summary,
         permutation_artifacts=permutation_artifacts,
         interpretation_artifacts=interpretation_artifacts,
+        coefficient_artifacts=coefficient_artifacts,
     )
     return ExperimentResult(
         metrics=metrics,
@@ -1282,6 +1346,7 @@ def _run_prioritized(
         validation_summary=validation_summary,
         permutation_results=permutation_results,
         interpretation=interpretation,
+        coefficient_report=coefficient_report,
     )
 
 

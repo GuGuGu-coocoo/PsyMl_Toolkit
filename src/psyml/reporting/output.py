@@ -52,6 +52,7 @@ def write_result_summary(
     study_summary: dict | None = None,
     permutation_artifacts: dict[str, str] | None = None,
     interpretation_artifacts: dict[str, str] | None = None,
+    coefficient_artifacts: dict[str, str] | None = None,
 ) -> None:
     """Write the stable result summary after every other artefact succeeds."""
     (output_dir / ".result.json.tmp").write_text(
@@ -63,6 +64,7 @@ def write_result_summary(
                 study_summary=study_summary,
                 permutation_artifacts=permutation_artifacts,
                 interpretation_artifacts=interpretation_artifacts,
+                coefficient_artifacts=coefficient_artifacts,
             ),
             indent=2,
             ensure_ascii=False,
@@ -151,6 +153,15 @@ def write_independent_outputs(
                     child_dir, validation, prefix=f"validations/{validation}/"
                 )
             )
+            for name, filename in (
+                ("csv", "coefficients.csv"),
+                ("json", "coefficients.json"),
+                ("notes", "coefficients_notes.md"),
+            ):
+                if (child_dir / "coefficients" / filename).is_file():
+                    artifacts[f"coefficients_{validation}_{name}"] = (
+                        f"validations/{validation}/coefficients/{filename}"
+                    )
 
     # Root-level overview/index only: each validation keeps its own summary.
     interpretation = build_independent_interpretation(entries, results, output_dir)
@@ -221,6 +232,23 @@ def write_independent_outputs(
             "data_scope": "outer_test",
             "model_scope": "outer_fold_model",
             "validations": permutation_validations,
+        }
+    coefficient_validations = {
+        validation: {
+            "artifacts": {
+                key: value
+                for key, value in artifacts.items()
+                if key.startswith(f"coefficients_{validation}_")
+            },
+        }
+        for validation in entries
+        if any(key.startswith(f"coefficients_{validation}_") for key in artifacts)
+    }
+    if coefficient_validations:
+        payload["coefficients"] = {
+            "data_scope": "final_all_analyzed_rows_model",
+            "model_scope": "per_validation_deployment_model",
+            "validations": coefficient_validations,
         }
     temporary = output_dir / ".result.json.tmp"
     temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

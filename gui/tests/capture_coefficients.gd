@@ -1,10 +1,11 @@
 extends SceneTree
-## Capture the single-sample explanation UI for visual QA (synthetic data only).
+## Capture the fitted-coefficients UI for visual QA (synthetic data only).
 ##
 ## Run windowed (not --headless) with PSYML_PYTHON and PSYML_SCREENSHOT_DIR set:
-##   PSYML_SCREENSHOT_DIR=tmp/phase-C-worker/screenshots \
-##   godot --path gui --script res://tests/capture_shap.gd
-## Screenshots for zh/en/fr are saved as shap-zh.png, shap-en.png, shap-fr.png.
+##   PSYML_SCREENSHOT_DIR=tmp/phase-D-worker/screenshots \
+##   godot --path gui --script res://tests/capture_coefficients.gd
+## Screenshots for zh/en/fr are saved as coefficients-zh.png, coefficients-en.png,
+## coefficients-fr.png.
 
 const TestPaths = preload("res://tests/test_paths.gd")
 
@@ -26,11 +27,11 @@ func _wait_busy(page) -> void:
 	assert(not page.busy, "Prediction operation timed out")
 
 
-func _wait_explain(page) -> void:
-	var deadline := Time.get_ticks_msec() + 240000
-	while page.explain_busy and Time.get_ticks_msec() < deadline:
+func _wait_coefficients(page) -> void:
+	var deadline := Time.get_ticks_msec() + 120000
+	while page.coefficients_busy and Time.get_ticks_msec() < deadline:
 		await create_timer(.1).timeout
-	assert(not page.explain_busy, "Explanation timed out")
+	assert(not page.coefficients_busy, "Coefficient extraction timed out")
 
 
 func _grab(path: String) -> void:
@@ -58,23 +59,19 @@ func _capture() -> void:
 	if output.is_empty():
 		output = TestPaths.temp_dir().path_join("screenshots")
 	DirAccess.make_dir_recursive_absolute(output)
-	var directory := TestPaths.temp_dir().path_join("shap-capture-%d" % Time.get_ticks_usec())
+	var directory := TestPaths.temp_dir().path_join("coefficients-capture-%d" % Time.get_ticks_usec())
 	DirAccess.make_dir_recursive_absolute(directory)
 	var page = main.prediction_page
 
 	var input := ProjectSettings.globalize_path("res://../examples/quickstart/classification_train.csv")
 	var predict_input := ProjectSettings.globalize_path("res://../examples/quickstart/classification_predict.csv")
-	var config: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://../examples/quickstart/classification_config.json"))
+	var config: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://../examples/quickstart/classification_coefficients_config.json"))
 	config.input_path = input
 	config.output_dir = directory.path_join("run")
 	config.figure_types = []
 	for field in ["n_splits", "random_seed", "inner_splits", "max_candidates"]:
 		if config.has(field):
 			config[field] = int(config[field])
-	config.model_name = "logistic_regression"
-	config.model_names = ["logistic_regression"]
-	config.tuning_mode = "none"
-	config.parameter_grids = {}
 	var config_path := directory.path_join("config.json")
 	_write(config_path, JSON.stringify(config))
 	var response: Dictionary = main.bridge.execute_json_sync(PackedStringArray(["run", "--config", config_path]))
@@ -86,25 +83,17 @@ func _capture() -> void:
 	await _wait_busy(page)
 	page.load_data(predict_input)
 	await _wait_busy(page)
-	page.load_background(predict_input)
-	page.explain_row.value = 1
-	page.explain_cycles.value = 2
-	page.explain_background_size.value = 10
-	page.explain_class.select(0)
-	page.run_explanation()
-	await _wait_explain(page)
-	assert(page.explain_error.is_empty(), page.explain_error)
+	page.run_coefficients()
+	await _wait_coefficients(page)
+	assert(page.coefficients_error.is_empty(), page.coefficients_error)
 	main.tabs.current_tab = 4
 	for locale in [0, 1, 2]:
 		main._on_language_selected(locale)
 		await create_timer(0.2).timeout
-		# Two real captures per locale: the background/action layout (the row that
-		# previously wrapped) and the contribution table with the waterfall.
-		_scroll_to(page.background_button)
-		await create_timer(0.3).timeout
-		await _grab(output.path_join("shap-%s.png" % ["zh", "en", "fr"][locale]))
-		_scroll_to(page.explain_tree)
-		await create_timer(0.3).timeout
-		await _grab(output.path_join("shap-%s-contributions.png" % ["zh", "en", "fr"][locale]))
-	print("PSYML_SHAP_CAPTURE_OK")
+		# The coefficients block sits after the prediction and explanation sections;
+		# bring the block's own table (and everything above it) into view.
+		_scroll_to(page.coefficients_tree)
+		await create_timer(0.4).timeout
+		await _grab(output.path_join("coefficients-%s.png" % ["zh", "en", "fr"][locale]))
+	print("PSYML_COEFFICIENTS_CAPTURE_OK")
 	quit(0)

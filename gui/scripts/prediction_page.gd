@@ -69,6 +69,24 @@ var explain_artifacts: Dictionary = {}
 var explain_request := 0
 var explain_staging_root := ""
 var explain_note := ""
+const COEFFICIENT_EXPORT_ORDER := ["csv", "notes", "json"]
+var coefficients_button: Button
+var coefficients_cancel_button: Button
+var coefficients_status: Label
+var coefficients_summary: Label
+var coefficients_outputs: Label
+var coefficients_tree: Tree
+var coefficients_open_button: Button
+var coefficients_export_button: Button
+var coefficients_export_dialog: FileDialog
+var coefficients_busy := false
+var coefficient_report: Dictionary = {}
+var coefficients_error := ""
+var coefficients_output_dir := ""
+var coefficients_artifacts: Dictionary = {}
+var coefficients_request := 0
+var coefficients_staging_root := ""
+var coefficients_note := ""
 
 
 func build(owner: Control) -> void:
@@ -102,6 +120,7 @@ func build(owner: Control) -> void:
 			compatibility = {}
 			_clear_predictions()
 			_clear_explanation()
+			_clear_coefficients()
 		refresh_language())
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 20)
@@ -145,11 +164,24 @@ func build(owner: Control) -> void:
 	label(content, "PREDICTION_SCIENCE")
 	label(content, "EXPLAIN_HEADING").add_theme_font_size_override("font_size", 20)
 	label(content, "EXPLAIN_HELP")
+	# Background selection gets its own row: a long path label must never share an
+	# HBox with the controls, or automatic wrapping collapses it into a column of
+	# single characters and stretches the whole page.
+	var explain_background_row := HBoxContainer.new()
+	explain_background_row.add_theme_constant_override("separation", 14)
+	content.add_child(explain_background_row)
+	background_button = button(explain_background_row, "LOAD_BACKGROUND")
+	background_label = Label.new()
+	background_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	background_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	background_label.clip_text = true
+	background_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	background_label.custom_minimum_size.x = 220
+	explain_background_row.add_child(background_label)
+	main.translated_controls.append({"node": background_label, "key": "NO_BACKGROUND"})
 	var explain_options := HBoxContainer.new()
 	explain_options.add_theme_constant_override("separation", 14)
 	content.add_child(explain_options)
-	background_button = button(explain_options, "LOAD_BACKGROUND")
-	background_label = label(explain_options, "NO_BACKGROUND")
 	var row_box := VBoxContainer.new()
 	explain_options.add_child(row_box)
 	label(row_box, "EXPLAIN_ROW")
@@ -190,11 +222,29 @@ func build(owner: Control) -> void:
 	explain_tree = tree(content, 200)
 	explain_tree.columns = 4
 	label(content, "EXPLAIN_SCIENCE")
+	label(content, "COEFFICIENTS_HEADING").add_theme_font_size_override("font_size", 20)
+	label(content, "COEFFICIENTS_HELP")
+	var coefficients_actions := HBoxContainer.new()
+	content.add_child(coefficients_actions)
+	coefficients_button = button(coefficients_actions, "RUN_COEFFICIENTS")
+	coefficients_cancel_button = button(coefficients_actions, "CANCEL_COEFFICIENTS")
+	var coefficients_deliver := HBoxContainer.new()
+	coefficients_deliver.add_theme_constant_override("separation", 14)
+	content.add_child(coefficients_deliver)
+	coefficients_open_button = button(coefficients_deliver, "OPEN_COEFFICIENTS_FOLDER")
+	coefficients_export_button = button(coefficients_deliver, "EXPORT_COEFFICIENTS")
+	coefficients_status = label(content, "COEFFICIENTS_WAITING")
+	coefficients_summary = label(content, "COEFFICIENTS_RESULTS")
+	coefficients_outputs = label(content, "COEFFICIENTS_OUTPUTS")
+	coefficients_tree = tree(content, 200)
+	coefficients_tree.columns = 4
+	label(content, "COEFFICIENTS_SCIENCE")
 	model_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, PackedStringArray(["*.joblib,*.pkl ; sklearn / joblib"]))
 	data_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, main.file_dialog.filters)
 	export_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_SAVE_FILE, PackedStringArray())
 	background_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, main.file_dialog.filters)
 	explain_export_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_DIR, PackedStringArray())
+	coefficients_export_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_DIR, PackedStringArray())
 	model_button.pressed.connect(func():
 		model_dialog.title = tr("LOAD_MODEL")
 		model_dialog.popup_centered_ratio(0.8))
@@ -243,6 +293,14 @@ func build(owner: Control) -> void:
 	bridge.explanation_ready.connect(_explanation_response)
 	bridge.explanation_failed.connect(_explanation_failed)
 	bridge.explanation_cancelled.connect(_explanation_cancelled)
+	coefficients_button.pressed.connect(run_coefficients)
+	coefficients_cancel_button.pressed.connect(cancel_coefficients)
+	coefficients_open_button.pressed.connect(open_coefficients_folder)
+	coefficients_export_button.pressed.connect(_choose_coefficients_export)
+	coefficients_export_dialog.dir_selected.connect(export_coefficients)
+	bridge.coefficients_ready.connect(_coefficients_response)
+	bridge.coefficients_failed.connect(_coefficients_failed)
+	bridge.coefficients_cancelled.connect(_coefficients_cancelled)
 	main._configure_readable_controls(page)
 
 
@@ -291,7 +349,7 @@ func _request(kind: String, arguments: PackedStringArray) -> void:
 
 
 func load_model(path: String) -> void:
-	if busy or explain_busy or not trust.button_pressed:
+	if busy or explain_busy or coefficients_busy or not trust.button_pressed:
 		return
 	model_path = path
 	metadata = {}
@@ -300,11 +358,12 @@ func load_model(path: String) -> void:
 	mapping.clear()
 	_clear_predictions()
 	_clear_explanation()
+	_clear_coefficients()
 	_request("model", PackedStringArray(["model-info", "--model", path, "--trust-model"]))
 
 
 func load_data(path: String) -> void:
-	if busy or explain_busy:
+	if busy or explain_busy or coefficients_busy:
 		return
 	input_path = path
 	data = {}
@@ -312,6 +371,7 @@ func load_data(path: String) -> void:
 	mapping.clear()
 	_clear_predictions()
 	_clear_explanation()
+	_clear_coefficients()
 	_request("data", PackedStringArray(["preview", "--input", path, "--include-sample"]))
 
 
@@ -372,7 +432,7 @@ func _response(payload: Dictionary) -> void:
 
 
 func run_prediction() -> void:
-	if busy or explain_busy or not compatibility.get("compatible", false) or not trust.button_pressed:
+	if busy or explain_busy or coefficients_busy or not compatibility.get("compatible", false) or not trust.button_pressed:
 		return
 	_clear_predictions()
 	var directory := ProjectSettings.globalize_path("user://prediction")
@@ -414,7 +474,7 @@ func _build_mapping() -> void:
 
 
 func confirm_mapping() -> void:
-	if busy or explain_busy:
+	if busy or explain_busy or coefficients_busy:
 		return
 	mapping.clear()
 	for option in mapping_options:
@@ -424,7 +484,7 @@ func confirm_mapping() -> void:
 
 
 func _choose_export() -> void:
-	if busy or explain_busy or predictions.is_empty():
+	if busy or explain_busy or coefficients_busy or predictions.is_empty():
 		return
 	var filters := PackedStringArray()
 	var formats: Array = main.capabilities.get("output_formats", [".csv", ".xlsx", ".parquet"])
@@ -440,7 +500,7 @@ func _choose_export() -> void:
 
 
 func export_predictions(path: String) -> void:
-	if busy or explain_busy or predictions.is_empty():
+	if busy or explain_busy or coefficients_busy or predictions.is_empty():
 		return
 	if path in [input_path, model_path, model_path.get_base_dir().path_join("model_metadata.json")]:
 		error_message = tr("PRESERVE_SOURCE")
@@ -459,7 +519,7 @@ func _clear_predictions() -> void:
 
 
 func load_background(path: String) -> void:
-	if busy or explain_busy:
+	if busy or explain_busy or coefficients_busy:
 		return
 	background_path = path
 	_clear_explanation()
@@ -477,7 +537,7 @@ func _build_explanation_classes() -> void:
 
 
 func run_explanation() -> void:
-	if busy or explain_busy or not trust.button_pressed:
+	if busy or explain_busy or coefficients_busy or not trust.button_pressed:
 		return
 	if metadata.is_empty() or input_path.is_empty() or not compatibility.get("compatible", false):
 		return
@@ -724,6 +784,295 @@ func _clear_explanation() -> void:
 	explain_note = ""
 
 
+func run_coefficients() -> void:
+	if busy or explain_busy or coefficients_busy or not trust.button_pressed:
+		return
+	if metadata.is_empty() or model_path.is_empty():
+		return
+	var directory := ProjectSettings.globalize_path("user://coefficients")
+	DirAccess.make_dir_recursive_absolute(directory)
+	coefficients_staging_root = directory
+	_cleanup_owned_coefficients_staging()
+	_clear_coefficients()
+	coefficients_output_dir = directory.path_join("coefficients_%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()])
+	var args := PackedStringArray(["coefficients", "--model", model_path, "--trust-model",
+		"--output-dir", coefficients_output_dir])
+	if not input_path.is_empty() and compatibility.get("compatible", false):
+		args.append_array(["--input", input_path])
+		for name in mapping:
+			args.append_array(["--feature", name])
+	coefficients_busy = true
+	coefficients_error = ""
+	refresh_language()
+	if not bridge.start_coefficients(args):
+		coefficients_busy = false
+		refresh_language()
+		return
+	coefficients_request = bridge.explanation_generation()
+
+
+func cancel_coefficients() -> void:
+	if not coefficients_busy:
+		return
+	coefficients_busy = false
+	bridge.cancel_explanation()
+
+
+func _coefficients_response(payload: Dictionary, generation: int) -> void:
+	if generation != coefficients_request:
+		return
+	coefficients_busy = false
+	if payload.has("error"):
+		coefficients_error = str(payload.error.get("message", tr("COEFFICIENTS_FAILED")))
+		coefficient_report = {}
+		coefficients_artifacts = {}
+		refresh_language()
+		return
+	coefficient_report = payload.get("coefficients", {})
+	coefficients_artifacts = payload.get("artifacts", {})
+	if payload.get("output_dir"):
+		coefficients_output_dir = str(payload.output_dir)
+	if coefficient_report.is_empty():
+		coefficients_error = tr("COEFFICIENTS_FAILED")
+	refresh_language()
+
+
+func _coefficients_failed(error: Dictionary, generation: int) -> void:
+	if generation != coefficients_request:
+		return
+	coefficients_busy = false
+	coefficient_report = {}
+	coefficients_artifacts = {}
+	coefficients_error = str(error.get("message", tr("COEFFICIENTS_FAILED")))
+	refresh_language()
+
+
+func _coefficients_cancelled(generation: int) -> void:
+	if generation != coefficients_request:
+		return
+	coefficients_busy = false
+	coefficient_report = {}
+	coefficients_artifacts = {}
+	coefficients_error = tr("COEFFICIENTS_CANCELLED")
+	refresh_language()
+
+
+func _cleanup_owned_coefficients_staging() -> void:
+	# Remove only this tool's own incomplete staging directories.
+	if coefficients_staging_root.is_empty():
+		return
+	var directory := DirAccess.open(coefficients_staging_root)
+	if directory == null:
+		return
+	for name in directory.get_directories():
+		if name.begins_with(".psyml-coefficients-staging-"):
+			DirAccess.remove_absolute(coefficients_staging_root.path_join(name))
+
+
+func open_coefficients_folder() -> void:
+	if coefficients_output_dir.is_empty() or not DirAccess.dir_exists_absolute(coefficients_output_dir):
+		coefficients_error = tr("COEFFICIENTS_NO_ARTIFACT")
+		refresh_language()
+		return
+	OS.shell_open(coefficients_output_dir)
+
+
+func _choose_coefficients_export() -> void:
+	if coefficients_artifacts.is_empty():
+		coefficients_error = tr("COEFFICIENTS_NO_ARTIFACT")
+		refresh_language()
+		return
+	coefficients_export_dialog.title = tr("EXPORT_COEFFICIENTS")
+	coefficients_export_dialog.popup_centered_ratio(0.8)
+
+
+func _coefficients_source_dir() -> String:
+	for key in COEFFICIENT_EXPORT_ORDER:
+		if coefficients_artifacts.has(key):
+			return str(coefficients_artifacts[key]).get_base_dir()
+	return ""
+
+
+func _coefficients_index_matches_at(json_path: String) -> bool:
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(json_path))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return false
+	var index = parsed.get("artifacts", {})
+	if typeof(index) != TYPE_DICTIONARY:
+		return false
+	for key in COEFFICIENT_EXPORT_ORDER:
+		if str(index.get(key, "")) != str(coefficients_artifacts[key]).get_file():
+			return false
+	return true
+
+
+func export_coefficients(directory: String) -> void:
+	# Delivery is all-or-nothing and never overwrites existing files, mirroring the
+	# explanation export: a new/empty directory or a unique subdirectory, JSON last.
+	coefficients_error = ""
+	coefficients_note = ""
+	if coefficients_artifacts.is_empty():
+		coefficients_error = tr("COEFFICIENTS_NO_ARTIFACT")
+		refresh_language()
+		return
+	for key in COEFFICIENT_EXPORT_ORDER:
+		if not coefficients_artifacts.has(key) or not _explanation_file_ready(str(coefficients_artifacts[key])):
+			coefficients_error = tr("COEFFICIENTS_EXPORT_INCOMPLETE")
+			refresh_language()
+			return
+	var source_dir := _coefficients_source_dir().simplify_path()
+	var base := directory.simplify_path()
+	if source_dir != "" and base == source_dir:
+		coefficients_error = tr("COEFFICIENTS_EXPORT_SAME_DIR")
+		refresh_language()
+		return
+	var target := base
+	var created_target := false
+	if not DirAccess.dir_exists_absolute(target):
+		DirAccess.make_dir_recursive_absolute(target)
+		if not DirAccess.dir_exists_absolute(target):
+			coefficients_error = tr("COEFFICIENTS_EXPORT_FAILED")
+			refresh_language()
+			return
+		created_target = true
+	elif not _explanation_directory_empty(target):
+		target = base.path_join("psyml-coefficients-%d-%d" % [OS.get_process_id(), Time.get_ticks_usec()])
+		DirAccess.make_dir_recursive_absolute(target)
+		if not DirAccess.dir_exists_absolute(target):
+			coefficients_error = tr("COEFFICIENTS_EXPORT_FAILED")
+			refresh_language()
+			return
+		created_target = true
+	if not _coefficients_index_matches_at(str(coefficients_artifacts["json"])):
+		if created_target and _explanation_directory_empty(target):
+			DirAccess.remove_absolute(target)
+		coefficients_error = tr("COEFFICIENTS_EXPORT_INCOMPLETE")
+		refresh_language()
+		return
+	for key in COEFFICIENT_EXPORT_ORDER:
+		var destination := target.path_join(str(coefficients_artifacts[key]).get_file())
+		if FileAccess.file_exists(destination):
+			if created_target and _explanation_directory_empty(target):
+				DirAccess.remove_absolute(target)
+			coefficients_error = tr("COEFFICIENTS_EXPORT_EXISTS")
+			refresh_language()
+			return
+	var written: Array[String] = []
+	var failed := false
+	for key in COEFFICIENT_EXPORT_ORDER:
+		var source := str(coefficients_artifacts[key])
+		var destination := target.path_join(source.get_file())
+		if DirAccess.copy_absolute(source, destination) != OK or not _explanation_file_ready(destination):
+			failed = true
+			break
+		written.append(destination)
+	if not failed:
+		var copied_json := target.path_join(str(coefficients_artifacts["json"]).get_file())
+		if not _coefficients_index_matches_at(copied_json):
+			failed = true
+	if failed:
+		for path in written:
+			DirAccess.remove_absolute(path)
+		if created_target and _explanation_directory_empty(target):
+			DirAccess.remove_absolute(target)
+		coefficients_error = tr("COEFFICIENTS_EXPORT_FAILED")
+		refresh_language()
+		return
+	coefficients_note = tr("COEFFICIENTS_EXPORTED") + " " + target
+	refresh_language()
+
+
+func _clear_coefficients() -> void:
+	# Clears the UI only; completed artifacts stay on disk and remain accessible.
+	coefficient_report = {}
+	coefficients_error = ""
+	coefficients_artifacts = {}
+	coefficients_output_dir = ""
+	coefficients_note = ""
+
+
+func _fill_coefficients_tree() -> void:
+	coefficients_tree.clear()
+	var titles := ["COL_OUTPUT", "COL_FEATURE", "COL_SOURCE", "COL_COEFFICIENT"]
+	for index in range(4):
+		coefficients_tree.set_column_title(index, tr(titles[index]))
+	var root := coefficients_tree.create_item()
+	coefficients_summary.text = tr("COEFFICIENTS_RESULTS")
+	coefficients_outputs.text = tr("COEFFICIENTS_OUTPUTS")
+	if coefficient_report.is_empty():
+		return
+	var status := str(coefficient_report.get("status", ""))
+	if status == "unsupported":
+		coefficients_summary.text += " · " + (tr("COEFFICIENTS_UNSUPPORTED") % str(coefficient_report.get("reason", "")))
+		return
+	if status != "available":
+		coefficients_summary.text += " · " + (tr("COEFFICIENTS_ERROR") % str(coefficient_report.get("reason", tr("UNAVAILABLE"))))
+		return
+	var rows: Array = coefficient_report.get("output", {}).get("rows", [])
+	var features: Array = coefficient_report.get("features", [])
+	var coefficients: Array = coefficient_report.get("coefficients", [])
+	var intercepts: Array = coefficient_report.get("intercept", [])
+	var shown := 0
+	var total := rows.size() * features.size()
+	for row in rows:
+		for feature in features:
+			if shown >= 300:
+				break
+			var row_index := int(row.get("row_index", 0))
+			var feature_index := int(feature.get("index", 0))
+			var item := coefficients_tree.create_item(root)
+			item.set_text(0, str(row.get("label", "")))
+			item.set_text(1, str(feature.get("name", "")))
+			item.set_text(2, str(feature.get("source", "")))
+			var value = coefficients[row_index][feature_index]
+			item.set_text(3, String.num(float(value), 6))
+			item.set_tooltip_text(0, _coefficient_output_tooltip(row, row_index, intercepts))
+			item.set_tooltip_text(1, str(feature.get("name", "")))
+			item.set_tooltip_text(2, str(feature.get("source", "")))
+			shown += 1
+		if shown >= 300:
+			break
+	# Every output axis is shown with its own intercept, class/reference meaning,
+	# score-vs-probability unit and drop/encoding-independent label.
+	var output_lines: Array[String] = []
+	for row in rows:
+		var row_index := int(row.get("row_index", 0))
+		output_lines.append("%s · %s: %s · %s" % [
+			str(row.get("label", "")),
+			tr("COL_INTERCEPT"),
+			_coefficient_number(intercepts, row_index),
+			str(row.get("unit", "")),
+		])
+	coefficients_outputs.text = tr("COEFFICIENTS_OUTPUTS") + "\n" + "\n".join(output_lines)
+	if shown < total:
+		coefficients_summary.text += " · " + (tr("COEFFICIENTS_ROW_LIMIT") % [shown, total])
+	var verification: Dictionary = coefficient_report.get("verification", {})
+	var verify_text := tr("COEFFICIENTS_VERIFY_NO_INPUT")
+	if verification.get("performed", false):
+		verify_text = tr("COEFFICIENTS_VERIFY_OK") if verification.get("verified", false) else tr("COEFFICIENTS_VERIFY_FAILED")
+	var fit_scope := str(coefficient_report.get("model", {}).get("fit_scope", tr("UNAVAILABLE")))
+	coefficients_summary.text += " · " + (tr("COEFFICIENTS_SUMMARY") % [
+		str(coefficient_report.get("family", "")),
+		fit_scope,
+		verify_text,
+		str(verification.get("max_abs_error", tr("UNAVAILABLE")))])
+
+
+func _coefficient_output_tooltip(row: Dictionary, row_index: int, intercepts: Array) -> String:
+	return "%s · %s: %s · %s" % [
+		str(row.get("label", "")),
+		tr("COL_INTERCEPT"),
+		_coefficient_number(intercepts, row_index),
+		str(row.get("unit", "")),
+	]
+
+
+func _coefficient_number(values: Array, index: int) -> String:
+	if index < 0 or index >= values.size() or values[index] == null:
+		return tr("UNAVAILABLE")
+	return String.num(float(values[index]), 6)
+
+
 func _fill_explanation_tree() -> void:
 	explain_tree.clear()
 	for index in range(4):
@@ -764,15 +1113,15 @@ func _update_explanation_artifacts() -> void:
 
 func refresh_language() -> void:
 	main.tabs.set_tab_title(4, tr("TAB_PREDICTION"))
-	model_button.disabled = busy or explain_busy or not trust.button_pressed
-	trust.disabled = busy or explain_busy
-	data_button.disabled = busy or explain_busy
-	predict_button.disabled = busy or explain_busy or not trust.button_pressed or not compatibility.get("compatible", false)
-	export_button.disabled = busy or explain_busy or predictions.is_empty()
+	model_button.disabled = busy or explain_busy or coefficients_busy or not trust.button_pressed
+	trust.disabled = busy or explain_busy or coefficients_busy
+	data_button.disabled = busy or explain_busy or coefficients_busy
+	predict_button.disabled = busy or explain_busy or coefficients_busy or not trust.button_pressed or not compatibility.get("compatible", false)
+	export_button.disabled = busy or explain_busy or coefficients_busy or predictions.is_empty()
 	for option in mapping_options:
-		option.disabled = busy or explain_busy
+		option.disabled = busy or explain_busy or coefficients_busy
 	if is_instance_valid(mapping_confirm):
-		mapping_confirm.disabled = busy or explain_busy
+		mapping_confirm.disabled = busy or explain_busy or coefficients_busy
 		mapping_confirm.text = tr("CONFIRM_MAPPING")
 	mapping_toggle.visible = not metadata.is_empty() and metadata.get("feature_names", []).is_empty()
 	if not mapping_toggle.visible:
@@ -829,26 +1178,26 @@ func refresh_language() -> void:
 			status.text += "\n" + tr("MODEL_METADATA_FALLBACK")
 		if not export_path.is_empty():
 			status.text = tr("PREDICTION_EXPORTED") + " " + export_path
-	background_button.disabled = busy or explain_busy
+	background_button.disabled = busy or explain_busy or coefficients_busy
 	background_label.tooltip_text = background_path
 	background_label.text = background_path.get_file() if not background_path.is_empty() else tr("NO_BACKGROUND")
-	explain_row.editable = not (busy or explain_busy)
+	explain_row.editable = not (busy or explain_busy or coefficients_busy)
 	explain_row.max_value = maxi(1, int(data.get("row_count", 1)))
 	if explain_row.value > explain_row.max_value:
 		explain_row.value = explain_row.max_value
 	var classification: bool = str(metadata.get("task", "")) == "classification"
 	explain_class_box.visible = classification
-	explain_class.disabled = busy or explain_busy
-	explain_background_size.editable = not (busy or explain_busy)
-	explain_cycles.editable = not (busy or explain_busy)
-	var ready: bool = (not busy and not explain_busy and trust.button_pressed
+	explain_class.disabled = busy or explain_busy or coefficients_busy
+	explain_background_size.editable = not (busy or explain_busy or coefficients_busy)
+	explain_cycles.editable = not (busy or explain_busy or coefficients_busy)
+	var ready: bool = (not busy and not explain_busy and not coefficients_busy and trust.button_pressed
 		and not metadata.is_empty() and not input_path.is_empty()
 		and compatibility.get("compatible", false) and not background_path.is_empty())
 	explain_button.disabled = not ready
 	explain_cancel_button.disabled = not explain_busy
-	explain_open_button.disabled = explain_busy or not explain_artifacts.has("png")
-	explain_folder_button.disabled = explain_busy or explain_artifacts.is_empty()
-	explain_export_button.disabled = explain_busy or explain_artifacts.is_empty()
+	explain_open_button.disabled = explain_busy or coefficients_busy or not explain_artifacts.has("png")
+	explain_folder_button.disabled = explain_busy or coefficients_busy or explain_artifacts.is_empty()
+	explain_export_button.disabled = explain_busy or coefficients_busy or explain_artifacts.is_empty()
 	if explain_busy:
 		explain_status.text = tr("EXPLAIN_BUSY")
 	elif not explain_error.is_empty():
@@ -860,10 +1209,36 @@ func refresh_language() -> void:
 	else:
 		explain_status.text = tr("EXPLAIN_WAITING")
 	_fill_explanation_tree()
+	var coefficients_ready: bool = (not busy and not explain_busy and not coefficients_busy
+		and trust.button_pressed and not metadata.is_empty() and not model_path.is_empty())
+	coefficients_button.disabled = not coefficients_ready
+	coefficients_cancel_button.disabled = not coefficients_busy
+	coefficients_open_button.disabled = coefficients_busy or coefficients_artifacts.is_empty()
+	coefficients_export_button.disabled = coefficients_busy or coefficients_artifacts.is_empty()
+	if coefficients_busy:
+		coefficients_status.text = tr("COEFFICIENTS_BUSY")
+	elif not coefficients_error.is_empty():
+		coefficients_status.text = coefficients_error
+	elif not coefficients_note.is_empty():
+		coefficients_status.text = coefficients_note
+	elif not coefficient_report.is_empty():
+		var coefficient_status := str(coefficient_report.get("status", ""))
+		if coefficient_status == "available":
+			coefficients_status.text = tr("COEFFICIENTS_DONE")
+		elif coefficient_status == "unsupported":
+			coefficients_status.text = tr("COEFFICIENTS_UNSUPPORTED") % str(coefficient_report.get("reason", ""))
+		else:
+			coefficients_status.text = tr("COEFFICIENTS_ERROR") % str(coefficient_report.get("reason", tr("UNAVAILABLE")))
+	else:
+		coefficients_status.text = tr("COEFFICIENTS_WAITING")
+	_fill_coefficients_tree()
 
 
 func _exit_tree() -> void:
 	if explain_busy:
 		bridge.cancel_explanation()
+	if coefficients_busy:
+		bridge.cancel_explanation()
 	_clear_explanation()
+	_clear_coefficients()
 	_clear_predictions()

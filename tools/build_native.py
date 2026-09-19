@@ -31,6 +31,8 @@ def main():
                         help="Run bundled-core permutation classification/regression smoke")
     parser.add_argument("--explain-smoke", action="store_true",
                         help="Run bundled-core single-sample explanation classification/regression smoke")
+    parser.add_argument("--coefficients-smoke", action="store_true",
+                        help="Run bundled-core fitted-coefficient classification/regression smoke")
     args = parser.parse_args()
     if not args.output_dir.is_absolute():
         args.output_dir = ROOT / args.output_dir
@@ -181,6 +183,44 @@ def main():
             if explanation["reconstruction_abs_error"] > 1e-6:
                 raise RuntimeError("bundled-core explanation reconstruction failed")
         print("PSYML_EXPLANATION_BUNDLE_OK")
+    if args.coefficients_smoke:
+        quickstart = destination / "examples/quickstart"
+        expected = {
+            "classification": "logistic_regression",
+            "regression": "ridge",
+        }
+        for task in ["classification", "regression"]:
+            run_dir = quickstart / f"results/quickstart_{task}_coefficients"
+            shutil.rmtree(run_dir, ignore_errors=True)
+            subprocess.run(
+                [str(core), "run", "--config", f"{task}_coefficients_config.json"],
+                cwd=quickstart, env=environment, check=True, capture_output=True,
+                text=True, timeout=600)
+            models = sorted((run_dir / "model").glob("best_*.joblib"))
+            if len(models) != 1:
+                raise RuntimeError(f"expected one saved {task} model, found {models}")
+            if expected[task] not in models[0].name:
+                raise RuntimeError(f"unexpected {task} coefficient model: {models[0].name}")
+            data = quickstart / f"{task}_predict.csv"
+            out = run_dir / "coefficient_export"
+            report = run_dir / "coefficients"
+            if not (report / "coefficients.json").is_file():
+                raise RuntimeError("runner did not write final-model coefficients")
+            document = json.loads((report / "coefficients.json").read_text(encoding="utf-8"))
+            if document.get("status") != "available" or not document["verification"]["verified"]:
+                raise RuntimeError("runner coefficient reconstruction failed")
+            exported = subprocess.run(
+                [str(core), "coefficients", "--model", str(models[0]), "--input", str(data),
+                 "--trust-model", "--output-dir", str(out)],
+                cwd=quickstart, env=environment, check=True, capture_output=True, text=True,
+                timeout=600)
+            payload = json.loads(exported.stdout.strip().splitlines()[-1])
+            if not payload["coefficients"]["verification"]["verified"]:
+                raise RuntimeError("bundled-core coefficient reconstruction failed")
+            for name in ["coefficients.csv", "coefficients.json", "coefficients_notes.md"]:
+                if not (out / name).is_file():
+                    raise RuntimeError(f"missing bundled-core coefficient artefact: {name}")
+        print("PSYML_COEFFICIENTS_BUNDLE_OK")
     archive = Path(str(destination) + ".zip")
     if mac:
         run("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", destination, archive)

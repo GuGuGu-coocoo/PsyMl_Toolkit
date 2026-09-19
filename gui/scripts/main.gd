@@ -87,6 +87,7 @@ var unchecked_icon: Texture2D
 var permutation_ui
 var data_check_ui
 var interpretation_ui
+var result_coefficients_ui
 
 
 
@@ -239,6 +240,8 @@ func _bind_scene() -> void:
 	data_check_ui.build()
 	interpretation_ui = preload("res://scripts/result_interpretation_ui.gd").new(self)
 	interpretation_ui.build()
+	result_coefficients_ui = preload("res://scripts/result_coefficients_ui.gd").new(self)
+	result_coefficients_ui.build()
 
 
 func _bind_data_tab() -> void:
@@ -456,6 +459,8 @@ func _apply_language() -> void:
 		data_check_ui.refresh_language()
 	if interpretation_ui != null:
 		interpretation_ui.refresh_language()
+	if result_coefficients_ui != null:
+		result_coefficients_ui.refresh_language()
 	_update_primary_validation()
 	_update_checks()
 	_update_tree_titles()
@@ -1079,6 +1084,8 @@ func _clear_results() -> void:
 		permutation_ui.clear()
 	if interpretation_ui != null:
 		interpretation_ui.clear()
+	if result_coefficients_ui != null:
+		result_coefficients_ui.clear()
 	validation_result_entries.clear()
 	validation_result_option.clear()
 	validation_result_option.hide()
@@ -1109,6 +1116,8 @@ func _load_results(result_path: String, navigate := true, as_child := false) -> 
 	if parsed.get("evaluation_scope", "") == "independent_validations":
 		if interpretation_ui != null:
 			interpretation_ui.clear()
+		if result_coefficients_ui != null:
+			result_coefficients_ui.clear()
 		_load_independent_results(parsed, previous_validation)
 		best_result_label.text += "\n" + tr("MODEL_NOT_SAVED_INDEPENDENT")
 		if navigate:
@@ -1166,6 +1175,8 @@ func _load_results(result_path: String, navigate := true, as_child := false) -> 
 		permutation_ui.load_result(parsed, last_result_dir)
 	if interpretation_ui != null:
 		interpretation_ui.load_result(parsed, last_result_dir)
+	if result_coefficients_ui != null:
+		result_coefficients_ui.load_result(parsed, last_result_dir)
 	if navigate:
 		tabs.current_tab = 3
 
@@ -1573,6 +1584,8 @@ func _on_validation_result_selected(index: int) -> void:
 			permutation_ui.clear()
 		if interpretation_ui != null:
 			interpretation_ui.clear()
+		if result_coefficients_ui != null:
+			result_coefficients_ui.clear()
 		last_result_dir = last_result_path.get_base_dir().path_join("validations").path_join(validation)
 		best_result_label.text = _validation_display(validation) + " — " + tr("VALIDATION_FAILED")
 		last_warnings = [str(entry.get("error", {}).get("message", ""))]

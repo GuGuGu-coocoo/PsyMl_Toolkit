@@ -75,6 +75,7 @@ def result_payload(
     study_summary: dict[str, Any] | None = None,
     permutation_artifacts: dict[str, str] | None = None,
     interpretation_artifacts: dict[str, str] | None = None,
+    coefficient_artifacts: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Build a stable machine-readable result summary."""
     artifacts = {
@@ -105,6 +106,10 @@ def result_payload(
         artifacts.update(permutation_artifacts)
     if interpretation_artifacts:
         artifacts.update(interpretation_artifacts)
+    if coefficient_artifacts:
+        artifacts.update({
+            f"coefficients_{name}": path for name, path in coefficient_artifacts.items()
+        })
 
     figures = config.figure_types if config.figure_types is not None else [
         "confusion_matrix" if config.task == "classification" else "observed_vs_predicted"

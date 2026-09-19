@@ -9,6 +9,9 @@ signal event_received(payload: Dictionary)
 signal explanation_ready(payload: Dictionary, generation: int)
 signal explanation_failed(error: Dictionary, generation: int)
 signal explanation_cancelled(generation: int)
+signal coefficients_ready(payload: Dictionary, generation: int)
+signal coefficients_failed(error: Dictionary, generation: int)
+signal coefficients_cancelled(generation: int)
 
 const MAX_DIAGNOSTIC_CHARS := 65536
 
@@ -20,6 +23,7 @@ var _explain_data: Dictionary = {}
 var _explain_stdout := ""
 var _explain_stderr := ""
 var _explain_generation := 0
+var _task_kind := "explanation"
 
 
 static func bundle_directory() -> String:
@@ -184,8 +188,17 @@ func _poll_analysis() -> void:
 
 
 func start_explanation(arguments: PackedStringArray, command_override := PackedStringArray()) -> bool:
+	return _start_task("explanation", arguments, command_override)
+
+
+func start_coefficients(arguments: PackedStringArray, command_override := PackedStringArray()) -> bool:
+	return _start_task("coefficients", arguments, command_override)
+
+
+func _start_task(kind: String, arguments: PackedStringArray, command_override := PackedStringArray()) -> bool:
 	if is_explaining():
 		return false
+	_task_kind = kind
 	var command := PackedStringArray()
 	if command_override.is_empty():
 		command.append_array(_command_prefix())
@@ -198,7 +211,7 @@ func start_explanation(arguments: PackedStringArray, command_override := PackedS
 	_explain_data = OS.execute_with_pipe(python_executable(), command, false)
 	if _explain_data.is_empty():
 		_explain_data = {}
-		explanation_failed.emit(
+		_fail_task(
 			{
 				"code": "process_start_failed",
 				"message": "Could not start the PsyML Python process.",
@@ -208,6 +221,13 @@ func start_explanation(arguments: PackedStringArray, command_override := PackedS
 		return false
 	set_process(true)
 	return true
+
+
+func _fail_task(error: Dictionary, generation: int) -> void:
+	if _task_kind == "coefficients":
+		coefficients_failed.emit(error, generation)
+	else:
+		explanation_failed.emit(error, generation)
 
 
 func explanation_generation() -> int:
@@ -221,10 +241,14 @@ func is_explaining() -> bool:
 func cancel_explanation() -> void:
 	if _explain_data.is_empty():
 		return
+	var kind := _task_kind
 	if OS.is_process_running(_explain_data["pid"]):
 		OS.kill(_explain_data["pid"])
 	_cleanup_explanation()
-	explanation_cancelled.emit(_explain_generation)
+	if kind == "coefficients":
+		coefficients_cancelled.emit(_explain_generation)
+	else:
+		explanation_cancelled.emit(_explain_generation)
 
 
 func _poll_explanation() -> void:
@@ -244,14 +268,17 @@ func _poll_explanation() -> void:
 		return
 	var payload = _parse_complete_json(_explain_stdout)
 	if exit_code == 0 and payload is Dictionary:
-		explanation_ready.emit(payload, generation)
+		if _task_kind == "coefficients":
+			coefficients_ready.emit(payload, generation)
+		else:
+			explanation_ready.emit(payload, generation)
 		return
 	var message := _explain_stderr.strip_edges()
 	if payload is Dictionary and payload.has("error"):
 		message = str(payload.error.get("message", message))
 	if message.is_empty():
 		message = "Explanation exited without a valid result."
-	explanation_failed.emit({"code": "explanation_failed", "message": message}, generation)
+	_fail_task({"code": "explanation_failed", "message": message}, generation)
 
 
 func _parse_complete_json(text: String):

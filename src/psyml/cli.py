@@ -29,6 +29,7 @@ COMMANDS = {
     "predict",
     "export-table",
     "explain",
+    "coefficients",
 }
 
 
@@ -135,6 +136,22 @@ def build_parser() -> argparse.ArgumentParser:
     explain_parser.add_argument("--overwrite", action="store_true",
                                 help="Not supported in this version; explanation output must "
                                      "be a new or empty directory")
+
+    coefficients_parser = commands.add_parser(
+        "coefficients",
+        help="Extract fitted coefficients/intercepts from a trusted linear model",
+    )
+    coefficients_parser.add_argument("--model", required=True, type=Path)
+    coefficients_parser.add_argument("--input", type=Path,
+                                     help="Optional data used only to verify reconstruction")
+    coefficients_parser.add_argument("--output-dir", type=Path, dest="output_dir")
+    coefficients_parser.add_argument("--trust-model", action="store_true")
+    coefficients_parser.add_argument("--check-only", action="store_true", dest="check_only")
+    coefficients_parser.add_argument("--feature", action="append",
+                                     help="Ordered manual mapping; repeat")
+    coefficients_parser.add_argument("--overwrite", action="store_true",
+                                     help="Not supported in this version; coefficient output "
+                                          "must be a new or empty directory")
 
     import_parser = commands.add_parser("import-config", help="Validate a desktop configuration")
     import_parser.add_argument("--config", required=True, type=Path)
@@ -258,6 +275,8 @@ def main(argv: list[str] | None = None) -> int:
             _print_json(_prediction_command(args))
         elif args.command == "explain":
             _print_json(_explanation_command(args))
+        elif args.command == "coefficients":
+            _print_json(_coefficients_command(args))
         elif args.command == "import-config":
             from psyml.gui_config import import_configuration
 
@@ -373,4 +392,42 @@ def _explanation_command(args):
                          args.model.parent / 'model_metadata.json'),
     )
     payload.update(explanation=result, artifacts=artifacts, output_dir=str(args.output_dir))
+    return payload
+
+
+def _coefficients_command(args):
+    from psyml.data.io import load_dataframe
+    from psyml.models.coefficients import build_loaded_coefficient_report, write_coefficients
+    from psyml.prediction import load_model
+
+    loaded = load_model(args.model, trusted=args.trust_model)
+    frame = load_dataframe(args.input) if args.input is not None else None
+    report = build_loaded_coefficient_report(loaded, frame, args.feature)
+    payload = {"model": loaded.metadata, "warnings": loaded.notices, "coefficients": report}
+    if args.check_only:
+        payload["check_only"] = True
+        return payload
+    if report.get("status") != "available":
+        return payload
+    if args.output_dir is None:
+        raise ValueError(
+            "Coefficient export requires --output-dir (or --check-only for a support check)."
+        )
+    if args.overwrite:
+        raise ValueError(
+            "--overwrite is not supported for coefficients in this version; "
+            "choose a new or empty output directory."
+        )
+    protected = {args.model.resolve(), (args.model.parent / 'model_metadata.json').resolve()}
+    if args.input is not None:
+        protected.add(args.input.resolve())
+    if args.output_dir.resolve() in protected:
+        raise ValueError("Choose a separate output directory; preserve the input and model files.")
+    payload["artifacts"] = write_coefficients(
+        report,
+        args.output_dir,
+        protected_paths=(args.model, args.model.parent / 'model_metadata.json', args.input),
+    )
+    report["artifacts"] = payload["artifacts"]
+    payload["output_dir"] = str(args.output_dir)
     return payload
