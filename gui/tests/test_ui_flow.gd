@@ -11,12 +11,15 @@ func _run_test() -> void:
 	var main = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
-	assert(main.has_node("AppMargin/Page/Header/TitleLabel"))
+	assert(main.has_node("AppMargin/Page/Header/TitleColumn/TitleLabel"))
+	assert(main.has_node("AppMargin/Page/Header/TitleColumn/VersionLabel"))
 	assert(main.has_node("AppMargin/Page/Tabs/Data/Padding/DataContent/DataSourcePanel"))
 	assert(main.has_node("AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel"))
 	assert(main.has_node("AppMargin/Page/Tabs/Review/Padding/ReviewContent/ExecutionPanel"))
 	assert(main.has_node("AppMargin/Page/Tabs/Results/Padding/ResultsContent/ResultsBody"))
-	assert(main.get_node("AppMargin/Page/Header/TitleLabel").text == "PsyML Toolkit")
+	assert(main.get_node("AppMargin/Page/Header/TitleColumn/TitleLabel").text == "PsyML Toolkit")
+	assert(main.version_label.visible)
+	assert(main.version_label.text == TranslationServer.translate("VERSION") + " " + main._resolve_version())
 	assert(main.find_child("SubtitleLabel", true, false) == null)
 	assert(main.bridge == main.get_node("CoreBridge"))
 	assert(TranslationServer.get_locale() == "zh_CN")
@@ -96,6 +99,24 @@ func _run_test() -> void:
 	main.model_list.multi_selected.emit(1, true)
 	assert(not main.run_button.disabled)
 	assert(main._build_config().selection_protocol == "nested_family_v1")
+	# FR-015: while the runner reports `finalizing`, the page must show the
+	# writing state, stay below a full bar and keep the run cancellable; only
+	# `completed` may mark it finished or navigate to the results page.
+	var finalizing := {"seen": 0, "problem": ""}
+	main.bridge.event_received.connect(func(event: Dictionary):
+		if str(event.get("phase", "")) != "finalizing":
+			return
+		finalizing.seen += 1
+		if main.progress_bar.value >= 1.0:
+			finalizing.problem = "bar full during finalizing"
+		if main.progress_detail_label.text != main.tr("PROGRESS_FINALIZING"):
+			finalizing.problem = "message missing: " + main.progress_detail_label.text
+		if main.status_key != "RUNNING" or not main.is_analysis_running:
+			finalizing.problem = "run state left RUNNING during finalizing"
+		if main.cancel_button.disabled:
+			finalizing.problem = "cancel disabled during finalizing"
+		if main.tabs.current_tab == 3:
+			finalizing.problem = "results page shown before completion")
 	main._on_run_pressed()
 	assert(main.is_analysis_running)
 	assert(main.run_button.disabled)
@@ -114,6 +135,9 @@ func _run_test() -> void:
 	assert(result.task == "classification")
 	assert(result.evaluation_scope == "nested_selection_procedure")
 	assert(result.evaluated_combinations == 4)
+	assert(finalizing.seen > 0, "no finalizing event was reported")
+	assert(finalizing.problem.is_empty(), finalizing.problem)
+	assert(main.tabs.current_tab == 3)
 	assert(main.metrics_tree.get_root().get_first_child() != null)
 	assert(main.comparison_tree.get_root().get_first_child() != null)
 	assert(main.comparison_tree.get_column_title(0) == "排名")

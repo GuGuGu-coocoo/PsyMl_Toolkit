@@ -90,9 +90,31 @@ func _run_test() -> void:
 	assert(main._build_config().primary_validation == null)
 	main._on_language_selected(0)
 	main.output_edit.text = TestPaths.temp_dir().path_join("psyml-independent-%d" % Time.get_ticks_usec())
+	# FR-015: each independent sub-run also reports `finalizing`; the GUI must
+	# show the writing state, keep the bar short of full and stay cancellable,
+	# and only `completed` may mark the run finished.
+	var finalizing := {"seen": 0, "problem": ""}
+	main.bridge.event_received.connect(func(event: Dictionary):
+		if str(event.get("phase", "")) != "finalizing":
+			return
+		finalizing.seen += 1
+		if main.progress_bar.value >= 1.0:
+			finalizing.problem = "bar full during finalizing"
+		if main.progress_detail_label.text != main.tr("PROGRESS_FINALIZING"):
+			finalizing.problem = "message missing: " + main.progress_detail_label.text
+		if main.status_key != "RUNNING" or not main.is_analysis_running:
+			finalizing.problem = "run state left RUNNING during finalizing"
+		if main.cancel_button.disabled:
+			finalizing.problem = "cancel disabled during finalizing"
+		if main.tabs.current_tab == 3:
+			finalizing.problem = "results page shown before completion")
 	main._on_run_pressed()
 	await _wait_run(main)
 	assert(main.status_key == "COMPLETED", main.status_detail)
+	assert(finalizing.seen > 0, "no finalizing event was reported")
+	assert(finalizing.problem.is_empty(), finalizing.problem)
+	assert(main.progress_bar.value == 1.0)
+	assert(main.progress_detail_label.text == main.tr("PROGRESS_COMPLETED"))
 	var bundle_path: String = main.last_result_path
 	assert(main.validation_result_option.visible)
 	assert(main.validation_result_option.selected == 0)
@@ -153,6 +175,9 @@ func _run_test() -> void:
 	page.ensure_control_visible(main.comparison_tree)
 	await process_frame
 	await process_frame
+	# A gesture that starts over the nested table scrolls the table, not the
+	# page (FR-013). Wait out the release delay so this is a fresh gesture.
+	await create_timer(0.4).timeout
 	var before: int = page.scroll_vertical
 	await _wheel(main.comparison_tree.global_position + Vector2(30, 30))
 	assert(page.scroll_vertical == before, "Nested table scroll leaked to page")

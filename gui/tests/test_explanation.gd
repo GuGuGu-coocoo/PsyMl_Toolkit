@@ -22,6 +22,36 @@ func _write(path: String, content: String) -> void:
 	file.close()
 
 
+func _file_size(path: String) -> int:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return -1
+	var length := file.get_length()
+	file.close()
+	return length
+
+
+func _user_output_state() -> Dictionary:
+	# Snapshot the hidden application-data folders with a bounded depth so a
+	# failed operation can be checked to not have fallen back there.
+	var state := {}
+	for family in ["prediction", "explanation", "coefficients"]:
+		_collect_user_files(ProjectSettings.globalize_path("user://" + family), family, state, 0)
+	return state
+
+
+func _collect_user_files(path: String, label: String, state: Dictionary, depth: int) -> void:
+	var directory := DirAccess.open(path)
+	if directory == null:
+		return
+	for name in directory.get_files():
+		state[label.path_join(name)] = _file_size(path.path_join(name))
+	if depth >= 3:
+		return
+	for name in directory.get_directories():
+		_collect_user_files(path.path_join(name), label.path_join(name), state, depth + 1)
+
+
 func _wait_busy(page) -> void:
 	var deadline := Time.get_ticks_msec() + 30000
 	while page.busy and Time.get_ticks_msec() < deadline:
@@ -41,6 +71,11 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	var page = main.prediction_page
+	# Page 4 writes into the page-2 result root: a Chinese path with spaces.
+	var output_root := TestPaths.temp_dir().path_join("psyml 输出 解释 %d" % Time.get_ticks_usec())
+	page.set_output_root(output_root)
+	_expect(main.output_edit.text == output_root)
+	_expect(page.output_edit.text == output_root)
 	var directory := TestPaths.temp_dir().path_join("psyml-explain-ui-%d" % Time.get_ticks_usec())
 	DirAccess.make_dir_recursive_absolute(directory)
 	var input := ProjectSettings.globalize_path("res://../examples/quickstart/classification_train.csv")
@@ -74,6 +109,23 @@ func _run() -> void:
 	_expect(not page.explain_error.is_empty(), "missing background must be reported")
 	page.load_background(predict_input)
 	_expect(page.explain_error.is_empty())
+	page.explain_class.select(0)
+	# A missing or unwritable root is a visible error; never a user:// fallback.
+	var user_before := _user_output_state()
+	page.set_output_root("")
+	page.run_explanation()
+	_expect(page.explain_error == main.tr("PREDICTION_OUTPUT_REQUIRED"), page.explain_error)
+	_expect(not page.explain_busy and page.explanation.is_empty())
+	page.explain_error = ""
+	var blocked_root := directory.path_join("blocked-root")
+	_write(blocked_root, "not a directory")
+	page.set_output_root(blocked_root)
+	page.run_explanation()
+	_expect(page.explain_error == main.tr("OUTPUT_NOT_WRITABLE"), page.explain_error)
+	_expect(not page.explain_busy)
+	_expect(_user_output_state() == user_before, "explanation must not fall back to user://")
+	page.set_output_root(output_root)
+	page.explain_error = ""
 	# The background path label must stay on one line: a wrapped/auto-wrapping label
 	# inside the control row is the layout bug that squeezed the path into a column.
 	# Check both a normal 1280-wide window and a narrower one.
@@ -111,6 +163,15 @@ func _run() -> void:
 	for key in ["json", "csv", "png", "notes"]:
 		_expect(page.explain_artifacts.has(key), "missing artifact " + key)
 		_expect(FileAccess.file_exists(str(page.explain_artifacts[key])), str(page.explain_artifacts))
+	# FR-014: they really live under the selected root, inside a new
+	# explanation/run_* folder owned by this operation.
+	_expect(page.explain_output_dir.begins_with(output_root + "/"), page.explain_output_dir)
+	_expect(page.explain_output_dir.get_base_dir() == output_root.path_join("explanation"), page.explain_output_dir)
+	_expect(page.explain_output_dir.get_file().begins_with("run_"), page.explain_output_dir)
+	for key in ["json", "csv", "png", "notes"]:
+		_expect(
+			str(page.explain_artifacts[key]).begins_with(page.explain_output_dir + "/"),
+			str(page.explain_artifacts[key]))
 	_expect(not page.explain_open_button.disabled)
 	_expect(not page.explain_folder_button.disabled)
 	_expect(not page.explain_export_button.disabled)
@@ -196,6 +257,8 @@ func _run() -> void:
 	_expect(not page.explanation.is_empty())
 
 	# Cancel terminates only this subprocess and clears the result; immediate restart works.
+	var earlier_png := str(page.explain_artifacts["png"])
+	var earlier_dir: String = page.explain_output_dir
 	page.run_explanation()
 	_expect(page.explain_busy)
 	await create_timer(.15).timeout
@@ -203,10 +266,16 @@ func _run() -> void:
 	await create_timer(.2).timeout
 	_expect(not page.explain_busy)
 	_expect(page.explanation.is_empty())
+	_expect(FileAccess.file_exists(earlier_png), "cancelling must not delete earlier artifacts")
+	var later_root := TestPaths.temp_dir().path_join("psyml 换目录 解释 %d" % Time.get_ticks_usec())
+	page.set_output_root(later_root)
 	page.run_explanation()
 	await _wait_explain(page)
 	_expect(page.explain_error.is_empty(), page.explain_error)
 	_expect(not page.explanation.is_empty())
+	_expect(page.explain_output_dir.begins_with(later_root + "/"), page.explain_output_dir)
+	_expect(page.explain_output_dir != earlier_dir, "a later run must use its own new folder")
+	_expect(FileAccess.file_exists(earlier_png), "a later run must not remove earlier artifacts")
 
 	# Incompatible background fails cleanly without leaving results.
 	var bad := directory.path_join("bad.csv")

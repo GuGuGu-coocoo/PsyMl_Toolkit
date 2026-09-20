@@ -6,6 +6,7 @@ const SURFACE := Color("f7f8fa")
 const BORDER := Color("dce0e6")
 const MUTED := Color("626977")
 const RADIUS := 6
+const VERSION_FONT_SIZE := 13
 
 const DataPreview = preload("res://scripts/data_preview.gd")
 
@@ -88,6 +89,8 @@ var permutation_ui
 var data_check_ui
 var interpretation_ui
 var result_coefficients_ui
+var scroll_router
+var version_label: Label
 
 
 
@@ -242,6 +245,10 @@ func _bind_scene() -> void:
 	interpretation_ui.build()
 	result_coefficients_ui = preload("res://scripts/result_coefficients_ui.gd").new(self)
 	result_coefficients_ui.build()
+	_install_version_label()
+	scroll_router = preload("res://scripts/scroll_gesture_router.gd").new()
+	add_child(scroll_router)
+	tabs.tab_changed.connect(func(_tab): scroll_router.release())
 
 
 func _bind_data_tab() -> void:
@@ -370,9 +377,20 @@ func _bind_review_tab() -> void:
 	)
 	choose_folder_button.pressed.connect(func(): folder_dialog.popup_centered_ratio(0.75))
 	refresh_review_button.pressed.connect(_refresh_review)
-	output_edit.text_changed.connect(func(_text): _refresh_review())
+	output_edit.text_changed.connect(func(_text):
+		_refresh_review()
+		if prediction_page != null:
+			prediction_page.sync_output_root())
 	cancel_button.pressed.connect(_request_cancel)
 	run_button.pressed.connect(_on_run_pressed)
+
+
+func _set_output_root(path: String) -> void:
+	# One result root for page 2 and page 4; the page-2 picker updates both.
+	output_edit.text = path
+	_refresh_review()
+	if prediction_page != null:
+		prediction_page.sync_output_root()
 
 
 func _bind_results_tab() -> void:
@@ -404,7 +422,141 @@ func _bind_dialogs() -> void:
 	file_dialog = %FileDialog
 	folder_dialog = %FolderDialog
 	file_dialog.file_selected.connect(_on_file_selected)
-	folder_dialog.dir_selected.connect(func(path): output_edit.text = path; _refresh_review())
+	folder_dialog.dir_selected.connect(_set_output_root)
+
+
+func _install_version_label() -> void:
+	# Small version text under the app name, built in code so main.tscn stays
+	# untouched and the source run needs no build file.
+	var title: Label = get_node("AppMargin/Page/Header/TitleLabel")
+	var header := title.get_parent()
+	var column := VBoxContainer.new()
+	column.name = "TitleColumn"
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 0)
+	var index := title.get_index()
+	header.remove_child(title)
+	header.add_child(column)
+	header.move_child(column, index)
+	column.add_child(title)
+	version_label = Label.new()
+	version_label.name = "VersionLabel"
+	version_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	version_label.add_theme_font_size_override("font_size", VERSION_FONT_SIZE)
+	version_label.add_theme_color_override("font_color", MUTED)
+	column.add_child(version_label)
+
+
+func _refresh_version_label() -> void:
+	if version_label == null:
+		return
+	var version := _resolve_version()
+	version_label.visible = not version.is_empty()
+	version_label.text = tr("VERSION") + " " + version if version_label.visible else ""
+
+
+func _resolve_version() -> String:
+	# A standalone package carries BUILD.json; a source checkout has neither a
+	# build file nor a version field in the core capabilities payload (checked
+	# against src/psyml/protocol.py), so the documented single source of truth
+	# pyproject.toml is read next, then the core module version.
+	var label := _resolve_version_from(_build_file_candidates())
+	if not label.is_empty():
+		return label
+	if capabilities.has("psyml_version"):
+		return str(capabilities["psyml_version"]).strip_edges()
+	var version := _version_from_pyproject(_read_text_file(_project_file("pyproject.toml")))
+	if version.is_empty():
+		version = _version_from_core_module(
+			_read_text_file(_project_file("src/psyml/__init__.py"))
+		)
+	return version
+
+
+func _resolve_version_from(candidates: Array) -> String:
+	for path in candidates:
+		var label := _version_from_build_file(path)
+		if not label.is_empty():
+			return label
+	return ""
+
+
+func _build_file_candidates() -> Array[String]:
+	return _build_file_candidates_for(CoreBridge.bundle_directory())
+
+
+func _build_file_candidates_for(bundle: String) -> Array[String]:
+	# Bounded lookup mirroring the shipped layouts of tools/build_native.py: a
+	# standalone package keeps BUILD.json next to the executable folder
+	# (Windows) or next to the .app (macOS), where the bundle directory is
+	# <destination>/PsyML Toolkit.app/Contents/Resources, so the file sits
+	# three levels up. A source checkout matches none of the four paths and
+	# falls back to pyproject.toml; there is no unbounded parent walk.
+	return [
+		bundle.path_join("BUILD.json").simplify_path(),
+		bundle.path_join("../BUILD.json").simplify_path(),
+		bundle.path_join("../../BUILD.json").simplify_path(),
+		bundle.path_join("../../../BUILD.json").simplify_path(),
+	]
+
+
+func _project_file(relative: String) -> String:
+	return ProjectSettings.globalize_path("res://../" + relative)
+
+
+func _read_text_file(path: String) -> String:
+	if not FileAccess.file_exists(path):
+		return ""
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	var text := file.get_as_text()
+	file.close()
+	return text
+
+
+func _version_from_build_file(path: String) -> String:
+	var text := _read_text_file(path)
+	if text.is_empty():
+		return ""
+	var parsed = CoreBridge.parse_json_document(text)
+	if not parsed is Dictionary:
+		return ""
+	for key in ["label", "version"]:
+		var value := str(parsed.get(key, "")).strip_edges()
+		if not value.is_empty():
+			return value
+	return ""
+
+
+func _version_from_pyproject(text: String) -> String:
+	var in_project := false
+	for line in text.split("\n"):
+		var stripped := line.strip_edges()
+		if stripped.begins_with("["):
+			in_project = stripped == "[project]"
+			continue
+		if not in_project or not stripped.begins_with("version"):
+			continue
+		var parts := stripped.split("=", true, 1)
+		if parts.size() == 2:
+			return _unquote(parts[1])
+	return ""
+
+
+func _version_from_core_module(text: String) -> String:
+	for line in text.split("\n"):
+		var stripped := line.strip_edges()
+		if not stripped.begins_with("__version__"):
+			continue
+		var parts := stripped.split("=", true, 1)
+		if parts.size() == 2:
+			return _unquote(parts[1])
+	return ""
+
+
+func _unquote(value: String) -> String:
+	return value.strip_edges().trim_prefix('"').trim_suffix('"').strip_edges()
 
 
 func _on_language_selected(index: int) -> void:
@@ -421,6 +573,7 @@ func _apply_language() -> void:
 			node.text = text_value
 		elif node is Button:
 			node.text = text_value
+	_refresh_version_label()
 	for control in find_children("*", "Control", true, false):
 		if control is Label:
 			control.tooltip_text = tr("COPY_TEXT_HINT")
@@ -984,47 +1137,60 @@ func _request_cancel() -> void:
 
 
 func _on_core_event(event: Dictionary) -> void:
-	progress_bar.value = float(event.get("progress", 0.0))
 	match event.get("event", ""):
 		"started":
+			progress_bar.value = float(event.get("progress", 0.0))
 			_set_running_state(true)
 			_set_status("RUNNING")
 		"progress":
-			_set_status("RUNNING")
-			var completed := int(event.get("completed_tasks", 0))
-			var total := int(event.get("total_tasks", 0))
-			var remaining := int(event.get("remaining_tasks", 0))
-			var eta_value = event.get("estimated_remaining_seconds", null)
-			var model := str(event.get("current_model", ""))
-			var validation := str(event.get("current_validation", ""))
-			var current_fold := int(event.get("current_fold", 1))
-			if completed == 0:
-				_set_progress("PROGRESS_PLANNED", {"total": total})
+			var phase := str(event.get("phase", ""))
+			if phase == "finalizing":
+				# `finalizing` is reported after the last counted task and before
+				# result files are written. Show that real work, keep the bar short
+				# of completion and stay cancellable; only `completed` may mark the
+				# run finished or switch to the results page.
+				_set_status("RUNNING")
+				_set_progress("PROGRESS_FINALIZING")
 			else:
-				_set_progress(
-					"PROGRESS_DETAIL",
-					{
-						"completed": completed,
-						"total": total,
-						"remaining": remaining,
-						"eta_seconds": eta_value,
-						"model": model,
-						"validation": validation,
-						"fold": current_fold,
-					}
-				)
+				progress_bar.value = float(event.get("progress", 0.0))
+				_set_status("RUNNING")
+				var completed := int(event.get("completed_tasks", 0))
+				var total := int(event.get("total_tasks", 0))
+				var remaining := int(event.get("remaining_tasks", 0))
+				var eta_value = event.get("estimated_remaining_seconds", null)
+				var model := str(event.get("current_model", ""))
+				var validation := str(event.get("current_validation", ""))
+				var current_fold := int(event.get("current_fold", 1))
+				if completed == 0:
+					_set_progress("PROGRESS_PLANNED", {"total": total})
+				else:
+					_set_progress(
+						"PROGRESS_DETAIL",
+						{
+							"completed": completed,
+							"total": total,
+							"remaining": remaining,
+							"eta_seconds": eta_value,
+							"model": model,
+							"validation": validation,
+							"fold": current_fold,
+						}
+					)
 		"completed":
+			progress_bar.value = float(event.get("progress", 1.0))
 			_cleanup_pending_config()
 			_set_running_state(false)
 			_set_status("COMPLETED")
 			_set_progress("PROGRESS_COMPLETED")
 			_load_results(event.result_path)
 		"cancelled":
+			progress_bar.value = float(event.get("progress", 0.0))
 			_cleanup_pending_config()
 			_set_running_state(false)
 			_set_status("CANCELLED")
 			_set_progress("PROGRESS_CANCELLED")
 		"failed":
+			progress_bar.value = float(event.get("progress", 0.0))
 			_cleanup_pending_config()
 			_set_running_state(false)
 			_show_core_error(event.get("error", {}))
@@ -1413,10 +1579,9 @@ func _bind_feedback_controls() -> void:
 
 func _configure_readable_controls(node: Node) -> void:
 	if node is ScrollContainer or node is Tree or node is ItemList or node is TextEdit or (node is RichTextLabel and node.scroll_active):
-		# Consume wheel events even at a nested scroller's boundary.
+		# Consume wheel events even at a nested scroller's boundary; the scroll
+		# gesture router keeps one owner per gesture and re-asserts this flag.
 		node.mouse_force_pass_scroll_events = false
-	if node is ScrollContainer:
-		node.gui_input.connect(_stop_scroll_chaining.bind(node))
 	if node is RichTextLabel:
 		node.selection_enabled = true
 		if not node.scroll_active:
@@ -1509,30 +1674,6 @@ func _show_selected_figure(index: int) -> void:
 	var image := Image.load_from_file(last_result_dir.path_join(figure_option.get_item_metadata(index)))
 	if image != null and not image.is_empty():
 		figure_view.texture = ImageTexture.create_from_image(image)
-
-
-func _stop_scroll_chaining(event: InputEvent, control: Control) -> void:
-	var wheel: bool = event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]
-	if not wheel and not event is InputEventPanGesture:
-		return
-	var point: Vector2 = control.get_global_transform() * event.position
-	# Internal title buttons/scrollbars may still forward events. Only suppress
-	# the ancestor's response; retain native scrolling in the nested widget.
-	for child in control.find_children("*", "Control", true, false):
-		if not (child is Tree or child is ItemList or child is ScrollContainer or child is TextEdit or (child is RichTextLabel and child.scroll_active)):
-			continue
-		if not child.is_visible_in_tree() or not child.get_global_rect().has_point(point):
-			continue
-		var ancestor: Node = child.get_parent()
-		var clipped := false
-		while ancestor is Control and ancestor != control:
-			if ancestor.clip_contents and not ancestor.get_global_rect().has_point(point):
-				clipped = true
-				break
-			ancestor = ancestor.get_parent()
-		if not clipped:
-			control.accept_event()
-			return
 
 
 func _clear_result_tables() -> void:

@@ -2,10 +2,16 @@ extends Node
 ## Local inference UI; the core owns schema validation and prediction semantics.
 
 const DataPreview = preload("res://scripts/data_preview.gd")
+const OutputLocation = preload("res://scripts/output_location.gd")
 const EXPLANATION_EXPORT_ORDER := ["csv", "png", "notes", "json"]
 var main: Control
 var bridge: CoreBridge
 var page: ScrollContainer
+var output_edit: LineEdit
+var output_choose_button: Button
+var output_help: Label
+var output_dialog: FileDialog
+var output_root_sync := false
 var model_button: Button
 var data_button: Button
 var predict_button: Button
@@ -108,6 +114,32 @@ func build(owner: Control) -> void:
 	margin.add_child(content)
 	label(content, "PREDICTION_HEADING").add_theme_font_size_override("font_size", 24)
 	label(content, "PREDICTION_HELP")
+	# Page 4 shares page 2's result root: prediction, SHAP and coefficient
+	# artifacts go into new run subfolders under prediction/, explanation/ and
+	# coefficients/ inside it. Nothing is inferred from the model location and
+	# there is no hidden fallback.
+	var output_row := HBoxContainer.new()
+	output_row.add_theme_constant_override("separation", 14)
+	content.add_child(output_row)
+	var output_label: Label = label(output_row, "OUTPUT_FOLDER")
+	# Keep the row label on one line like page 2. An autowrapping label has no
+	# useful minimum width inside an HBoxContainer and collapses to about one
+	# character per line, which also inflates the whole row.
+	output_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	output_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	output_edit = LineEdit.new()
+	output_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	output_row.add_child(output_edit)
+	output_choose_button = button(output_row, "CHOOSE_FOLDER")
+	output_help = label(content, "PREDICTION_OUTPUT_HELP")
+	output_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_DIR, PackedStringArray())
+	output_choose_button.pressed.connect(func():
+		output_dialog.title = tr("CHOOSE_FOLDER")
+		if not main.output_edit.text.strip_edges().is_empty():
+			output_dialog.current_dir = main.output_edit.text.strip_edges()
+		output_dialog.popup_centered_ratio(0.8))
+	output_dialog.dir_selected.connect(set_output_root)
+	output_edit.text_changed.connect(_on_output_edit_changed)
 	trust = CheckBox.new()
 	content.add_child(trust)
 	main.translated_controls.append({"node": trust, "key": "TRUST_MODEL"})
@@ -348,6 +380,42 @@ func _request(kind: String, arguments: PackedStringArray) -> void:
 	bridge.request_json(arguments)
 
 
+func set_output_root(path: String) -> void:
+	# Page 2 and page 4 share one result root; the page-2 setting is the source.
+	main.output_edit.text = path
+	main._refresh_review()
+	sync_output_root()
+
+
+func sync_output_root() -> void:
+	if output_edit == null or main == null or main.output_edit == null:
+		return
+	if output_edit.text == main.output_edit.text:
+		return
+	output_root_sync = true
+	output_edit.text = main.output_edit.text
+	output_root_sync = false
+
+
+func _on_output_edit_changed(text: String) -> void:
+	if output_root_sync:
+		return
+	main.output_edit.text = text
+	main._refresh_review()
+
+
+func _freeze_output_directory(family: String) -> Dictionary:
+	# Resolve and freeze the shared root when the operation starts; a missing or
+	# unwritable root is a visible error and never becomes a user:// fallback.
+	var root := OutputLocation.shared_root(main)
+	if not str(root.error).is_empty():
+		return {"path": "", "root": "", "error": tr(str(root.error))}
+	var frozen := OutputLocation.create_run_directory(str(root.path), family)
+	if not str(frozen.error).is_empty():
+		return {"path": "", "root": str(frozen.root), "error": tr(str(frozen.error))}
+	return {"path": str(frozen.path), "root": str(frozen.root), "error": ""}
+
+
 func load_model(path: String) -> void:
 	if busy or explain_busy or coefficients_busy or not trust.button_pressed:
 		return
@@ -434,10 +502,15 @@ func _response(payload: Dictionary) -> void:
 func run_prediction() -> void:
 	if busy or explain_busy or coefficients_busy or not compatibility.get("compatible", false) or not trust.button_pressed:
 		return
+	var frozen := _freeze_output_directory(OutputLocation.PREDICTION)
+	if not str(frozen.error).is_empty():
+		error_message = str(frozen.error)
+		refresh_language()
+		return
 	_clear_predictions()
-	var directory := ProjectSettings.globalize_path("user://prediction")
-	DirAccess.make_dir_recursive_absolute(directory)
-	result_path = directory.path_join("prediction_%d_%d.parquet" % [OS.get_process_id(), Time.get_ticks_usec()])
+	# The frozen run folder is new, so the prediction file never overwrites an
+	# earlier run; the file itself stays on disk when the UI is cleared.
+	result_path = str(frozen.path).path_join("predictions.parquet")
 	var args := _arguments()
 	args.append_array(["--output", result_path])
 	_request("predict", args)
@@ -494,7 +567,11 @@ func _choose_export() -> void:
 			filters.append("*%s ; %s" % [suffix, str(suffix).trim_prefix(".").to_upper()])
 	export_dialog.filters = filters
 	export_dialog.title = tr("EXPORT_PREDICTION")
-	export_dialog.current_dir = input_path.get_base_dir()
+	# The dialog opens where the actual artifact lives; explicit Save As stays
+	# available and keeps its own overwrite confirmation.
+	export_dialog.current_dir = (
+		result_path.get_base_dir() if not result_path.is_empty() else input_path.get_base_dir()
+	)
 	export_dialog.current_file = input_path.get_file().get_basename() + "_predictions" + default_suffix
 	export_dialog.popup_centered_ratio(0.8)
 
@@ -511,8 +588,8 @@ func export_predictions(path: String) -> void:
 
 
 func _clear_predictions() -> void:
-	if not result_path.is_empty():
-		DirAccess.remove_absolute(result_path)
+	# UI state only: a completed prediction file lives in the selected result
+	# root, so changing data/model or retrying never deletes a finished run.
 	result_path = ""
 	export_path = ""
 	predictions = {}
@@ -549,12 +626,15 @@ func run_explanation() -> void:
 		explain_error = tr("EXPLAIN_CLASS_REQUIRED")
 		refresh_language()
 		return
-	var directory := ProjectSettings.globalize_path("user://explanation")
-	DirAccess.make_dir_recursive_absolute(directory)
-	explain_staging_root = directory
+	var frozen := _freeze_output_directory(OutputLocation.EXPLANATION)
+	if not str(frozen.error).is_empty():
+		explain_error = str(frozen.error)
+		refresh_language()
+		return
+	explain_staging_root = str(frozen.root)
 	_cleanup_owned_staging()
 	_clear_explanation()
-	explain_output_dir = directory.path_join("explain_%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()])
+	explain_output_dir = str(frozen.path)
 	var args := PackedStringArray([
 		"explain", "--model", model_path, "--input", input_path,
 		"--background", background_path, "--row", str(int(explain_row.value)),
@@ -623,15 +703,8 @@ func _explanation_cancelled(generation: int) -> void:
 
 func _cleanup_owned_staging() -> void:
 	# Remove only this tool's own incomplete staging directories; never touch
-	# completed explanation output directories.
-	if explain_staging_root.is_empty():
-		return
-	var directory := DirAccess.open(explain_staging_root)
-	if directory == null:
-		return
-	for name in directory.get_directories():
-		if name.begins_with(".psyml-explanation-staging-"):
-			DirAccess.remove_absolute(explain_staging_root.path_join(name))
+	# completed explanation output directories or their artifacts.
+	OutputLocation.cleanup_staging(explain_staging_root, OutputLocation.EXPLANATION)
 
 
 func open_waterfall() -> void:
@@ -657,6 +730,9 @@ func _choose_explanation_export() -> void:
 		refresh_language()
 		return
 	explain_export_dialog.title = tr("EXPORT_EXPLANATION")
+	# Point at the actual artifacts; the explicit export still never overwrites.
+	if not explain_output_dir.is_empty():
+		explain_export_dialog.current_dir = explain_output_dir
 	explain_export_dialog.popup_centered_ratio(0.8)
 
 
@@ -789,12 +865,15 @@ func run_coefficients() -> void:
 		return
 	if metadata.is_empty() or model_path.is_empty():
 		return
-	var directory := ProjectSettings.globalize_path("user://coefficients")
-	DirAccess.make_dir_recursive_absolute(directory)
-	coefficients_staging_root = directory
+	var frozen := _freeze_output_directory(OutputLocation.COEFFICIENTS)
+	if not str(frozen.error).is_empty():
+		coefficients_error = str(frozen.error)
+		refresh_language()
+		return
+	coefficients_staging_root = str(frozen.root)
 	_cleanup_owned_coefficients_staging()
 	_clear_coefficients()
-	coefficients_output_dir = directory.path_join("coefficients_%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()])
+	coefficients_output_dir = str(frozen.path)
 	var args := PackedStringArray(["coefficients", "--model", model_path, "--trust-model",
 		"--output-dir", coefficients_output_dir])
 	if not input_path.is_empty() and compatibility.get("compatible", false):
@@ -859,14 +938,7 @@ func _coefficients_cancelled(generation: int) -> void:
 
 func _cleanup_owned_coefficients_staging() -> void:
 	# Remove only this tool's own incomplete staging directories.
-	if coefficients_staging_root.is_empty():
-		return
-	var directory := DirAccess.open(coefficients_staging_root)
-	if directory == null:
-		return
-	for name in directory.get_directories():
-		if name.begins_with(".psyml-coefficients-staging-"):
-			DirAccess.remove_absolute(coefficients_staging_root.path_join(name))
+	OutputLocation.cleanup_staging(coefficients_staging_root, OutputLocation.COEFFICIENTS)
 
 
 func open_coefficients_folder() -> void:
@@ -883,6 +955,9 @@ func _choose_coefficients_export() -> void:
 		refresh_language()
 		return
 	coefficients_export_dialog.title = tr("EXPORT_COEFFICIENTS")
+	# Point at the actual artifacts; the explicit export still never overwrites.
+	if not coefficients_output_dir.is_empty():
+		coefficients_export_dialog.current_dir = coefficients_output_dir
 	coefficients_export_dialog.popup_centered_ratio(0.8)
 
 
@@ -1232,6 +1307,9 @@ func refresh_language() -> void:
 	else:
 		coefficients_status.text = tr("COEFFICIENTS_WAITING")
 	_fill_coefficients_tree()
+	if output_edit != null:
+		output_edit.placeholder_text = tr("SELECT_OUTPUT")
+		sync_output_root()
 
 
 func _exit_tree() -> void:

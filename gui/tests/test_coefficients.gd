@@ -21,6 +21,36 @@ func _write(path: String, content: String) -> void:
 	file.close()
 
 
+func _file_size(path: String) -> int:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return -1
+	var length := file.get_length()
+	file.close()
+	return length
+
+
+func _user_output_state() -> Dictionary:
+	# Snapshot the hidden application-data folders with a bounded depth so a
+	# failed operation can be checked to not have fallen back there.
+	var state := {}
+	for family in ["prediction", "explanation", "coefficients"]:
+		_collect_user_files(ProjectSettings.globalize_path("user://" + family), family, state, 0)
+	return state
+
+
+func _collect_user_files(path: String, label: String, state: Dictionary, depth: int) -> void:
+	var directory := DirAccess.open(path)
+	if directory == null:
+		return
+	for name in directory.get_files():
+		state[label.path_join(name)] = _file_size(path.path_join(name))
+	if depth >= 3:
+		return
+	for name in directory.get_directories():
+		_collect_user_files(path.path_join(name), label.path_join(name), state, depth + 1)
+
+
 func _wait_busy(page) -> void:
 	var deadline := Time.get_ticks_msec() + 30000
 	while page.busy and Time.get_ticks_msec() < deadline:
@@ -40,6 +70,11 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	var page = main.prediction_page
+	# Page 4 writes into the page-2 result root: a Chinese path with spaces.
+	var output_root := TestPaths.temp_dir().path_join("psyml 输出 系数 %d" % Time.get_ticks_usec())
+	page.set_output_root(output_root)
+	_expect(main.output_edit.text == output_root)
+	_expect(page.output_edit.text == output_root)
 	var directory := TestPaths.temp_dir().path_join("psyml-coefficients-ui-%d" % Time.get_ticks_usec())
 	DirAccess.make_dir_recursive_absolute(directory)
 	var input := ProjectSettings.globalize_path("res://../examples/quickstart/classification_train.csv")
@@ -80,6 +115,23 @@ func _run() -> void:
 	_expect(page.compatibility.compatible and not page.metadata.is_empty())
 	_expect(not page.coefficients_button.disabled, "coefficients should be enabled once ready")
 
+	# A missing or unwritable root is a visible error; never a user:// fallback.
+	var user_before := _user_output_state()
+	page.set_output_root("")
+	page.run_coefficients()
+	_expect(page.coefficients_error == main.tr("PREDICTION_OUTPUT_REQUIRED"), page.coefficients_error)
+	_expect(not page.coefficients_busy and page.coefficient_report.is_empty())
+	page.coefficients_error = ""
+	var blocked_root := directory.path_join("blocked-root")
+	_write(blocked_root, "not a directory")
+	page.set_output_root(blocked_root)
+	page.run_coefficients()
+	_expect(page.coefficients_error == main.tr("OUTPUT_NOT_WRITABLE"), page.coefficients_error)
+	_expect(not page.coefficients_busy)
+	_expect(_user_output_state() == user_before, "coefficients must not fall back to user://")
+	page.set_output_root(output_root)
+	page.coefficients_error = ""
+
 	# Successful extraction verifies the reconstruction and lists coefficients.
 	page.run_coefficients()
 	_expect(page.coefficients_busy)
@@ -100,8 +152,20 @@ func _run() -> void:
 	for key in ["json", "csv", "notes"]:
 		_expect(page.coefficients_artifacts.has(key), "missing artifact " + key)
 		_expect(FileAccess.file_exists(str(page.coefficients_artifacts[key])), str(page.coefficients_artifacts))
+	# FR-014: they really live under the selected root, inside a new
+	# coefficients/run_* folder owned by this operation.
+	_expect(page.coefficients_output_dir.begins_with(output_root + "/"), page.coefficients_output_dir)
+	_expect(
+		page.coefficients_output_dir.get_base_dir() == output_root.path_join("coefficients"),
+		page.coefficients_output_dir)
+	_expect(page.coefficients_output_dir.get_file().begins_with("run_"), page.coefficients_output_dir)
+	for key in ["json", "csv", "notes"]:
+		_expect(
+			str(page.coefficients_artifacts[key]).begins_with(page.coefficients_output_dir + "/"),
+			str(page.coefficients_artifacts[key]))
 	_expect(not page.coefficients_open_button.disabled)
 	_expect(not page.coefficients_export_button.disabled)
+	var first_output_dir: String = page.coefficients_output_dir
 
 	# More than 300 rows must show a display-limit notice that points to the full CSV.
 	var limit_prefix: String = main.tr("COEFFICIENTS_ROW_LIMIT").split("%")[0]
@@ -198,6 +262,27 @@ func _run() -> void:
 	_expect(page.coefficient_report.get("status", "") == "unsupported", str(page.coefficient_report))
 	_expect(page.coefficients_summary.text.contains("RandomForestClassifier"), page.coefficients_summary.text)
 	_expect(page.coefficients_artifacts.is_empty(), "unsupported model must not produce artifacts")
+	_expect(FileAccess.file_exists(kept_json), "an unsupported later run must not delete earlier artifacts")
+
+	# A later successful run under a changed root gets its own new folder and
+	# leaves earlier artifacts intact.
+	var later_root := TestPaths.temp_dir().path_join("psyml 换目录 系数 %d" % Time.get_ticks_usec())
+	page.set_output_root(later_root)
+	page.load_model(model_path)
+	await _wait_busy(page)
+	page.load_data(predict_input)
+	await _wait_busy(page)
+	page.run_coefficients()
+	await _wait_coefficients(page)
+	_expect(page.coefficients_error.is_empty(), page.coefficients_error)
+	_expect(page.coefficient_report.get("status", "") == "available", str(page.coefficient_report))
+	_expect(page.coefficients_output_dir.begins_with(later_root + "/"), page.coefficients_output_dir)
+	_expect(page.coefficients_output_dir != first_output_dir, "a later run must use its own new folder")
+	_expect(FileAccess.file_exists(kept_json), "a later run must not remove earlier artifacts")
+	for key in ["json", "csv", "notes"]:
+		_expect(
+			FileAccess.file_exists(str(page.coefficients_artifacts[key])),
+			str(page.coefficients_artifacts))
 
 	# Switching language must not raise and keeps the section readable.
 	for locale in range(3):

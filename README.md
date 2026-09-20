@@ -24,9 +24,12 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。下载 v0.2.0 中与你的系统对应的独立应用 ZIP：`macOS-arm64` 或 `Windows-x64`。应用包包含运行环境；GitHub 自动生成的 Source code 压缩包仅含源码，开发安装见[开发者指南](docs/DEVELOPMENT_ZH.md)。
 
+**源码检出与下载包。** 本源码检出包含 v0.2.0 下载包之后、尚未随包发布的人工反馈修复（界面版本号、滚动归属锁定、第 4 页统一输出位置、收尾状态提示与三语指南同步）。已发布的 v0.2.0 独立包不含这些修复，界面和行为可能不同；请按所用版本核对。源码版在 macOS 可在项目根目录双击 `Launch PsyML.command` 启动（依赖安装见[开发者指南](docs/DEVELOPMENT_ZH.md)）。
+
 - **macOS（Apple 芯片）**：完整解压对应应用包，双击 `PsyML Toolkit.app`。
 - **Windows（Intel/AMD x64）**：完整解压对应应用包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
 - 应用内含 Python、分析依赖和界面运行时；使用时无需命令行、额外安装或联网下载。用户测试资料统一在 `examples/quickstart/`，通过 GUI 的“导入配置…”开始。
+- 软件名下方以小字显示当前版本：独立包读取包内 `BUILD.json`，源码版读取 `pyproject.toml`；版本值不硬编码。
 - 应用尚未使用商业开发者证书签名/公证。首次打开时系统可能显示安全确认；macOS 可在“系统设置 → 隐私与安全性”确认打开，Windows 可核对来源后在安全提示中确认。请遵守所在机构的电脑管理要求。
 
 ### 测试数据与快速复现
@@ -147,6 +150,8 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 4. 预计时间根据已完成任务更新，模型耗时差异较大时会波动；它是估计，不是承诺；
 5. 如任务过长，点击“终止运行”。后台分析进程会停止，未完成的结果不应作为有效研究输出；调整候选数、模型或验证后可重新运行。
 
+**收尾阶段。** 最后一个计数任务完成后、写出结果文件期间，界面显示“正在整理并写出结果…”且进度条不显示满格；该阶段仍可终止。只有全部写入完成才会进入结果页；这不是死锁，首次运行或结果较大时可能持续数十秒。
+
 ![中文检查与运行界面](docs/images/zh/03-review.png)
 
 #### 8. 结果与解释
@@ -209,6 +214,8 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 **统计解释：**最终保存模型是在全部已分析数据上，按最终选定家族与参数重新拟合的完整流水线。CV / nested validation 指标估计的是训练和模型选择流程的泛化表现，不是这个保存模型的未来性能保证。预测只生成新数据的结果；本版本不提供 External Validation、阈值优化或自动重训练。概率来自分类器的原生输出，回归不生成概率。
 
+**第 4 页输出位置。** 第 4 页与第 2 页共享同一个结果根目录：预测写入 `<结果根目录>/prediction/run_<时间>_<usec>/predictions.parquet`，单样本 SHAP 与拟合系数分别写入 `explanation/run_*/`、`coefficients/run_*/`；页 4 顶部可直接查看或修改该根目录。每次操作开始时冻结一个新目录，不覆盖已有文件，“打开结果文件夹”指向该实际运行目录。未选择根目录、路径为相对路径或根目录不可写时直接报错，不会回退到隐藏的应用数据目录；更改根目录只影响后续操作，已完成的产物保留。
+
 #### 9.1 单样本 SHAP 解释（需可选 explain 依赖）
 
 加载可信模型与预测数据并检查通过后，可展开 **“解释单个样本（近似 SHAP）”**：选择背景参考文件（允许与预测数据相同）、样本行号（1 起始，不含表头）、背景行数（默认 50，1–100）与排列轮数（默认 5，1–20）；分类还需选择要解释的类别并显示原始标签。点击 **“解释这个样本”** 后在可取消的子进程中计算，首次运行可能较慢，可随时取消。完成后结果区显示从基准值逐项累加到模型输出的**累计瀑布图**（正负方向、原始变量名与值、类别/单位、超过 TopN 的变量合并为“其余 N 项之和”，CSV 保留全部贡献），并提供“打开瀑布图”“打开结果文件夹”“导出解释结果…”控件；“导出解释结果…”只写入新建或空文件夹，绝不覆盖已有文件：目标非空时会在所选文件夹下新建唯一子目录，当前结果目录不能作为导出目标（CLI `explain --output-dir` 同样要求新建/空目录，且不接受 `--overwrite`）。产物为 `shap_explanation.json`、`shap_contributions.csv`、`shap_waterfall.png` 和 `shap_explanation_notes.md`；已完成的产物在切换样本行/类别/设置或退出页面时**保留在磁盘**，仅清除界面显示。
@@ -251,7 +258,9 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 | `configuration_guide.md` | 每个配置字段的简短中英文解释 |
 | `analysis_manifest.json` | 数据指纹、输入及分析规模、Python/系统/依赖版本，用于检查复现条件 |
 
-操作提示：直接点击勾选框即可多选，无需按住 Ctrl/Shift。滚动页面可查看其余设置和结果，小表格可单独滚动。需要反馈问题时，点击“复制完整报错”；警告文字可选取复制，说明文字和选中的表格行可右键复制。
+第 4 页的预测、SHAP 与系数产物不写入训练 `run_*` 子目录，而是写入与第 2 页共享的结果根目录下 `prediction/`、`explanation/`、`coefficients/` 各自的 `run_*` 新目录；每次操作冻结新目录，不覆盖已有文件。
+
+操作提示：直接点击勾选框即可多选，无需按住 Ctrl/Shift。滚动页面可查看其余设置和结果，小表格可单独滚动。滚动/滑动手势开始时锁定所在层：从整页起手即整页滚动，经过小表格时不会被打断；从小表格起手才滚动该表格；停顿约 250 毫秒后再滚动才重新选择控制层。锁定只作用于滚轮/滑动，点击、选择与拖动不受影响。需要反馈问题时，点击“复制完整报错”；警告文字可选取复制，说明文字和选中的表格行可右键复制。
 
 ### 方法边界、隐私与许可
 
@@ -291,9 +300,12 @@ Automatic reports are available in Chinese and English. Exported plot axes, clas
 
 Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for available versions and platforms. Download the v0.2.0 standalone ZIP for your system: `macOS-arm64` or `Windows-x64`. These application packages include the runtime. GitHub’s automatic Source code archives contain source only; see the [developer guide](docs/DEVELOPMENT_EN.md) for source installation.
 
+**Source checkout and download package.** This source checkout contains human-feedback fixes made after the v0.2.0 download package and not yet released with it (visible version label, scroll-ownership lock, unified page-4 output location, finalising status and synchronised trilingual guides). The released v0.2.0 standalone packages do not contain them, so interface and behaviour may differ; check against the version you run. On macOS, a source run starts by double-clicking `Launch PsyML.command` in the project root (dependencies: [developer guide](docs/DEVELOPMENT_EN.md)).
+
 - **macOS (Apple Silicon)**: fully extract the matching application archive and double-click `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)**: fully extract the matching archive and double-click `PsyML Toolkit.exe`. Keep the adjacent `core` folder; do not move the EXE alone.
 - Python, analysis dependencies and the GUI runtime are bundled. No terminal, additional installation or internet download is required to use the app. The user test kit is in `examples/quickstart/`; start with **Import configuration…**.
+- A small version label under the application name shows the current version: a standalone package reads its bundled `BUILD.json`, a source run reads `pyproject.toml`; the value is not hard-coded.
 - The apps do not yet have commercial developer signing/notarization. Your OS may request confirmation on first launch: macOS offers confirmation under **System Settings → Privacy & Security**; Windows may show a security prompt. Verify the source and follow your institution’s device policy.
 
 ### Sample data and quick reproduction
@@ -392,6 +404,8 @@ Classification offers balanced accuracy (default), macro F1 and accuracy. Regres
 
 Choose a parent result folder; the GUI creates a separate timestamped subfolder per run. Then verify paths, roles, primary validation, models, grids, metric, seed and displayed workload. During the run, the GUI reports the phase, current model, validation and outer fold, completed and remaining tasks, and a dynamic ETA. ETA changes as the observed cost of models changes. “Stop run” terminates the analysis process; incomplete outputs should not be treated as research results. Reduce models, candidates or validations and rerun when needed.
 
+**Finalising stage.** After the last counted task and while result files are written, the status reads "Finalizing and writing results…" and the progress bar is not shown as full; the run can still be stopped. The result page opens only after everything is written; this is not a deadlock, and a first run or a large result can take tens of seconds.
+
 ![English review and run screen](docs/images/en/03-review.png)
 
 #### 8. Results and interpretation
@@ -446,6 +460,8 @@ The results page shows a compact **Result interpretation** block and writes `res
 
 **Statistical interpretation:** The saved final model is the complete Pipeline refitted on all analyzed rows with the finally selected family and parameters. CV/nested-validation metrics estimate the training and selection procedure, not guaranteed future performance of this saved model. Prediction generates outputs on new data only; External Validation, threshold optimization and automatic retraining are outside this version. Class probabilities are native estimator outputs; regression never invents probabilities.
 
+**Where page-4 outputs are written.** Page 4 shares one result root with page 2: prediction writes `<result root>/prediction/run_<timestamp>_<usec>/predictions.parquet`, single-sample SHAP and fitted coefficients write `explanation/run_*/` and `coefficients/run_*/`; the top of page 4 shows and edits the same root. Each operation freezes a new directory when it starts and never overwrites existing files, and **Open results folder** points to that actual run directory. An unset root, a relative path or an unwritable root reports an error instead of falling back to the hidden application-data folder; changing the root only affects later operations and completed artifacts stay on disk.
+
 #### 9.1 Single-sample SHAP explanation (optional explain extra)
 
 After a trusted model and prediction data pass the check, open **"Explain one sample (approximate SHAP)"**: choose a background reference file (the prediction file itself is allowed), the sample row (1-based, no header), background rows (default 50, 1–100) and permutation cycles (default 5, 1–20). For classification also choose the class to explain; the original label is shown. **Explain this sample** runs in a cancellable subprocess, so the first run may be slow and can be stopped at any time. The result block then shows a **cumulative waterfall** that steps from the baseline value to the model output (signed direction, original feature names and values, class/unit, predictors beyond the top N folded into an "other N (sum)" bar while the CSV keeps every contribution) plus **Open waterfall image**, **Open results folder** and **Export explanation…** controls. **Export explanation…** writes only to a new or empty folder and never overwrites existing files: if the destination already holds anything, it creates a unique new subdirectory, and the current results folder cannot be the destination (the CLI `explain --output-dir` likewise requires a new/empty directory and rejects `--overwrite`). Artifacts are `shap_explanation.json`, `shap_contributions.csv`, `shap_waterfall.png` and `shap_explanation_notes.md`; completed artifacts are **kept on disk** when the row/class/settings change or the page closes, and only the on-screen display is cleared.
@@ -484,7 +500,9 @@ Reports and recommendations use deterministic local rules and work offline. **Au
 | `configuration_guide.md` | Brief Chinese/English field explanations outside comment-free JSON. |
 | `analysis_manifest.json` | Input fingerprint, row/feature counts and Python/system/dependency versions. |
 
-Interaction tips: click checkboxes to select multiple items without Ctrl/Shift. Scroll the page for additional settings and results; small tables scroll independently. To report a problem, use **Copy full error**. Select warning text to copy it, or right-click labels and selected table rows.
+Page-4 prediction, SHAP and coefficient artifacts do not use the training `run_*` subfolders; they are written to new `run_*` directories under `prediction/`, `explanation/` and `coefficients/` in the result root shared with page 2. Each operation freezes a new directory and never overwrites existing files.
+
+Interaction tips: click checkboxes to select multiple items without Ctrl/Shift. Scroll the page for additional settings and results; small tables scroll independently. A scroll/swipe gesture locks the layer it starts on: a gesture started on the page keeps scrolling the page past a small table, a gesture started on the small table scrolls that table, and a pause of about 250 ms starts a new gesture that may choose another layer. The lock only affects wheel/swipe scrolling: clicking, selecting and dragging are unaffected. To report a problem, use **Copy full error**. Select warning text to copy it, or right-click labels and selected table rows.
 
 ### Methodological scope, privacy and license
 
@@ -524,9 +542,12 @@ Les rapports automatiques sont disponibles en chinois et en anglais. Les axes de
 
 Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) pour les versions et plateformes disponibles. Téléchargez le ZIP autonome v0.2.0 adapté à votre système : `macOS-arm64` ou `Windows-x64`. Ces applications incluent leur environnement. Les archives Source code générées par GitHub ne contiennent que les sources ; leur installation est décrite dans le [guide de développement](docs/DEVELOPMENT_FR.md).
 
+**Sources et paquet téléchargé.** Cette copie des sources contient des correctifs issus des retours humains, postérieurs au paquet v0.2.0 et non encore publiés avec lui (étiquette de version, verrouillage de l’appartenance du défilement, emplacement de sortie unifié de la page 4, état de finalisation et guides trilingues synchronisés). Les paquets autonomes v0.2.0 publiés ne les contiennent pas : interface et comportement peuvent différer ; vérifiez selon la version utilisée. Sous macOS, les sources se lancent en double-cliquant sur `Launch PsyML.command` à la racine (dépendances : [guide de développement](docs/DEVELOPMENT_FR.md)).
+
 - **macOS (puce Apple)** : décompressez entièrement l’archive correspondante puis double-cliquez sur `PsyML Toolkit.app`.
 - **Windows (Intel/AMD x64)** : décompressez entièrement l’archive puis double-cliquez sur `PsyML Toolkit.exe`. Conservez le dossier `core` adjacent ; ne déplacez pas seulement l’EXE.
 - Python, dépendances scientifiques et moteur de l’interface sont intégrés. Aucun terminal, installation supplémentaire ou téléchargement Internet n’est requis. Les fichiers de test sont réunis dans `examples/quickstart/` ; commencez par **Importer une configuration…**.
+- Une petite étiquette sous le nom de l’application affiche la version courante : un paquet autonome lit son `BUILD.json`, une exécution depuis les sources lit `pyproject.toml` ; la valeur n’est pas codée en dur.
 - Les applications n’ont pas encore de signature commerciale ni de notarisation. Le système peut demander une confirmation au premier lancement : **Réglages Système → Confidentialité et sécurité** sous macOS, ou une alerte de sécurité sous Windows. Vérifiez la provenance et respectez la politique informatique de votre établissement.
 
 ### Données de test et reproduction rapide
@@ -625,6 +646,8 @@ Pour la classification : exactitude équilibrée par défaut, F1 macro ou exacti
 
 Choisissez un dossier parent : l’interface crée un nouveau `run_<date>_<id>/` à chaque exécution. Vérifiez les chemins, rôles, validations et choix de la validation principale, modèles, grilles, métrique, graine et charge annoncée. Pendant l’analyse, l’interface montre la phase, le modèle, la validation, le pli externe, les tâches terminées et restantes, ainsi qu’un temps estimé dynamique. L’estimation varie selon le coût réel des modèles. « Arrêter » termine le processus ; des sorties incomplètes ne doivent pas être utilisées comme résultats. Réduisez modèles, candidats ou validations puis relancez si nécessaire.
 
+**Phase de finalisation.** Après la dernière tâche comptée, pendant l’écriture des fichiers de résultats, l’état affiche « Finalisation et écriture des résultats… » et la barre de progression n’est pas pleine ; l’analyse peut encore être arrêtée. La page des résultats ne s’ouvre qu’une fois l’écriture terminée ; ce n’est pas un blocage, un premier lancement ou un gros résultat pouvant durer des dizaines de secondes.
+
 ![Écran français de vérification](docs/images/fr/03-review.png)
 
 #### 8. Résultats et interprétation
@@ -679,6 +702,8 @@ La page des résultats affiche un bloc compact **Interprétation des résultats*
 
 **Interprétation statistique :** le modèle final enregistré est le Pipeline complet réajusté sur toutes les lignes analysées, avec la famille et les paramètres finalement sélectionnés. Les métriques CV/validation imbriquée estiment la procédure d’entraînement et de sélection ; elles ne garantissent pas les performances futures du modèle enregistré. La prédiction génère seulement des sorties sur de nouvelles données. Validation externe, optimisation du seuil et réentraînement automatique restent hors périmètre. Les probabilités sont celles du classifieur ; aucune probabilité artificielle en régression.
 
+**Emplacement des sorties de la page 4.** La page 4 partage une racine de résultats avec la page 2 : la prédiction écrit `<racine>/prediction/run_<horodatage>_<usec>/predictions.parquet`, l’explication SHAP et les coefficients ajustés écrivent dans `explanation/run_*/` et `coefficients/run_*/` ; le haut de la page 4 affiche et modifie cette même racine. Chaque opération fige un nouveau dossier à son démarrage et n’écrase jamais de fichier existant ; **Ouvrir le dossier de résultats** pointe vers ce dossier réel. Une racine absente, relative ou non inscriptible produit une erreur au lieu d’un repli vers le dossier de données masqué de l’application ; changer la racine n’affecte que les opérations suivantes et les artefacts terminés restent sur le disque.
+
 #### 9.1 Explication SHAP d'un échantillon (extension explain facultative)
 
 Une fois le modèle de confiance et les données de prédiction validés, ouvrez **« Expliquer un échantillon (SHAP approximatif) »** : choisissez un fichier de référence (le fichier de prédiction convient), la ligne (1, hors en-tête), le nombre de lignes de référence (50 par défaut, 1–100) et les cycles de permutation (5 par défaut, 1–20). En classification, choisissez aussi la classe à expliquer ; le libellé d'origine est affiché. **Expliquer cet échantillon** s'exécute dans un sous-processus annulable : le premier lancement peut être lent et peut être interrompu. Le bloc de résultats affiche ensuite une **cascade cumulative** qui progresse de la valeur de base à la sortie du modèle (sens signé, noms et valeurs d'origine, classe/unité, variables au-delà du top N regroupées dans une barre « autres N (somme) » tandis que le CSV conserve toutes les contributions) avec les commandes **Ouvrir l'image en cascade**, **Ouvrir le dossier de résultats** et **Exporter l'explication…**. **Exporter l'explication…** n'écrit que dans un dossier nouveau ou vide et n'écrase jamais de fichier existant : si la destination contient déjà quelque chose, un sous-dossier unique est créé, et le dossier de résultats courant ne peut pas être la destination (la commande CLI `explain --output-dir` exige aussi un dossier nouveau/vide et refuse `--overwrite`). Les artefacts sont `shap_explanation.json`, `shap_contributions.csv`, `shap_waterfall.png` et `shap_explanation_notes.md` ; les artefacts terminés sont **conservés sur le disque** lors d'un changement de ligne/classe/réglages ou à la fermeture, seul l'affichage est vidé.
@@ -717,7 +742,9 @@ Rapports et conseils utilisent des règles locales déterministes et fonctionnen
 | `configuration_guide.md` | Explications courtes chinois/anglais, séparées du JSON sans commentaires. |
 | `analysis_manifest.json` | Empreinte des données, effectifs/caractéristiques et versions Python/système/dépendances. |
 
-Conseils d’utilisation : cliquez sur les cases pour sélectionner plusieurs éléments sans Ctrl/Maj. Faites défiler la page pour consulter les autres réglages et résultats ; les petits tableaux défilent séparément. Pour signaler un problème, utilisez **Copier l’erreur complète**. Sélectionnez le texte des avertissements pour le copier, ou faites un clic droit sur les libellés et lignes sélectionnées.
+Les artefacts de prédiction, SHAP et coefficients de la page 4 n’utilisent pas les sous-dossiers `run_*` d’entraînement : ils sont écrits dans de nouveaux dossiers `run_*` sous `prediction/`, `explanation/` et `coefficients/` dans la racine partagée avec la page 2. Chaque opération fige un nouveau dossier et n’écrase jamais de fichier existant.
+
+Conseils d’utilisation : cliquez sur les cases pour sélectionner plusieurs éléments sans Ctrl/Maj. Faites défiler la page pour consulter les autres réglages et résultats ; les petits tableaux défilent séparément. Un geste de défilement verrouille la couche où il commence : commencé sur la page, il continue de la faire défiler au passage sur un petit tableau ; commencé sur le petit tableau, il fait défiler celui-ci ; une pause d’environ 250 ms démarre un nouveau geste qui peut choisir une autre couche. Le verrouillage ne concerne que la molette et le balayage : les clics, la sélection et le glisser ne sont pas affectés. Pour signaler un problème, utilisez **Copier l’erreur complète**. Sélectionnez le texte des avertissements pour le copier, ou faites un clic droit sur les libellés et lignes sélectionnées.
 
 ### Portée méthodologique, confidentialité et licence
 

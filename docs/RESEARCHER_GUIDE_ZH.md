@@ -1,6 +1,6 @@
 # 研究者参考：模型、指标、结果与术语
 
-适用代码版本：**v0.2.0**。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准。
+适用代码版本：**v0.2.0**。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准。源码检出可能包含 v0.2.0 下载包之后、尚未随包发布的修复（本轮为人工反馈 FR-012–FR-016）；界面版本以独立包 `BUILD.json` 或源码 `pyproject.toml` 为准，不以本指南标题推断下载包内容。
 
 [返回 README 中文部分](../README.md#chinese) · **中文** · [English](RESEARCHER_GUIDE_EN.md) · [Français](RESEARCHER_GUIDE_FR.md)
 
@@ -38,6 +38,8 @@
 **缩放（scaling）**：标准化（standardization，`standard`）按训练数据计算 `z = (x − mean_train) / std_train`；Min–Max 缩放（`minmax`）按训练数据的最小值和最大值缩放。新数据超出训练范围时，Min–Max 结果也可能超出 [0, 1]。`none` 表示不缩放。距离、正则化和梯度优化模型通常对量纲敏感；树模型通常不依赖这种缩放。
 
 **独热编码（one-hot encoding）**：类别预测列转为类别指示列。当前代码按数据类型区分数值和类别；若把 1/2/3 编码的无序类别存成数值列，它会被当作数值处理，需在数据准备时核查。训练时未见过的类别在编码时被忽略，不代表模型已经学会该类别的含义。
+
+**数据检查预览。** 选择分类目标后，界面显示实测类别数、每类数量及其占**非缺失目标**的比例，并写明总行数、非缺失分母与缺失数；目标全缺失时不做除零，未观测到的类别以及 NaN/None 不计为真实类别。界面另给出“疑似编号/参与者列”的启发式提醒（依据列名标记，或非缺失值接近唯一的整数/文本），并记录原因与比例；它只是“疑似、请判断”的提示，不自动删除列、不改变变量角色、也不阻止分析，分组列本身也可能是编号。类别与取值统计来自本地预览模式，默认预览不返回取值。
 
 代码依据为[预处理流水线](../src/psyml/preprocessing/pipeline.py)与[数据准备及运行逻辑](../src/psyml/runner.py)。
 
@@ -202,6 +204,7 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 | --- | --- | --- |
 | 这次分析是否存在风险或失败？ | `warnings.json`、`result.json` | 先看警告；只有 completed 的结果才是完整成功输出，警告不一定阻止完成 |
 | 样本外性能及波动如何？ | `metrics.csv`、`metrics_summary.csv`、`fold_metrics.csv` | 依次看主指标、有效折数及波动、每折明细 |
+| 相对同折 Dummy 基线差多少、失败在哪一层？ | `result_interpretation.json`、`interpretation_baseline_differences.csv`、`result_interpretation.md` | 同验证、同折集合、同指标的配对差值与折间波动；描述性汇总，不回流选择或调参 |
 | 换一种预定验证后是否一致？ | `validation_summary.csv` | 区分 primary / sensitivity；不要跨验证挑最高分 |
 | 最终选择哪个模型？ | `result.json` 中 `best_model`、`best_parameters` | 最终全数据选择结果；不是每个外层折都用了这个模型 |
 | 哪些家族值得进一步研究？ | `model_comparison.csv` | rank 在各验证内分别排序，属探索性比较；第一名可与最终模型不同 |
@@ -217,6 +220,15 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 **“最佳参数”（best parameters）只表示在本次候选范围、指标、数据与切分下选出的设置**，不是全局最优或跨研究通用值。`best_parameters_configure.json` 重跑使用曾参与选择的数据，其新分数不能当作独立验证，也不等同于复现原始嵌套搜索。v0.2.0 可在主要验证模式下保存已拟合的完整 Pipeline，供第 4 页加载预测；该 JSON 配置仍是重新训练的配方，与保存模型文件用途不同。
 
+### 结果解读（基线差值、折间波动与失败）
+
+结果页的**结果解读**只汇总已经产生的选择折外层证据（逐组合折、`parameter_search.csv`、`model_comparison.csv`、`validation_summary.csv`），输出 `result_interpretation.json`、`interpretation_baseline_differences.csv` 与 `result_interpretation.md`；不重新拟合模型、不重新选择家族或参数，也不把描述性结果回流到选择或调参。
+
+- **基线差值**只与用户已选且成功运行的 Dummy 比较，要求同验证、同折集合、同指标且所有配对折分数有限；否则给出明确不可比较原因，不捏造差值。分类“越高越好”指标为 procedure−dummy，MAE/RMSE 为 dummy−procedure，正值一律表示所选流程相对基线更好；某折选中的就是 Dummy 时差值为 0 并标注该折模型，属正常情况。
+- **折间波动**沿用既有汇总定义并注明 ddof=0，只作描述；单折时标准差与稳定性不可评估，也不设置“显著、可靠、不稳定”阈值，分数差异不等于统计显著，折间标准差也不是置信区间。
+- **失败分层**：内层搜索候选失败、外层模型+验证失败、整种验证/流程失败分别计数并可追溯；代表原因可看，完整记录仍在 `parameter_search.csv`、`warnings.json` 与失败子目录。
+- **独立验证**各自摘要，顶层只提供概览与索引，不跨验证比较。
+
 ### 保存模型与预测结果
 
 主要验证模式默认开启 `save_best_model`；最终 Pipeline 保存为 `model/best_<模型名>.joblib`，同目录的 `model_metadata.json` 记录原始变量、类型、类别、有效参数、拟合范围和版本。关闭保存仍会完成分析；`primary_validation: null` 时根目录和各验证子目录均不自动保存模型。
@@ -229,9 +241,11 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 支持 9 种输入格式；导出为 CSV、TSV、XLSX、SAV、DTA、XPT 或 Parquet。XLS、SAS7BDAT 仅支持读取，GUI 默认改存 XLSX。统计格式限制可能使导出失败，可改用 XLSX 或 Parquet。模型与元数据应成对保留；损坏、校验不匹配或 scikit-learn 版本不一致会报错，缺少元数据时尝试恢复信息但不保证完整。
 
+**第 4 页产物的输出位置。** 第 4 页与第 2 页共享同一个结果根目录：预测写入 `<结果根目录>/prediction/run_<时间>_<usec>/predictions.parquet`，单样本 SHAP 与系数分别写入 `explanation/run_*/`、`coefficients/run_*/`。每次操作开始时冻结一个新运行目录，不覆盖已有文件；“打开结果文件夹”指向该实际运行目录。未选择根目录、路径为相对路径或根目录不可写时直接显示错误，不会回退到隐藏的应用数据目录。更改根目录只影响后续操作，已完成的产物保留在磁盘。
+
 ### 单样本 SHAP 解释（可选，FR-004）
 
-第 4 页在模型与数据检查通过后可解释单个样本：选择背景参考文件、1 起始的样本行号、背景行数（默认 50，1–100）与排列轮数（默认 5，1–20）；分类再选择要解释的类别并显示原始标签。计算在可取消子进程中运行，首次可能较慢，可随时取消。结果区显示从基准值逐项累加到模型输出的**累计瀑布图**（正负方向、原始变量名与值、TopN 与“其余 N 项之和”，CSV 保留全部贡献），并提供“打开瀑布图”“打开结果文件夹”“导出解释结果…”控件；“导出解释结果…”只写入新建或空文件夹，不覆盖已有文件（目标非空时新建唯一子目录，当前结果目录不可作为目标；CLI `explain --output-dir` 同样要求新建/空目录且拒绝 `--overwrite`）。产物为 `shap_explanation.json`、`shap_contributions.csv`、`shap_waterfall.png` 与 `shap_explanation_notes.md`，满足 `base + Σφ = 所选输出`（容差 1e-7/1e-6），且切换行/类别/设置或关闭页面时已完成产物保留在磁盘。
+第 4 页在模型与数据检查通过后可解释单个样本：选择背景参考文件（background reference）、1 起始的样本行号、背景行数（background rows，默认 50，1–100）与排列轮数（permutation cycles，默认 5，1–20）；分类再选择要解释的类别并显示原始标签。计算在可取消子进程中运行，首次可能较慢，可随时取消。结果区显示从**基准值（base value）**逐项累加到模型输出的**累计瀑布图**（正负方向、原始变量名与值、TopN 与“其余 N 项之和”，CSV 保留全部贡献），并提供“打开瀑布图”“打开结果文件夹”“导出解释结果…”控件；“导出解释结果…”只写入新建或空文件夹，不覆盖已有文件（目标非空时新建唯一子目录，当前结果目录不可作为目标；CLI `explain --output-dir` 同样要求新建/空目录且拒绝 `--overwrite`）。产物（默认位于 `explanation/run_*/`）为 `shap_explanation.json`、`shap_contributions.csv`、`shap_waterfall.png` 与 `shap_explanation_notes.md`，满足 `base + Σφ = 所选输出`（容差 1e-7/1e-6），且切换行/类别/设置或关闭页面时已完成产物保留在磁盘。
 
 这是有限排列的**近似** SHAP：不是精确 SHAP、不是因果效应，也不是外层测试性能；背景替换不保持变量相关结构。首版仅支持分类 `logistic_regression`、`decision_tree`、`random_forest` 与回归 `linear_regression`、`ridge`、`lasso`、`elastic_net`、`decision_tree`、`random_forest`，且仅接受带 PsyML 导出元数据（`psyml_version`/`fit_scope`）与标准 `preprocess`+`model` 结构的保存模型；缺少元数据或自定义预处理的外来模型明确提示不支持，普通预测不受影响。未安装 `explain` 可选依赖时该区不可用。
 
@@ -239,7 +253,7 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 ### 拟合系数与截距（FR-005）
 
-第 4 页“拟合系数与截距”区只读取**已拟合模型**在**预处理后坐标空间**（缺失填补、缩放、独热编码之后）的参数，不重新拟合、不回流调参、也不换算回原始单位。首版支持回归 `linear_regression`、`ridge`、`lasso`、`elastic_net`、`svr`（`kernel='linear'`）与分类 `logistic_regression`、`lda`、`svm`（`kernel='linear'`，仅二分类）；多类 SVC 的成对系数、非线性核、树、KNN、MLP 与 stacking 给出具体不支持原因。若已加载兼容预测数据，会在同一流水线与容差（1e-7/1e-6）下重建回归预测或分类决策分数并显示核验状态；无数据时明确标注未核验。界面逐输出轴显示截距、输出单位与拟合范围，并区分“未提供核验数据”与“核验失败”；核验失败会拒绝发布任何系数产物（显示具体原因，不显示提取完成、不可导出）。`coefficients.json` 记录被删除的全缺失列及原因、逐原始列映射、`drop_idx_` 与逐列类别映射，训练 dtype 来源为保存元数据或明确 unknown。分类输出轴：二分类 logistic 为 `classes_[1]` 相对 `classes_[0]` 的 log-odds，多类 logistic 为各类 softmax logit，线性 SVC 仅为 margin（不是概率或 log-odds）；类别保存真实标签、类型与索引。结果可导出到新建/空目录或唯一子目录（绝不覆盖，JSON 最后写）；常规分析也会在 `coefficients/` 写入 `coefficients.csv`、`coefficients.json` 与 `coefficients_notes.md`，并标注 `fit_scope=all_analyzed_rows`。这些是最终全数据模型的拟合参数，不提供 p 值、置信区间、显著性、因果或定义明确的标准化效应；普通预测、超参数区与 SHAP 区不受影响。CLI 等价命令为 `psyml coefficients --model … --trust-model [--input …] [--output-dir …]`，另有 `--check-only`，且不需要 `explain` 可选依赖。
+第 4 页“拟合系数与截距”区只读取**已拟合模型**在**预处理后坐标空间**（缺失填补、缩放、独热编码之后）的参数，不重新拟合、不回流调参、也不换算回原始单位。首版支持回归 `linear_regression`、`ridge`、`lasso`、`elastic_net`、`svr`（`kernel='linear'`）与分类 `logistic_regression`、`lda`、`svm`（`kernel='linear'`，仅二分类）；多类 SVC 的成对系数、非线性核、树、KNN、MLP 与 stacking 给出具体不支持原因。若已加载兼容预测数据，会在同一流水线与容差（1e-7/1e-6）下重建回归预测或分类决策分数并显示核验状态；无数据时明确标注未核验。界面逐输出轴显示截距、输出单位与拟合范围，并区分“未提供核验数据”与“核验失败”；核验失败会拒绝发布任何系数产物（显示具体原因，不显示提取完成、不可导出）。`coefficients.json` 记录被删除的全缺失列及原因、逐原始列映射、`drop_idx_` 与逐列类别映射，训练 dtype 来源为保存元数据或明确 unknown。分类输出轴：二分类 logistic 为 `classes_[1]` 相对 `classes_[0]` 的 log-odds，多类 logistic 为各类 softmax logit，线性 SVC 仅为 margin（不是概率或 log-odds）；类别保存真实标签、类型与索引。结果可导出到新建/空目录或唯一子目录（绝不覆盖，JSON 最后写），第 4 页默认产物位于 `coefficients/run_*/`；常规分析也会在本次分析目录的 `coefficients/` 写入 `coefficients.csv`、`coefficients.json` 与 `coefficients_notes.md`，并标注 `fit_scope=all_analyzed_rows`。这些是最终全数据模型的拟合参数（不是超参数），不提供 p 值、置信区间、显著性、因果或定义明确的标准化效应；普通预测、超参数区与 SHAP 区不受影响。CLI 等价命令为 `psyml coefficients --model … --trust-model [--input …] [--output-dir …]`，另有 `--check-only`，且不需要 `explain` 可选依赖。
 
 实现见[coefficients.py](../src/psyml/models/coefficients.py)。
 
@@ -265,7 +279,7 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 - `permutation.json`：指标与高低方向、seed/repeats、held-out 行数、`model_scope=outer_fold_model`、编码映射、限制与失败原因；
 - `permutation_importance.png`：带零线的有符号排序图。
 
-读法与限制：`importance` 有符号，MAE/RMSE 正值为误差升高，其他指标正值为性能下降；保留负值，不归一化为百分比，也不称置信区间或 R² 百分比。`repeat_std` 是折内重复波动，`between_fold_std` 是折间波动，二者不能混用；只有一折时跨折标准差为空。变量相关时贡献会被共享或掩盖；逐行置换不保留重复测量/分组结构，因此分组数据的解释更弱，需结合设计判断。缺折或失败标记 partial/failed，不补造完整排名；全部失败不生成成功表格或空白图。这是模型在特定折、特定指标下对变量扰动的敏感度，不是因果效应，也不等于所保存全数据模型的解释。未明确启用时不生成任何 `interpretations/`。
+读法与限制：`importance` 有符号，MAE/RMSE 正值为误差升高，其他指标正值为性能下降；保留负值，不归一化为百分比，也不称置信区间或 R² 百分比。`repeat_std` 是折内重复波动，`between_fold_std` 是折间波动，二者不能混用；只有一折时跨折标准差为空，折间标准差是描述性波动，不是标准误或置信区间。变量相关时贡献会被共享或掩盖；逐行置换不保留重复测量/分组结构，因此分组数据的解释更弱，需结合设计判断。缺折或失败标记 partial/failed，不补造完整排名；全部失败不生成成功表格或空白图。这是模型在特定折、特定指标下对变量扰动的敏感度，不是因果效应，也不等于所保存全数据模型的解释。未明确启用时不生成任何 `interpretations/`。
 
 <a id="glossary"></a>
 
@@ -329,3 +343,14 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 用户测试从 [examples/quickstart/](../examples/quickstart/README.md) 开始：分类和回归分别提供配置、48 行训练数据与 10 行新预测数据，全部为合成数据。操作顺序见 [README 数据分析操作](../README.md#chinese)，保存模型与预测已并入第 9 步。
 
 应用第 1 页的“导入配置…”可读取附带示例、结果目录的 `config.json`，或固定参数文件 `best_parameters_configure.json`；无需命令行。数据路径失效时，重新选择对应数据；程序会核对所需列。检查变量、验证与参数后，在第 2 页选择本机输出目录并运行。每次建立新的结果子目录，导入的输出路径不会被沿用。“保存配置…”可保存当前设置。固定最佳参数的再运行不重现原搜索，也不是独立验证。
+
+## 源码版复测步骤
+
+独立应用包与源码检出可能包含不同的修复；以下步骤用于源码版复测，结果不代表人工验收通过。
+
+1. 在源码检出根目录启动界面（macOS 可双击 `Launch PsyML.command`），依赖安装见[开发者指南](DEVELOPMENT_ZH.md)；独立应用包不包含开发测试环境。
+2. 导入 `examples/quickstart/` 的分类或回归配置并运行一次。软件名下方应显示小字版本，源码版与 `pyproject.toml` 一致，独立包与包内 `BUILD.json` 一致。
+3. 在第 4 页检查输出位置：预测、SHAP 与系数分别落在与第 2 页共享的结果根目录下 `prediction/`、`explanation/`、`coefficients/` 的 `run_*` 新目录，不覆盖已有文件，也不写入隐藏的应用数据目录。
+4. 在长页面与嵌套小表格之间滚动：从整页起手时经过小表格仍继续滚动整页，从小表格起手才滚动该表格；停顿约 250 毫秒后再滚动才重新选择控制层；滚动起手后立即点击列表或拖动滚动条应正常选中/移动（锁定只作用于滚轮/滑动）。
+5. 运行收尾阶段应显示“正在整理并写出结果…”且进度条未满，完成后才进入结果页。
+6. 记录问题时可使用“复制完整报错”。复测通过前不打包、不生成分发 PDF；本指南不声称这些功能已通过人工验收。

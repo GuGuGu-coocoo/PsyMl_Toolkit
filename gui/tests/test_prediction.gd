@@ -1,6 +1,7 @@
 extends SceneTree
 
 const TestPaths = preload("res://tests/test_paths.gd")
+const OutputLocation = preload("res://scripts/output_location.gd")
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -16,6 +17,36 @@ func _write(path: String, content: String) -> void:
 	file.store_string(content)
 	file.close()
 
+func _file_size(path: String) -> int:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return -1
+	var length := file.get_length()
+	file.close()
+	return length
+
+
+func _user_output_state() -> Dictionary:
+	# Snapshot the hidden application-data folders with a bounded depth so a
+	# failed operation can be checked to not have fallen back there.
+	var state := {}
+	for family in ["prediction", "explanation", "coefficients"]:
+		_collect_user_files(ProjectSettings.globalize_path("user://" + family), family, state, 0)
+	return state
+
+
+func _collect_user_files(path: String, label: String, state: Dictionary, depth: int) -> void:
+	var directory := DirAccess.open(path)
+	if directory == null:
+		return
+	for name in directory.get_files():
+		state[label.path_join(name)] = _file_size(path.path_join(name))
+	if depth >= 3:
+		return
+	for name in directory.get_directories():
+		_collect_user_files(path.path_join(name), label.path_join(name), state, depth + 1)
+
+
 func _run() -> void:
 	if not OS.get_environment("PSYML_PREDICTION_CAPTURE").is_empty():
 		root.size = Vector2i(1280, 1000)
@@ -23,6 +54,19 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	var page = main.prediction_page
+	# Page 4 writes into the page-2 result root: use a Chinese path with spaces
+	# so the shared-root logic is exercised on a non-trivial folder name.
+	var output_root := TestPaths.temp_dir().path_join("psyml 输出 预测 %d" % Time.get_ticks_usec())
+	page.set_output_root(output_root)
+	assert(main.output_edit.text == output_root)
+	assert(page.output_edit.text == output_root)
+	assert(page.output_help.visible and page.output_help.text == main.tr("PREDICTION_OUTPUT_HELP"))
+	# Two operations must never share one run folder, even in the same millisecond.
+	var frozen_a: Dictionary = OutputLocation.create_run_directory(output_root, OutputLocation.PREDICTION)
+	var frozen_b: Dictionary = OutputLocation.create_run_directory(output_root, OutputLocation.PREDICTION)
+	assert(frozen_a.error.is_empty() and frozen_b.error.is_empty(), str(frozen_a) + str(frozen_b))
+	assert(str(frozen_a.path) != str(frozen_b.path))
+	assert(DirAccess.dir_exists_absolute(str(frozen_a.path)) and DirAccess.dir_exists_absolute(str(frozen_b.path)))
 	assert(main.tabs.get_tab_count() == 5 and main.tabs.is_tab_hidden(1))
 	assert(main.tabs.get_tab_title(4) == "4  模型与预测")
 	assert(page.predict_button.disabled and page.model_button.disabled)
@@ -63,6 +107,24 @@ func _run() -> void:
 		assert(page.error_message.is_empty(), page.error_message)
 		assert(page.compatibility.compatible and not page.predict_button.disabled)
 		assert(page.data.row_count > 0 and page.required_tree.get_root().get_first_child() != null)
+		if task == "classification":
+			# A missing or unwritable root must be a visible error, never a
+			# silent fallback to the hidden user:// folder.
+			var user_before := _user_output_state()
+			page.set_output_root("")
+			page.run_prediction()
+			assert(page.error_message == main.tr("PREDICTION_OUTPUT_REQUIRED"), page.error_message)
+			assert(page.result_path.is_empty() and page.predictions.is_empty())
+			page.error_message = ""
+			var blocked_root := directory.path_join("blocked-root")
+			_write(blocked_root, "not a directory")
+			page.set_output_root(blocked_root)
+			page.run_prediction()
+			assert(page.error_message == main.tr("OUTPUT_NOT_WRITABLE"), page.error_message)
+			assert(page.result_path.is_empty())
+			page.error_message = ""
+			assert(_user_output_state() == user_before, "prediction must not fall back to user://")
+			page.set_output_root(output_root)
 		page.run_prediction()
 		assert(page.predict_button.disabled)
 		await _wait(page)
@@ -70,6 +132,27 @@ func _run() -> void:
 		assert(not page.export_button.disabled and not page.predictions.is_empty())
 		assert(page.predictions.row_count == 10)
 		assert(page.predictions.columns[0].name == "sample_id")
+		# FR-014: the artifact is really written under the selected root, in a new
+		# prediction/run_* folder owned by this operation; the model folder is
+		# never used to infer where a page-4 result belongs.
+		var first_path: String = page.result_path
+		assert(first_path.begins_with(output_root + "/"), first_path)
+		assert(first_path.get_base_dir().get_base_dir() == output_root.path_join("prediction"), first_path)
+		assert(first_path.get_base_dir().get_file().begins_with("run_"), first_path)
+		assert(FileAccess.file_exists(first_path), first_path)
+		assert(not first_path.begins_with(str(config.output_dir)), "page 4 must not write into the model folder")
+		# Changing the root only affects later operations; the earlier artifact stays.
+		var first_size := _file_size(first_path)
+		var second_root := TestPaths.temp_dir().path_join("psyml 换目录 %d %s" % [Time.get_ticks_usec(), task])
+		page.set_output_root(second_root)
+		page.run_prediction()
+		await _wait(page)
+		assert(page.error_message.is_empty(), page.error_message)
+		assert(page.result_path != first_path and page.result_path.begins_with(second_root + "/"), page.result_path)
+		assert(
+			FileAccess.file_exists(first_path) and _file_size(first_path) == first_size,
+			"an earlier successful prediction must be preserved")
+		page.set_output_root(output_root)
 		var names: Array = []
 		for column in page.predictions.columns:
 			names.append(column.name)
