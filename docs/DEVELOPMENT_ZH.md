@@ -2,7 +2,7 @@
 
 [README](../README.md#chinese) · [English](DEVELOPMENT_EN.md) · [Français](DEVELOPMENT_FR.md)
 
-本文面向修改代码、参与维护或构建应用的开发者。研究者直接使用 GUI，无需安装开发工具或执行本文命令。当前代码版本见 [pyproject.toml](../pyproject.toml)，已发布版本以 Releases 为准。
+本文面向修改代码、参与维护或构建应用的开发者。研究者直接使用 GUI，无需安装开发工具或执行本文命令。当前代码版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量（`pyproject.toml` 通过 hatch 的 dynamic 读取同一值；当前源码为 `0.3.0.dev0`，界面显示 `0.3.0-dev`）。已发布版本以 Releases 为准，当前已发布仍为 **v0.2.0**，不含源码检出的第二轮修复。
 
 ## 环境与启动
 
@@ -129,6 +129,8 @@ uv run --group build python tools/build_native.py
 
 脚本会重建同名 `dist/` 输出目录，运行两种任务的包内环境检查，并生成 ZIP 与 SHA-256。`--reuse-core` 仅适合核心和依赖完全未变的本地 GUI 调试；交付时完整重建。发布前核对版本、锁文件、平台、许可证、解压后的启动与原生文件窗口；未商业签名/公证的应用可能遇到系统安全提示。
 
+**原生导出只走 `tools/build_native.py`。** `gui/export_presets.cfg` 中的 macOS/Windows 版本字段（`application/short_version`、`application/version`、`application/file_version`、`application/product_version`）保存的是占位符 `@PSYML_MACOS_VERSION@` / `@PSYML_WINDOWS_VERSION@`，不是可发布的版本号；直接用 Godot 编辑器的导出功能会失败或写出错误版本。`build_native.py` 在一次导出期间用 `src/psyml/__init__.py` 的单一常量派生数值版本（开发版 `0.3.0.dev0` → macOS `0.3.0`、Windows `0.3.0.0`），导出结束后在 `finally` 中恢复模板，成功或失败都不留下被改写的预设文件。因此原生导出统一通过该脚本触发，不要绕过它直接使用 Godot 预设；未获得打包授权时不要在本机执行导出。
+
 [Core CI](../.github/workflows/ci.yml) 检查三个操作系统；[独立包工作流](../.github/workflows/native-test-build.yml) 可手动触发，也会在推送 `desktop-test` 分支时自动构建 Windows 测试包。推送到该分支会消耗构建资源，提交前应确认需要生成测试包。工作流仅保存构建产物，不创建 release。
 
 ### 发布附件与本地研究者分享包
@@ -144,4 +146,4 @@ uv run python tools/package_researcher_share.py --windows-zip dist/PsyML-Toolkit
 
 分享脚本不调用发布接口，输出根目录的 `PsyML-Toolkit-Researcher-Share-v0.2.0.zip`，只用于直接分享，**不得上传 Release**。其中 Windows/ 为程序，TestData/ 为训练、配置及预测资料，Documents/ 为中文使用指南和术语 PDF，“从这里开始.txt”解释运行顺序与文件夹，并引导 Mac 用户到 GitHub 下载。输出目录若已存在，先移走或备份旧包再重建；不要混用旧 PDF。
 
-版本升级时核对 pyproject.toml、src/psyml/__init__.py、uv.lock、gui/export_presets.cfg、tools/build_native.py、tools/NATIVE_START_HERE.txt、PDF 构建器中的版本与链接，以及三语发布说明。检查 BUILD.json 的提交、初始工作区状态和构建生成的差异，核对 ZIP 与本地校验值。界面包内检查覆盖分类/回归训练、模型保存、加载、各 10 行新数据预测及 XLSX 导出；不替代实际窗口检查。每项独立功能完成后单独 commit 并立即 push，不累积后一起推送。
+版本升级时只在 `src/psyml/__init__.py` 修改 `__version__`（`pyproject.toml` 为 dynamic，自动读取；`gui/export_presets.cfg` 保持占位符，数值由 `tools/build_native.py` 在导出时派生），并核对 uv.lock、`tools/build_native.py`、`tools/NATIVE_START_HERE.txt`、PDF 构建器中的版本与链接，以及三语发布说明。检查 BUILD.json 的提交、初始工作区状态和构建生成的差异，核对 ZIP 与本地校验值。界面包内检查覆盖分类/回归训练、模型保存与加载、各 10 行新数据预测（写入本次运行目录的 `predictions.csv`）以及“打开预测结果文件夹”恰指向该运行目录；不替代实际窗口检查。核心 CLI `export-table` 与多格式读写仍保留，不属于该包内检查范围。每项独立功能完成后单独 commit 并立即 push，不累积后一起推送。

@@ -2,7 +2,7 @@
 
 [README](../README.md#english) · [中文](DEVELOPMENT_ZH.md) · [Français](DEVELOPMENT_FR.md)
 
-For contributors modifying, maintaining or building PsyML. Researchers use the GUI without developer tools or these commands. See [pyproject.toml](../pyproject.toml) for the code version and Releases for published builds.
+For contributors modifying, maintaining or building PsyML. Researchers use the GUI without developer tools or these commands. There is one maintained code version: the `__version__` constant in `src/psyml/__init__.py` (`pyproject.toml` reads it through hatch dynamic metadata; the current source is `0.3.0.dev0`, displayed as `0.3.0-dev`). Published builds are listed in Releases; the current release is still **v0.2.0** and does not contain the second-round fixes in this source checkout.
 
 ## Environment and launch
 
@@ -129,6 +129,8 @@ uv run --group build python tools/build_native.py
 
 The script rebuilds the same named output directory under `dist/`, checks classification and regression with the bundled runtime, and writes a ZIP and SHA-256. `--reuse-core` is only for local GUI debugging when core/dependencies are unchanged; rebuild fully for delivery. Verify versions, lockfile, architecture, licenses, extracted-app startup and native dialogs. Apps without commercial signing/notarization may trigger OS prompts.
 
+**Native export goes through `tools/build_native.py` only.** The macOS/Windows version fields in `gui/export_presets.cfg` (`application/short_version`, `application/version`, `application/file_version`, `application/product_version`) hold the placeholders `@PSYML_MACOS_VERSION@` / `@PSYML_WINDOWS_VERSION@`, not publishable version numbers; exporting directly from the Godot editor fails or writes wrong versions. `build_native.py` derives numeric export versions from the single `src/psyml/__init__.py` constant for the duration of one export (development `0.3.0.dev0` → macOS `0.3.0`, Windows `0.3.0.0`) and restores the template in a `finally` block, so neither success nor failure leaves a modified preset. Always trigger native export through that script instead of using the Godot preset directly, and do not run an export locally before packaging is authorised.
+
 [Core CI](../.github/workflows/ci.yml) covers three operating systems. The [standalone workflow](../.github/workflows/native-test-build.yml) builds Windows on manual dispatch or pushes to `desktop-test`. A push consumes build resources; use this branch when a test package is needed. It retains artifacts without creating a release.
 
 ### Release assets and the local researcher kit
@@ -144,4 +146,4 @@ uv run python tools/package_researcher_share.py --windows-zip dist/PsyML-Toolkit
 
 The sharing script never calls release APIs. It creates `PsyML-Toolkit-Researcher-Share-v0.2.0.zip` at the root for direct sharing only; **never upload it to Release**. Windows/ contains the app, TestData/ training/configuration/prediction files, Documents/ two Chinese PDFs, and 从这里开始.txt explains folders and steps and directs Mac users to GitHub. If the destination exists, move or back up the old kit before rebuilding; do not reuse stale PDFs.
 
-When changing versions, check pyproject.toml, src/psyml/__init__.py, uv.lock, gui/export_presets.cfg, tools/build_native.py, tools/NATIVE_START_HERE.txt, PDF-builder versions/links and trilingual release notes. Inspect BUILD.json commit, initial checkout status and generated changes; verify archives against local hashes. Bundled GUI smoke tests cover classification/regression training, saving/loading, ten new predictions each and XLSX export, without replacing real-window inspection. Commit each independent completed feature and push immediately; do not accumulate pushes.
+When changing versions, modify only `__version__` in `src/psyml/__init__.py` (`pyproject.toml` is dynamic and follows automatically; `gui/export_presets.cfg` keeps its placeholders while `tools/build_native.py` derives the numeric values at export time). Also check uv.lock, `tools/build_native.py`, `tools/NATIVE_START_HERE.txt`, PDF-builder versions/links and trilingual release notes. Inspect BUILD.json commit, initial checkout status and generated changes; verify archives against local hashes. Bundled GUI smoke tests cover classification/regression training, saving/loading, ten new predictions each (written as `predictions.csv` in that run's folder) and that the open action targets exactly that run folder, without replacing real-window inspection. The core CLI `export-table` and multi-format read/write remain supported and are outside this bundled smoke check. Commit each independent completed feature and push immediately; do not accumulate pushes.

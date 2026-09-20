@@ -70,6 +70,10 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	var page = main.prediction_page
+	# FR-020: open actions are verified against the exact target they hand to the
+	# OS without launching a file manager during the test.
+	var opened: Array[String] = []
+	page.open_target_handler = func(path: String): opened.append(path)
 	# Page 4 writes into the page-2 result root: a Chinese path with spaces.
 	var output_root := TestPaths.temp_dir().path_join("psyml 输出 系数 %d" % Time.get_ticks_usec())
 	page.set_output_root(output_root)
@@ -164,7 +168,26 @@ func _run() -> void:
 			str(page.coefficients_artifacts[key]).begins_with(page.coefficients_output_dir + "/"),
 			str(page.coefficients_artifacts[key]))
 	_expect(not page.coefficients_open_button.disabled)
-	_expect(not page.coefficients_export_button.disabled)
+	# FR-020: the coefficient actions keep only opening; the export entry, dialog
+	# and texts are gone, and opening targets the completed run folder itself.
+	_expect(page.coefficients_open_button.get_parent().get_child_count() == 1,
+		"the coefficients row must contain only the open action")
+	for dead_key in ["EXPORT_COEFFICIENTS", "COEFFICIENTS_EXPORTED", "COEFFICIENTS_EXPORT_FAILED"]:
+		_expect(main.tr(dead_key) == dead_key, "dead i18n key still translated: " + dead_key)
+	opened.clear()
+	page.open_coefficients_folder()
+	_expect(opened.size() == 1 and opened[0] == page.coefficients_output_dir, str(opened))
+	_expect(page.coefficients_error.is_empty(), page.coefficients_error)
+	# A run folder that is no longer there must be a visible error that opens
+	# nothing, never a fallback to another folder.
+	var kept_dir: String = page.coefficients_output_dir
+	page.coefficients_output_dir = directory.path_join("gone").path_join("run_missing")
+	opened.clear()
+	page.open_coefficients_folder()
+	_expect(page.coefficients_error == main.tr("COEFFICIENTS_NO_ARTIFACT"), page.coefficients_error)
+	_expect(opened.is_empty())
+	page.coefficients_error = ""
+	page.coefficients_output_dir = kept_dir
 	var first_output_dir: String = page.coefficients_output_dir
 
 	# More than 300 rows must show a display-limit notice that points to the full CSV.
@@ -198,48 +221,18 @@ func _run() -> void:
 	page.coefficient_report = coefficient_report_backup
 	page._fill_coefficients_tree()
 
-	# Export into a new directory delivers all three artifacts and reports success.
-	var export_dir := directory.path_join("exported")
-	page.export_coefficients(export_dir)
-	_expect(page.coefficients_error.is_empty(), page.coefficients_error)
-	_expect(not page.coefficients_note.is_empty(), "export must report success")
-	for key in ["json", "csv", "notes"]:
-		var name := str(page.coefficients_artifacts[key]).get_file()
-		_expect(FileAccess.file_exists(export_dir.path_join(name)), "export missing " + name)
-
-	# A destination holding a same-named CSV must not be overwritten; export falls
-	# back to a unique new subdirectory.
-	var occupied := directory.path_join("occupied")
-	DirAccess.make_dir_recursive_absolute(occupied)
-	_write(occupied.path_join("coefficients.csv"), "USER_EXISTING_CSV")
-	page.export_coefficients(occupied)
-	_expect(page.coefficients_error.is_empty(), page.coefficients_error)
-	_expect(FileAccess.get_file_as_string(occupied.path_join("coefficients.csv")) == "USER_EXISTING_CSV", "existing CSV was overwritten")
-	var subdirectories := DirAccess.open(occupied).get_directories()
-	_expect(subdirectories.size() == 1, "expected a single unique export subdirectory")
-
-	# Exporting into the current source directory is refused and changes nothing.
-	var source_csv := str(page.coefficients_artifacts["csv"])
-	var source_before := FileAccess.get_file_as_string(source_csv)
-	page.export_coefficients(source_csv.get_base_dir())
-	_expect(not page.coefficients_error.is_empty(), "same-source export must be reported")
-	_expect(FileAccess.get_file_as_string(source_csv) == source_before, "source artifact changed")
-	_expect(page.coefficients_note.is_empty(), "same-source export must not claim success")
-
-	# A missing source artifact is refused before anything is written.
-	var notes_path := str(page.coefficients_artifacts["notes"])
-	page.coefficients_artifacts.erase("notes")
-	var blocked := directory.path_join("blocked")
-	page.export_coefficients(blocked)
-	_expect(not page.coefficients_error.is_empty(), "missing source must be reported")
-	_expect(not DirAccess.dir_exists_absolute(blocked), "missing source must not create the destination")
-	page.coefficients_artifacts["notes"] = notes_path
-
-	# Clearing the UI keeps completed artifacts on disk.
+	# Clearing the UI keeps completed artifacts on disk and closes the open action.
 	var kept_json := str(page.coefficients_artifacts["json"])
 	page._clear_coefficients()
 	_expect(page.coefficient_report.is_empty() and page.coefficients_artifacts.is_empty())
 	_expect(FileAccess.file_exists(kept_json), "completed artifacts must not be deleted")
+	page.refresh_language()
+	_expect(page.coefficients_open_button.disabled)
+	opened.clear()
+	page.open_coefficients_folder()
+	_expect(page.coefficients_error == main.tr("COEFFICIENTS_NO_ARTIFACT"), page.coefficients_error)
+	_expect(opened.is_empty())
+	page.coefficients_error = ""
 
 	# An unsupported estimator reports a specific reason and writes nothing new.
 	config.model_name = "random_forest"

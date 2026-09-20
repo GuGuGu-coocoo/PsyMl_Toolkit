@@ -3,7 +3,6 @@ extends Node
 
 const DataPreview = preload("res://scripts/data_preview.gd")
 const OutputLocation = preload("res://scripts/output_location.gd")
-const EXPLANATION_EXPORT_ORDER := ["csv", "png", "notes", "json"]
 var main: Control
 var bridge: CoreBridge
 var page: ScrollContainer
@@ -15,8 +14,11 @@ var output_root_sync := false
 var model_button: Button
 var data_button: Button
 var predict_button: Button
-var export_button: Button
+var prediction_folder_button: Button
 var trust: CheckBox
+# Indirection for OS.shell_open so tests can assert the exact open target
+# without launching a file manager; production always uses the real opener.
+var open_target_handler: Callable = Callable(OS, "shell_open")
 var model_path_label: Label
 var data_path_label: Label
 var model_info: TextEdit
@@ -33,7 +35,6 @@ var mapping_options: Array[OptionButton] = []
 var mapping_confirm: Button
 var model_dialog: FileDialog
 var data_dialog: FileDialog
-var export_dialog: FileDialog
 var model_path := ""
 var input_path := ""
 var metadata: Dictionary = {}
@@ -43,11 +44,12 @@ var predictions: Dictionary = {}
 var compatibility: Dictionary = {}
 var mapping: Array[String] = []
 var result_path := ""
-var default_suffix := ".xlsx"
+# True only while the state belongs to a predict response that completed
+# successfully; cleared together with result_path/predictions.
+var prediction_completed := false
 var operation := ""
 var busy := false
 var error_message := ""
-var export_path := ""
 var background_button: Button
 var background_label: Label
 var background_dialog: FileDialog
@@ -64,8 +66,6 @@ var explain_tree: Tree
 var explain_view: TextureRect
 var explain_open_button: Button
 var explain_folder_button: Button
-var explain_export_button: Button
-var explain_export_dialog: FileDialog
 var background_path := ""
 var explain_busy := false
 var explanation: Dictionary = {}
@@ -74,8 +74,6 @@ var explain_output_dir := ""
 var explain_artifacts: Dictionary = {}
 var explain_request := 0
 var explain_staging_root := ""
-var explain_note := ""
-const COEFFICIENT_EXPORT_ORDER := ["csv", "notes", "json"]
 var coefficients_button: Button
 var coefficients_cancel_button: Button
 var coefficients_status: Label
@@ -83,8 +81,6 @@ var coefficients_summary: Label
 var coefficients_outputs: Label
 var coefficients_tree: Tree
 var coefficients_open_button: Button
-var coefficients_export_button: Button
-var coefficients_export_dialog: FileDialog
 var coefficients_busy := false
 var coefficient_report: Dictionary = {}
 var coefficients_error := ""
@@ -92,7 +88,6 @@ var coefficients_output_dir := ""
 var coefficients_artifacts: Dictionary = {}
 var coefficients_request := 0
 var coefficients_staging_root := ""
-var coefficients_note := ""
 
 
 func build(owner: Control) -> void:
@@ -190,7 +185,7 @@ func build(owner: Control) -> void:
 	var actions := HBoxContainer.new()
 	content.add_child(actions)
 	predict_button = button(actions, "RUN_PREDICTION")
-	export_button = button(actions, "EXPORT_PREDICTION")
+	prediction_folder_button = button(actions, "OPEN_PREDICTION_FOLDER")
 	result_summary = label(content, "PREDICTION_RESULTS")
 	result_tree = tree(content, 180)
 	label(content, "PREDICTION_SCIENCE")
@@ -241,7 +236,6 @@ func build(owner: Control) -> void:
 	content.add_child(explain_deliver)
 	explain_open_button = button(explain_deliver, "OPEN_WATERFALL")
 	explain_folder_button = button(explain_deliver, "OPEN_RESULTS_FOLDER")
-	explain_export_button = button(explain_deliver, "EXPORT_EXPLANATION")
 	explain_status = label(content, "EXPLAIN_WAITING")
 	explain_summary = label(content, "EXPLAIN_RESULTS")
 	explain_view = TextureRect.new()
@@ -264,7 +258,6 @@ func build(owner: Control) -> void:
 	coefficients_deliver.add_theme_constant_override("separation", 14)
 	content.add_child(coefficients_deliver)
 	coefficients_open_button = button(coefficients_deliver, "OPEN_COEFFICIENTS_FOLDER")
-	coefficients_export_button = button(coefficients_deliver, "EXPORT_COEFFICIENTS")
 	coefficients_status = label(content, "COEFFICIENTS_WAITING")
 	coefficients_summary = label(content, "COEFFICIENTS_RESULTS")
 	coefficients_outputs = label(content, "COEFFICIENTS_OUTPUTS")
@@ -273,10 +266,7 @@ func build(owner: Control) -> void:
 	label(content, "COEFFICIENTS_SCIENCE")
 	model_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, PackedStringArray(["*.joblib,*.pkl ; sklearn / joblib"]))
 	data_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, main.file_dialog.filters)
-	export_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_SAVE_FILE, PackedStringArray())
 	background_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, main.file_dialog.filters)
-	explain_export_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_DIR, PackedStringArray())
-	coefficients_export_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_DIR, PackedStringArray())
 	model_button.pressed.connect(func():
 		model_dialog.title = tr("LOAD_MODEL")
 		model_dialog.popup_centered_ratio(0.8))
@@ -288,8 +278,7 @@ func build(owner: Control) -> void:
 	model_dialog.file_selected.connect(load_model)
 	data_dialog.file_selected.connect(load_data)
 	predict_button.pressed.connect(run_prediction)
-	export_button.pressed.connect(_choose_export)
-	export_dialog.file_selected.connect(export_predictions)
+	prediction_folder_button.pressed.connect(open_prediction_folder)
 	background_button.pressed.connect(func():
 		background_dialog.title = tr("LOAD_BACKGROUND")
 		if background_path.is_empty():
@@ -300,8 +289,6 @@ func build(owner: Control) -> void:
 	explain_cancel_button.pressed.connect(cancel_explanation)
 	explain_open_button.pressed.connect(open_waterfall)
 	explain_folder_button.pressed.connect(open_explanation_folder)
-	explain_export_button.pressed.connect(_choose_explanation_export)
-	explain_export_dialog.dir_selected.connect(export_explanation)
 	explain_row.value_changed.connect(func(_value):
 		if explain_busy:
 			return
@@ -328,8 +315,6 @@ func build(owner: Control) -> void:
 	coefficients_button.pressed.connect(run_coefficients)
 	coefficients_cancel_button.pressed.connect(cancel_coefficients)
 	coefficients_open_button.pressed.connect(open_coefficients_folder)
-	coefficients_export_button.pressed.connect(_choose_coefficients_export)
-	coefficients_export_dialog.dir_selected.connect(export_coefficients)
 	bridge.coefficients_ready.connect(_coefficients_response)
 	bridge.coefficients_failed.connect(_coefficients_failed)
 	bridge.coefficients_cancelled.connect(_coefficients_cancelled)
@@ -484,7 +469,6 @@ func _response(payload: Dictionary) -> void:
 			model_notices = payload.get("warnings", [])
 			data = payload.preview
 			compatibility = payload.compatibility
-			default_suffix = payload.default_output_suffix
 			_build_explanation_classes()
 		"predict":
 			metadata = payload.model
@@ -493,9 +477,8 @@ func _response(payload: Dictionary) -> void:
 			compatibility = payload.compatibility
 			predictions = payload.predictions
 			result_path = CoreBridge.canonical_path(str(payload.output_path))
+			prediction_completed = true
 			_build_explanation_classes()
-		"export":
-			export_path = CoreBridge.canonical_path(str(payload.output_path))
 	refresh_language()
 
 
@@ -519,8 +502,10 @@ func run_prediction() -> void:
 		return
 	_clear_predictions()
 	# The frozen run folder is new, so the prediction file never overwrites an
-	# earlier run; the file itself stays on disk when the UI is cleared.
-	result_path = str(frozen.path).path_join("predictions.parquet")
+	# earlier run; the CSV stays on disk when the UI is cleared. CSV is the only
+	# page-4 prediction artifact: the user can open it in any spreadsheet
+	# program, unlike the previous binary Parquet file.
+	result_path = str(frozen.path).path_join("predictions.csv")
 	var args := _arguments()
 	args.append_array(["--output", result_path])
 	_request("predict", args)
@@ -566,43 +551,35 @@ func confirm_mapping() -> void:
 	_check()
 
 
-func _choose_export() -> void:
-	if busy or explain_busy or coefficients_busy or predictions.is_empty():
-		return
-	var filters := PackedStringArray()
-	var formats: Array = main.capabilities.get("output_formats", [".csv", ".xlsx", ".parquet"])
-	filters.append("*%s ; %s" % [default_suffix, default_suffix.trim_prefix(".").to_upper()])
-	for suffix in formats:
-		if suffix != default_suffix:
-			filters.append("*%s ; %s" % [suffix, str(suffix).trim_prefix(".").to_upper()])
-	export_dialog.filters = filters
-	export_dialog.title = tr("EXPORT_PREDICTION")
-	# The dialog opens where the actual artifact lives; explicit Save As stays
-	# available and keeps its own overwrite confirmation.
-	export_dialog.current_dir = (
-		result_path.get_base_dir() if not result_path.is_empty() else input_path.get_base_dir()
-	)
-	export_dialog.current_file = input_path.get_file().get_basename() + "_predictions" + default_suffix
-	export_dialog.popup_centered_ratio(0.8)
+func prediction_ready() -> bool:
+	# FR-018/FR-020: the one condition shared by the button state and the open
+	# action. A frozen run folder is not success by itself: the CSV must exist on
+	# disk and the state must come from a predict response that completed in this
+	# UI. Busy, failed, empty or CSV-less states therefore cannot be opened.
+	if busy or explain_busy or coefficients_busy or not prediction_completed:
+		return false
+	if predictions.is_empty() or result_path.is_empty():
+		return false
+	return FileAccess.file_exists(result_path)
 
 
-func export_predictions(path: String) -> void:
-	if busy or explain_busy or coefficients_busy or predictions.is_empty():
-		return
-	if path in [input_path, model_path, model_path.get_base_dir().path_join("model_metadata.json")]:
-		error_message = tr("PRESERVE_SOURCE")
+func open_prediction_folder() -> void:
+	# FR-018/FR-020: the only delivery action on page 4 is opening the run folder
+	# that produced this prediction. The CSV file itself is never opened directly.
+	error_message = ""
+	if not prediction_ready():
+		error_message = tr("PREDICTION_NO_ARTIFACT")
 		refresh_language()
 		return
-	# The native Save As dialog confirms replacement of an existing destination.
-	_request("export", PackedStringArray(["export-table", "--input", result_path, "--output", path, "--overwrite"]))
+	open_target_handler.call(result_path.get_base_dir())
 
 
 func _clear_predictions() -> void:
 	# UI state only: a completed prediction file lives in the selected result
 	# root, so changing data/model or retrying never deletes a finished run.
 	result_path = ""
-	export_path = ""
 	predictions = {}
+	prediction_completed = false
 
 
 func load_background(path: String) -> void:
@@ -723,142 +700,18 @@ func open_waterfall() -> void:
 		explain_error = tr("EXPLAIN_NO_ARTIFACT")
 		refresh_language()
 		return
-	OS.shell_open(path)
+	open_target_handler.call(path)
 
 
 func open_explanation_folder() -> void:
-	if explain_output_dir.is_empty() or not DirAccess.dir_exists_absolute(explain_output_dir):
+	# Only a completed run can be opened: a cancelled or failed run may leave a
+	# partial folder behind, and a cleared interface has nothing to show.
+	if explain_artifacts.is_empty() or explain_output_dir.is_empty() \
+			or not DirAccess.dir_exists_absolute(explain_output_dir):
 		explain_error = tr("EXPLAIN_NO_ARTIFACT")
 		refresh_language()
 		return
-	OS.shell_open(explain_output_dir)
-
-
-func _choose_explanation_export() -> void:
-	if explain_artifacts.is_empty():
-		explain_error = tr("EXPLAIN_NO_ARTIFACT")
-		refresh_language()
-		return
-	explain_export_dialog.title = tr("EXPORT_EXPLANATION")
-	# Point at the actual artifacts; the explicit export still never overwrites.
-	if not explain_output_dir.is_empty():
-		explain_export_dialog.current_dir = explain_output_dir
-	explain_export_dialog.popup_centered_ratio(0.8)
-
-
-func _explanation_source_dir() -> String:
-	for key in EXPLANATION_EXPORT_ORDER:
-		if explain_artifacts.has(key):
-			return str(explain_artifacts[key]).get_base_dir()
-	return ""
-
-
-func _explanation_file_ready(path: String) -> bool:
-	var file := FileAccess.open(path, FileAccess.READ)
-	if file == null:
-		return false
-	var length := file.get_length()
-	file.close()
-	return length > 0
-
-
-func _explanation_directory_empty(path: String) -> bool:
-	var directory := DirAccess.open(path)
-	if directory == null:
-		return false
-	return directory.get_files().is_empty() and directory.get_directories().is_empty()
-
-
-func _explanation_index_matches_at(json_path: String) -> bool:
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(json_path))
-	if typeof(parsed) != TYPE_DICTIONARY:
-		return false
-	var index = parsed.get("artifacts", {})
-	if typeof(index) != TYPE_DICTIONARY:
-		return false
-	for key in EXPLANATION_EXPORT_ORDER:
-		if str(index.get(key, "")) != str(explain_artifacts[key]).get_file():
-			return false
-	return true
-
-
-func export_explanation(directory: String) -> void:
-	# Delivery is all-or-nothing and never overwrites existing files: the target
-	# is a new/empty directory, or a unique new subdirectory of the chosen
-	# folder. Every source artifact is checked first, the JSON completion marker
-	# is copied last and re-verified, and a failed copy removes only the files it
-	# created and reports an error without a success marker.
-	explain_error = ""
-	explain_note = ""
-	if explain_artifacts.is_empty():
-		explain_error = tr("EXPLAIN_NO_ARTIFACT")
-		refresh_language()
-		return
-	for key in EXPLANATION_EXPORT_ORDER:
-		if not explain_artifacts.has(key) or not _explanation_file_ready(str(explain_artifacts[key])):
-			explain_error = tr("EXPLAIN_EXPORT_INCOMPLETE")
-			refresh_language()
-			return
-	var source_dir := _explanation_source_dir().simplify_path()
-	var base := directory.simplify_path()
-	if source_dir != "" and base == source_dir:
-		explain_error = tr("EXPLAIN_EXPORT_SAME_DIR")
-		refresh_language()
-		return
-	var target := base
-	var created_target := false
-	if not DirAccess.dir_exists_absolute(target):
-		DirAccess.make_dir_recursive_absolute(target)
-		if not DirAccess.dir_exists_absolute(target):
-			explain_error = tr("EXPLAIN_EXPORT_FAILED")
-			refresh_language()
-			return
-		created_target = true
-	elif not _explanation_directory_empty(target):
-		target = base.path_join("psyml-explanation-%d-%d" % [OS.get_process_id(), Time.get_ticks_usec()])
-		DirAccess.make_dir_recursive_absolute(target)
-		if not DirAccess.dir_exists_absolute(target):
-			explain_error = tr("EXPLAIN_EXPORT_FAILED")
-			refresh_language()
-			return
-		created_target = true
-	if not _explanation_index_matches_at(str(explain_artifacts["json"])):
-		if created_target and _explanation_directory_empty(target):
-			DirAccess.remove_absolute(target)
-		explain_error = tr("EXPLAIN_EXPORT_INCOMPLETE")
-		refresh_language()
-		return
-	for key in EXPLANATION_EXPORT_ORDER:
-		var destination := target.path_join(str(explain_artifacts[key]).get_file())
-		if FileAccess.file_exists(destination):
-			if created_target and _explanation_directory_empty(target):
-				DirAccess.remove_absolute(target)
-			explain_error = tr("EXPLAIN_EXPORT_EXISTS")
-			refresh_language()
-			return
-	var written: Array[String] = []
-	var failed := false
-	for key in EXPLANATION_EXPORT_ORDER:
-		var source := str(explain_artifacts[key])
-		var destination := target.path_join(source.get_file())
-		if DirAccess.copy_absolute(source, destination) != OK or not _explanation_file_ready(destination):
-			failed = true
-			break
-		written.append(destination)
-	if not failed:
-		var copied_json := target.path_join(str(explain_artifacts["json"]).get_file())
-		if not _explanation_index_matches_at(copied_json):
-			failed = true
-	if failed:
-		for path in written:
-			DirAccess.remove_absolute(path)
-		if created_target and _explanation_directory_empty(target):
-			DirAccess.remove_absolute(target)
-		explain_error = tr("EXPLAIN_EXPORT_FAILED")
-		refresh_language()
-		return
-	explain_note = tr("EXPLAIN_EXPORTED") + " " + target
-	refresh_language()
+	open_target_handler.call(explain_output_dir)
 
 
 func _clear_explanation() -> void:
@@ -867,7 +720,6 @@ func _clear_explanation() -> void:
 	explain_error = ""
 	explain_artifacts = {}
 	explain_output_dir = ""
-	explain_note = ""
 
 
 func run_coefficients() -> void:
@@ -952,119 +804,14 @@ func _cleanup_owned_coefficients_staging() -> void:
 
 
 func open_coefficients_folder() -> void:
-	if coefficients_output_dir.is_empty() or not DirAccess.dir_exists_absolute(coefficients_output_dir):
+	# Only a completed run can be opened: a cancelled or failed run may leave a
+	# partial folder behind, and a cleared interface has nothing to show.
+	if coefficients_artifacts.is_empty() or coefficients_output_dir.is_empty() \
+			or not DirAccess.dir_exists_absolute(coefficients_output_dir):
 		coefficients_error = tr("COEFFICIENTS_NO_ARTIFACT")
 		refresh_language()
 		return
-	OS.shell_open(coefficients_output_dir)
-
-
-func _choose_coefficients_export() -> void:
-	if coefficients_artifacts.is_empty():
-		coefficients_error = tr("COEFFICIENTS_NO_ARTIFACT")
-		refresh_language()
-		return
-	coefficients_export_dialog.title = tr("EXPORT_COEFFICIENTS")
-	# Point at the actual artifacts; the explicit export still never overwrites.
-	if not coefficients_output_dir.is_empty():
-		coefficients_export_dialog.current_dir = coefficients_output_dir
-	coefficients_export_dialog.popup_centered_ratio(0.8)
-
-
-func _coefficients_source_dir() -> String:
-	for key in COEFFICIENT_EXPORT_ORDER:
-		if coefficients_artifacts.has(key):
-			return str(coefficients_artifacts[key]).get_base_dir()
-	return ""
-
-
-func _coefficients_index_matches_at(json_path: String) -> bool:
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(json_path))
-	if typeof(parsed) != TYPE_DICTIONARY:
-		return false
-	var index = parsed.get("artifacts", {})
-	if typeof(index) != TYPE_DICTIONARY:
-		return false
-	for key in COEFFICIENT_EXPORT_ORDER:
-		if str(index.get(key, "")) != str(coefficients_artifacts[key]).get_file():
-			return false
-	return true
-
-
-func export_coefficients(directory: String) -> void:
-	# Delivery is all-or-nothing and never overwrites existing files, mirroring the
-	# explanation export: a new/empty directory or a unique subdirectory, JSON last.
-	coefficients_error = ""
-	coefficients_note = ""
-	if coefficients_artifacts.is_empty():
-		coefficients_error = tr("COEFFICIENTS_NO_ARTIFACT")
-		refresh_language()
-		return
-	for key in COEFFICIENT_EXPORT_ORDER:
-		if not coefficients_artifacts.has(key) or not _explanation_file_ready(str(coefficients_artifacts[key])):
-			coefficients_error = tr("COEFFICIENTS_EXPORT_INCOMPLETE")
-			refresh_language()
-			return
-	var source_dir := _coefficients_source_dir().simplify_path()
-	var base := directory.simplify_path()
-	if source_dir != "" and base == source_dir:
-		coefficients_error = tr("COEFFICIENTS_EXPORT_SAME_DIR")
-		refresh_language()
-		return
-	var target := base
-	var created_target := false
-	if not DirAccess.dir_exists_absolute(target):
-		DirAccess.make_dir_recursive_absolute(target)
-		if not DirAccess.dir_exists_absolute(target):
-			coefficients_error = tr("COEFFICIENTS_EXPORT_FAILED")
-			refresh_language()
-			return
-		created_target = true
-	elif not _explanation_directory_empty(target):
-		target = base.path_join("psyml-coefficients-%d-%d" % [OS.get_process_id(), Time.get_ticks_usec()])
-		DirAccess.make_dir_recursive_absolute(target)
-		if not DirAccess.dir_exists_absolute(target):
-			coefficients_error = tr("COEFFICIENTS_EXPORT_FAILED")
-			refresh_language()
-			return
-		created_target = true
-	if not _coefficients_index_matches_at(str(coefficients_artifacts["json"])):
-		if created_target and _explanation_directory_empty(target):
-			DirAccess.remove_absolute(target)
-		coefficients_error = tr("COEFFICIENTS_EXPORT_INCOMPLETE")
-		refresh_language()
-		return
-	for key in COEFFICIENT_EXPORT_ORDER:
-		var destination := target.path_join(str(coefficients_artifacts[key]).get_file())
-		if FileAccess.file_exists(destination):
-			if created_target and _explanation_directory_empty(target):
-				DirAccess.remove_absolute(target)
-			coefficients_error = tr("COEFFICIENTS_EXPORT_EXISTS")
-			refresh_language()
-			return
-	var written: Array[String] = []
-	var failed := false
-	for key in COEFFICIENT_EXPORT_ORDER:
-		var source := str(coefficients_artifacts[key])
-		var destination := target.path_join(source.get_file())
-		if DirAccess.copy_absolute(source, destination) != OK or not _explanation_file_ready(destination):
-			failed = true
-			break
-		written.append(destination)
-	if not failed:
-		var copied_json := target.path_join(str(coefficients_artifacts["json"]).get_file())
-		if not _coefficients_index_matches_at(copied_json):
-			failed = true
-	if failed:
-		for path in written:
-			DirAccess.remove_absolute(path)
-		if created_target and _explanation_directory_empty(target):
-			DirAccess.remove_absolute(target)
-		coefficients_error = tr("COEFFICIENTS_EXPORT_FAILED")
-		refresh_language()
-		return
-	coefficients_note = tr("COEFFICIENTS_EXPORTED") + " " + target
-	refresh_language()
+	open_target_handler.call(coefficients_output_dir)
 
 
 func _clear_coefficients() -> void:
@@ -1073,7 +820,6 @@ func _clear_coefficients() -> void:
 	coefficients_error = ""
 	coefficients_artifacts = {}
 	coefficients_output_dir = ""
-	coefficients_note = ""
 
 
 func _fill_coefficients_tree() -> void:
@@ -1202,7 +948,7 @@ func refresh_language() -> void:
 	trust.disabled = busy or explain_busy or coefficients_busy
 	data_button.disabled = busy or explain_busy or coefficients_busy
 	predict_button.disabled = busy or explain_busy or coefficients_busy or not trust.button_pressed or not compatibility.get("compatible", false)
-	export_button.disabled = busy or explain_busy or coefficients_busy or predictions.is_empty()
+	prediction_folder_button.disabled = not prediction_ready()
 	for option in mapping_options:
 		option.disabled = busy or explain_busy or coefficients_busy
 	if is_instance_valid(mapping_confirm):
@@ -1261,8 +1007,6 @@ func refresh_language() -> void:
 				status.text += "\n" + tr("READONLY_EXPORT")
 		if not model_notices.is_empty():
 			status.text += "\n" + tr("MODEL_METADATA_FALLBACK")
-		if not export_path.is_empty():
-			status.text = tr("PREDICTION_EXPORTED") + " " + export_path
 	background_button.disabled = busy or explain_busy or coefficients_busy
 	background_label.tooltip_text = background_path
 	background_label.text = background_path.get_file() if not background_path.is_empty() else tr("NO_BACKGROUND")
@@ -1282,13 +1026,10 @@ func refresh_language() -> void:
 	explain_cancel_button.disabled = not explain_busy
 	explain_open_button.disabled = explain_busy or coefficients_busy or not explain_artifacts.has("png")
 	explain_folder_button.disabled = explain_busy or coefficients_busy or explain_artifacts.is_empty()
-	explain_export_button.disabled = explain_busy or coefficients_busy or explain_artifacts.is_empty()
 	if explain_busy:
 		explain_status.text = tr("EXPLAIN_BUSY")
 	elif not explain_error.is_empty():
 		explain_status.text = explain_error
-	elif not explain_note.is_empty():
-		explain_status.text = explain_note
 	elif not explanation.is_empty():
 		explain_status.text = tr("EXPLAIN_DONE")
 	else:
@@ -1299,13 +1040,10 @@ func refresh_language() -> void:
 	coefficients_button.disabled = not coefficients_ready
 	coefficients_cancel_button.disabled = not coefficients_busy
 	coefficients_open_button.disabled = coefficients_busy or coefficients_artifacts.is_empty()
-	coefficients_export_button.disabled = coefficients_busy or coefficients_artifacts.is_empty()
 	if coefficients_busy:
 		coefficients_status.text = tr("COEFFICIENTS_BUSY")
 	elif not coefficients_error.is_empty():
 		coefficients_status.text = coefficients_error
-	elif not coefficients_note.is_empty():
-		coefficients_status.text = coefficients_note
 	elif not coefficient_report.is_empty():
 		var coefficient_status := str(coefficient_report.get("status", ""))
 		if coefficient_status == "available":

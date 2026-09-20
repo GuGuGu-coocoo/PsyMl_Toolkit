@@ -814,7 +814,6 @@ wheels = [
 
 [[package]]
 name = "psyml-toolkit"
-version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "joblib" },

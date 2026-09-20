@@ -9,6 +9,11 @@ const RADIUS := 6
 const VERSION_FONT_SIZE := 13
 
 const DataPreview = preload("res://scripts/data_preview.gd")
+## FR-019: training runs live in their own family folder under the shared result
+## root, like the page-4 prediction/, explanation/ and coefficients/ families.
+## Legacy `run_*` folders directly under the root keep loading where they are;
+## nothing migrates or rewrites them.
+const TRAINING_FAMILY := "training"
 
 var prediction_page
 var bridge: CoreBridge
@@ -450,27 +455,47 @@ func _install_version_label() -> void:
 func _refresh_version_label() -> void:
 	if version_label == null:
 		return
-	var version := _resolve_version()
+	var version := _display_version(_resolve_version())
 	version_label.visible = not version.is_empty()
 	version_label.text = tr("VERSION") + " " + version if version_label.visible else ""
 
 
 func _resolve_version() -> String:
-	# A standalone package carries BUILD.json; a source checkout has neither a
-	# build file nor a version field in the core capabilities payload (checked
-	# against src/psyml/protocol.py), so the documented single source of truth
-	# pyproject.toml is read next, then the core module version.
+	# A standalone package carries BUILD.json, whose version fields are written
+	# by tools/build_native.py from the same core constant. A source checkout
+	# has no build file, so the maintained constant in src/psyml/__init__.py is
+	# the single source of truth; pyproject.toml only points hatch at that file.
 	var label := _resolve_version_from(_build_file_candidates())
 	if not label.is_empty():
 		return label
 	if capabilities.has("psyml_version"):
 		return str(capabilities["psyml_version"]).strip_edges()
-	var version := _version_from_pyproject(_read_text_file(_project_file("pyproject.toml")))
-	if version.is_empty():
-		version = _version_from_core_module(
-			_read_text_file(_project_file("src/psyml/__init__.py"))
-		)
-	return version
+	return _version_from_core_module(
+		_read_text_file(_project_file("src/psyml/__init__.py"))
+	)
+
+
+func _display_version(version: String) -> String:
+	# A PEP 440 development release of a plain numeric version (for example
+	# 0.3.0.dev0) is shown as 0.3.0-dev. The final release 0.3.0 and any other
+	# string, including a custom --label build identifier, stay unchanged.
+	var marker := version.find(".dev")
+	if marker <= 0:
+		return version
+	var release := version.substr(0, marker)
+	var serial := version.substr(marker + 4)
+	if serial.begins_with("-") or not serial.is_valid_int():
+		return version
+	if not _is_numeric_release(release):
+		return version
+	return release + "-dev"
+
+
+func _is_numeric_release(value: String) -> bool:
+	for part in value.split("."):
+		if part.is_empty() or part.begins_with("-") or not part.is_valid_int():
+			return false
+	return true
 
 
 func _resolve_version_from(candidates: Array) -> String:
@@ -491,7 +516,7 @@ func _build_file_candidates_for(bundle: String) -> Array[String]:
 	# (Windows) or next to the .app (macOS), where the bundle directory is
 	# <destination>/PsyML Toolkit.app/Contents/Resources, so the file sits
 	# three levels up. A source checkout matches none of the four paths and
-	# falls back to pyproject.toml; there is no unbounded parent walk.
+	# falls back to the core module; there is no unbounded parent walk.
 	return [
 		bundle.path_join("BUILD.json").simplify_path(),
 		bundle.path_join("../BUILD.json").simplify_path(),
@@ -526,21 +551,6 @@ func _version_from_build_file(path: String) -> String:
 		var value := str(parsed.get(key, "")).strip_edges()
 		if not value.is_empty():
 			return value
-	return ""
-
-
-func _version_from_pyproject(text: String) -> String:
-	var in_project := false
-	for line in text.split("\n"):
-		var stripped := line.strip_edges()
-		if stripped.begins_with("["):
-			in_project = stripped == "[project]"
-			continue
-		if not in_project or not stripped.begins_with("version"):
-			continue
-		var parts := stripped.split("=", true, 1)
-		if parts.size() == 2:
-			return _unquote(parts[1])
 	return ""
 
 
@@ -963,7 +973,10 @@ func _build_config() -> Dictionary:
 		return {"error": tr("SELECT_OUTPUT")}
 	if run_folder_name.is_empty():
 		run_folder_name = _new_run_folder()
-	output_path = output_path.path_join(run_folder_name)
+	# FR-019: a new GUI training run is created inside `<root>/training/run_*`.
+	# The core CLI is untouched: an explicit output_dir from a user or an
+	# imported config still writes exactly where it points.
+	output_path = output_path.path_join(TRAINING_FAMILY).path_join(run_folder_name)
 	var grid_payload := _parameter_grid_payload()
 	if grid_payload.has("error"):
 		return grid_payload

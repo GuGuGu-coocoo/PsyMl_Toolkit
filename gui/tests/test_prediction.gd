@@ -2,6 +2,7 @@ extends SceneTree
 
 const TestPaths = preload("res://tests/test_paths.gd")
 const OutputLocation = preload("res://scripts/output_location.gd")
+const NativeSmoke = preload("res://scripts/native_smoke.gd")
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -47,6 +48,176 @@ func _collect_user_files(path: String, label: String, state: Dictionary, depth: 
 		_collect_user_files(path.path_join(name), label.path_join(name), state, depth + 1)
 
 
+func _run_directories(root: String) -> Array:
+	var names: Array = []
+	var directory := DirAccess.open(root.path_join("prediction"))
+	if directory == null:
+		return names
+	for name in directory.get_directories():
+		names.append(name)
+	return names
+
+
+func _prediction_delivery_states(
+		main, page, opened: Array[String], directory: String, model_path: String, data_path: String) -> void:
+	# FR-018/FR-020 delivery states: every state that is not a completed run must
+	# keep the button disabled and make the open action refuse without calling the
+	# opener; only a new successful run restores opening for its own run folder.
+	var smoke_root: String = NativeSmoke.smoke_root()
+	assert(smoke_root.is_absolute_path() and DirAccess.dir_exists_absolute(smoke_root), smoke_root)
+	var configured_tmp := OS.get_environment("PSYML_TEST_TMP").strip_edges()
+	if not configured_tmp.is_empty():
+		assert(smoke_root == configured_tmp, "PSYML_TEST_TMP must drive the smoke root")
+	var root: String = page.output_edit.text
+	page.trust.button_pressed = true
+	page.load_model(model_path)
+	await _wait(page)
+	page.load_data(data_path)
+	await _wait(page)
+	assert(page.mapping_toggle.visible and page.predict_button.disabled)
+	page.mapping_options[0].select(2)
+	page.mapping_options[1].select(1)
+	page.confirm_mapping()
+	await _wait(page)
+	assert(page.compatibility.get("compatible", false) and not page.predict_button.disabled)
+
+	# First failure: the check passed, but the core predict cannot read the input
+	# any more. The frozen run folder exists without a CSV, so the former
+	# "directory exists" test must not be enough to offer or open it.
+	var parked_input := directory.path_join("delivery-parked-input.csv")
+	assert(DirAccess.rename_absolute(data_path, parked_input) == OK)
+	var runs_before := _run_directories(root)
+	page.run_prediction()
+	await _wait(page)
+	assert(not page.error_message.is_empty())
+	assert(page.predictions.is_empty())
+	assert(page.prediction_folder_button.disabled)
+	assert(page.prediction_ready() == not page.prediction_folder_button.disabled)
+	opened.clear()
+	page.open_prediction_folder()
+	assert(opened.is_empty(), str(opened))
+	assert(page.error_message == main.tr("PREDICTION_NO_ARTIFACT"), page.error_message)
+	var new_runs: Array = _run_directories(root).filter(func(name): return not runs_before.has(name))
+	assert(new_runs.size() == 1, str(new_runs))
+	# The exact former false positive: this failed run allocated its own folder
+	# and result_path points inside it, but no CSV was written.
+	var failed_dir: String = page.result_path.get_base_dir()
+	assert(failed_dir.get_base_dir() == root.path_join("prediction"), page.result_path)
+	assert(failed_dir.get_file() == str(new_runs[0]), page.result_path)
+	assert(DirAccess.dir_exists_absolute(failed_dir))
+	assert(not FileAccess.file_exists(page.result_path), "a failed run must not leave a CSV")
+
+	# Restoring the input and completing a run restores opening for this run; the
+	# bundled smoke helper accepts exactly this run's CSV and folder target.
+	assert(DirAccess.rename_absolute(parked_input, data_path) == OK)
+	page.error_message = ""
+	page.load_data(data_path)
+	await _wait(page)
+	assert(page.mapping_toggle.visible and page.predict_button.disabled)
+	page.mapping_options[0].select(2)
+	page.mapping_options[1].select(1)
+	page.confirm_mapping()
+	await _wait(page)
+	assert(page.prediction_folder_button.disabled)
+	page.run_prediction()
+	await _wait(page)
+	assert(page.error_message.is_empty(), page.error_message)
+	assert(not page.predictions.is_empty() and not page.prediction_folder_button.disabled)
+	var completed_csv: String = page.result_path
+	assert(completed_csv.get_file() == "predictions.csv" and FileAccess.file_exists(completed_csv))
+	assert(completed_csv.get_base_dir() != failed_dir)
+	var delivery: String = NativeSmoke.verify_prediction_delivery(page)
+	assert(delivery == "", delivery)
+	opened.clear()
+	page.open_prediction_folder()
+	assert(opened.size() == 1 and opened[0] == completed_csv.get_base_dir(), str(opened))
+
+	# Changing the result root only affects later runs: the displayed completed
+	# result is still this run's folder and opens correctly.
+	var later_root := TestPaths.temp_dir().path_join("psyml delivery %d" % Time.get_ticks_usec())
+	page.set_output_root(later_root)
+	page.refresh_language()
+	assert(not page.prediction_folder_button.disabled)
+	opened.clear()
+	page.open_prediction_folder()
+	assert(opened.size() == 1 and opened[0] == completed_csv.get_base_dir(), str(opened))
+	assert(FileAccess.file_exists(completed_csv))
+	page.set_output_root(root)
+	page.refresh_language()
+
+	# A CSV moved away no longer qualifies even though the run folder exists; the
+	# GUI deletes nothing and putting the file back restores the same run.
+	var parked_csv := directory.path_join("delivery-parked.csv")
+	assert(DirAccess.rename_absolute(completed_csv, parked_csv) == OK)
+	page.refresh_language()
+	assert(page.prediction_folder_button.disabled)
+	opened.clear()
+	page.open_prediction_folder()
+	assert(opened.is_empty(), str(opened))
+	assert(page.error_message == main.tr("PREDICTION_NO_ARTIFACT"), page.error_message)
+	page.error_message = ""
+	assert(DirAccess.rename_absolute(parked_csv, completed_csv) == OK)
+	page.refresh_language()
+	assert(not page.prediction_folder_button.disabled)
+	opened.clear()
+	page.open_prediction_folder()
+	assert(opened.size() == 1 and opened[0] == completed_csv.get_base_dir(), str(opened))
+
+	# While a new run is in flight the previous completed result is not offered.
+	page.run_prediction()
+	assert(page.busy and page.prediction_folder_button.disabled)
+	assert(page.prediction_ready() == not page.prediction_folder_button.disabled)
+	opened.clear()
+	page.open_prediction_folder()
+	assert(opened.is_empty(), str(opened))
+	page.error_message = ""
+	await _wait(page)
+	assert(page.error_message.is_empty(), page.error_message)
+	assert(not page.prediction_folder_button.disabled)
+	var second_csv: String = page.result_path
+	assert(second_csv != completed_csv and FileAccess.file_exists(second_csv))
+	assert(second_csv.get_base_dir().get_base_dir() == root.path_join("prediction"), second_csv)
+
+	# A retry that really fails clears the open state again; the earlier
+	# successful CSV stays on disk and a later success restores opening.
+	assert(DirAccess.rename_absolute(data_path, parked_input) == OK)
+	var before_retry := _run_directories(root)
+	page.run_prediction()
+	await _wait(page)
+	assert(not page.error_message.is_empty())
+	assert(page.predictions.is_empty() and page.prediction_folder_button.disabled)
+	opened.clear()
+	page.open_prediction_folder()
+	assert(opened.is_empty(), str(opened))
+	assert(FileAccess.file_exists(second_csv), "a failed retry must not delete an earlier successful CSV")
+	var retry_runs: Array = _run_directories(root).filter(func(name): return not before_retry.has(name))
+	assert(retry_runs.size() == 1, str(retry_runs))
+	assert(
+		not FileAccess.file_exists(root.path_join("prediction").path_join(str(retry_runs[0])).path_join("predictions.csv")),
+		str(retry_runs))
+	assert(DirAccess.rename_absolute(parked_input, data_path) == OK)
+	page.error_message = ""
+	page.load_data(data_path)
+	await _wait(page)
+	assert(page.mapping_toggle.visible and page.predict_button.disabled)
+	page.mapping_options[0].select(2)
+	page.mapping_options[1].select(1)
+	page.confirm_mapping()
+	await _wait(page)
+	# Nothing becomes openable until a new run actually completes.
+	assert(page.prediction_folder_button.disabled)
+	page.run_prediction()
+	await _wait(page)
+	assert(page.error_message.is_empty(), page.error_message)
+	assert(not page.prediction_folder_button.disabled)
+	assert(page.result_path != second_csv and FileAccess.file_exists(page.result_path))
+	opened.clear()
+	page.open_prediction_folder()
+	assert(opened.size() == 1 and opened[0] == page.result_path.get_base_dir(), str(opened))
+	delivery = NativeSmoke.verify_prediction_delivery(page)
+	assert(delivery == "", delivery)
+
+
 func _run() -> void:
 	if not OS.get_environment("PSYML_PREDICTION_CAPTURE").is_empty():
 		root.size = Vector2i(1280, 1000)
@@ -54,6 +225,10 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	var page = main.prediction_page
+	# FR-020: open actions are verified against the exact target they hand to the OS
+	# without launching a file manager from the test.
+	var opened: Array[String] = []
+	page.open_target_handler = func(path: String): opened.append(path)
 	# Page 4 writes into the page-2 result root: use a Chinese path with spaces
 	# so the shared-root logic is exercised on a non-trivial folder name.
 	var output_root := TestPaths.temp_dir().path_join("psyml 输出 预测 %d" % Time.get_ticks_usec())
@@ -115,6 +290,13 @@ func _run() -> void:
 			page.run_prediction()
 			assert(page.error_message == main.tr("PREDICTION_OUTPUT_REQUIRED"), page.error_message)
 			assert(page.result_path.is_empty() and page.predictions.is_empty())
+			# Without a completed run there is no folder to open: a visible error
+			# and a disabled button instead of opening the CSV or any fallback.
+			assert(page.prediction_folder_button.disabled)
+			opened.clear()
+			page.open_prediction_folder()
+			assert(page.error_message == main.tr("PREDICTION_NO_ARTIFACT"), page.error_message)
+			assert(opened.is_empty())
 			page.error_message = ""
 			var blocked_root := directory.path_join("blocked-root")
 			_write(blocked_root, "not a directory")
@@ -129,7 +311,7 @@ func _run() -> void:
 		assert(page.predict_button.disabled)
 		await _wait(page)
 		assert(page.error_message.is_empty(), page.error_message)
-		assert(not page.export_button.disabled and not page.predictions.is_empty())
+		assert(not page.prediction_folder_button.disabled and not page.predictions.is_empty())
 		assert(page.predictions.row_count == 10)
 		assert(page.predictions.columns[0].name == "sample_id")
 		# FR-014: the artifact is really written under the selected root, in a new
@@ -141,6 +323,17 @@ func _run() -> void:
 		assert(first_path.get_base_dir().get_file().begins_with("run_"), first_path)
 		assert(FileAccess.file_exists(first_path), first_path)
 		assert(not first_path.begins_with(str(config.output_dir)), "page 4 must not write into the model folder")
+		# FR-018: the run folder holds one artifact only, a plain CSV the user can
+		# open directly; no Parquet is written next to it.
+		assert(first_path.get_file() == "predictions.csv", first_path)
+		var artifact_names := DirAccess.open(first_path.get_base_dir()).get_files()
+		assert(artifact_names.size() == 1 and artifact_names[0] == "predictions.csv", str(artifact_names))
+		# Opening targets exactly this successful run folder, never the CSV file.
+		assert(not page.prediction_folder_button.disabled)
+		opened.clear()
+		page.open_prediction_folder()
+		assert(opened.size() == 1 and opened[0] == first_path.get_base_dir(), str(opened))
+		assert(page.error_message.is_empty(), page.error_message)
 		# Changing the root only affects later operations; the earlier artifact stays.
 		var first_size := _file_size(first_path)
 		var second_root := TestPaths.temp_dir().path_join("psyml 换目录 %d %s" % [Time.get_ticks_usec(), task])
@@ -162,7 +355,7 @@ func _run() -> void:
 			assert("predicted_value" in names and not "probability_0" in names)
 		for locale in range(3):
 			main._on_language_selected(locale)
-			assert(not page.predict_button.disabled and not page.export_button.disabled)
+			assert(not page.predict_button.disabled and not page.prediction_folder_button.disabled)
 			assert(page.model_info.text.contains(str(page.metadata.n_features)))
 			var capture_dir := OS.get_environment("PSYML_PREDICTION_CAPTURE")
 			if task == "classification" and not capture_dir.is_empty():
@@ -179,11 +372,51 @@ func _run() -> void:
 				await process_frame
 				await RenderingServer.frame_post_draw
 				root.get_texture().get_image().save_png(destination.path_join("10-prediction-results.png"))
-		var exported := directory.path_join(task + "_predictions.xlsx")
-		page.export_predictions(exported)
-		await _wait(page)
-		assert(FileAccess.file_exists(exported), page.error_message)
 		if task == "classification":
+			# FR-018/FR-020: the GUI reads back the CSV it wrote, so the preview
+			# matches the artifact exactly, including Chinese text, commas inside
+			# quoted fields and empty cells. The removed export dialog has no
+			# replacement: opening the run folder is the only delivery action.
+			var round_trip := directory.path_join("csv 往返,特殊.csv")
+			_write(round_trip, "new_id,category,score,note\n甲,\"乙,副\",1.5,\n201,C,-1.2,\"含,逗号\"\n")
+			page.load_data(round_trip)
+			await _wait(page)
+			assert(page.compatibility.compatible)
+			page.run_prediction()
+			await _wait(page)
+			assert(page.error_message.is_empty(), page.error_message)
+			assert(page.result_path.get_file() == "predictions.csv", page.result_path)
+			assert(page.result_path.get_base_dir().begins_with(output_root + "/"), page.result_path)
+			var csv_file := FileAccess.open(page.result_path, FileAccess.READ)
+			assert(csv_file != null, page.result_path)
+			var headers := csv_file.get_csv_line()
+			for index in range(4):
+				assert(headers[index] == ["new_id", "category", "score", "note"][index], str(headers))
+			var predicted_index := headers.find("predicted_class")
+			var probability_index := headers.find("probability_0")
+			assert(predicted_index == 4 and probability_index == 5, str(headers))
+			assert(page.predictions.columns.size() == headers.size())
+			for index in range(headers.size()):
+				assert(page.predictions.columns[index].name == headers[index], str(headers))
+			var first_row := csv_file.get_csv_line()
+			var second_row := csv_file.get_csv_line()
+			assert(first_row[0] == "甲" and first_row[1] == "乙,副" and first_row[3] == "", str(first_row))
+			assert(second_row[2] == "-1.2" and second_row[3] == "含,逗号", str(second_row))
+			assert(not first_row[predicted_index].is_empty(), str(first_row))
+			assert(first_row[probability_index].is_valid_float(), str(first_row))
+			assert(str(page.predictions.sample[0].category) == "乙,副", str(page.predictions.sample))
+			assert(str(page.predictions.sample[1].note) == "含,逗号", str(page.predictions.sample))
+			csv_file.close()
+			# A run folder that no longer exists must be a visible error, never a
+			# silent open of the CSV or of another folder.
+			var saved_path: String = page.result_path
+			page.result_path = directory.path_join("missing-run").path_join("predictions.csv")
+			opened.clear()
+			page.open_prediction_folder()
+			assert(page.error_message == main.tr("PREDICTION_NO_ARTIFACT"), page.error_message)
+			assert(opened.is_empty())
+			page.error_message = ""
+			page.result_path = saved_path
 			var reordered := directory.path_join("reordered.csv")
 			_write(reordered, "new_id,category,score,target\n101,A,1.5,0\n102,B,-1.2,1\n")
 			page.load_data(reordered)
@@ -204,7 +437,7 @@ func _run() -> void:
 		var missing := directory.path_join("missing.csv")
 		_write(missing, "unrelated\n1\n2\n")
 		page.load_data(missing)
-		assert(page.predictions.is_empty() and page.export_button.disabled and page.predict_button.disabled)
+		assert(page.predictions.is_empty() and page.prediction_folder_button.disabled and page.predict_button.disabled)
 		assert(not page.result_tree.column_titles_visible)
 		await _wait(page)
 		assert(not page.compatibility.compatible and page.predict_button.disabled)
@@ -231,9 +464,14 @@ func _run() -> void:
 	assert(page.compatibility.compatible and not page.predict_button.disabled)
 	page.run_prediction()
 	await _wait(page)
-	assert(page.predictions.row_count == 2 and not page.export_button.disabled)
+	assert(page.predictions.row_count == 2 and not page.prediction_folder_button.disabled)
+	opened.clear()
+	page.open_prediction_folder()
+	assert(opened.size() == 1 and opened[0] == page.result_path.get_base_dir(), str(opened))
 	page.mapping_options[0].item_selected.emit(1)
-	assert(page.predict_button.disabled and page.export_button.disabled)
+	assert(page.predict_button.disabled and page.prediction_folder_button.disabled)
+	# FR-018/FR-020: real state transitions of the shared readiness condition.
+	await _prediction_delivery_states(main, page, opened, directory, manual, mapping_data)
 	# Readable failures must leave the application usable.
 	var corrupt := directory.path_join("corrupt.joblib")
 	_write(corrupt, "not a model")

@@ -19,7 +19,7 @@ func _run_test() -> void:
 	assert(main.has_node("AppMargin/Page/Tabs/Results/Padding/ResultsContent/ResultsBody"))
 	assert(main.get_node("AppMargin/Page/Header/TitleColumn/TitleLabel").text == "PsyML Toolkit")
 	assert(main.version_label.visible)
-	assert(main.version_label.text == TranslationServer.translate("VERSION") + " " + main._resolve_version())
+	assert(main.version_label.text == TranslationServer.translate("VERSION") + " " + main._display_version(main._resolve_version()))
 	assert(main.find_child("SubtitleLabel", true, false) == null)
 	assert(main.bridge == main.get_node("CoreBridge"))
 	assert(TranslationServer.get_locale() == "zh_CN")
@@ -81,6 +81,8 @@ func _run_test() -> void:
 			break
 	main._populate_parameter_editor()
 	var result_dir := TestPaths.temp_dir().path_join("psyml godot 中文 %d" % Time.get_ticks_msec())
+	# The selected result root; each run gets a family subfolder under it.
+	var root_dir: String = result_dir
 	main.output_edit.text = "relative/results"
 	main._refresh_review()
 	assert(main.run_button.disabled)
@@ -88,6 +90,12 @@ func _run_test() -> void:
 	main.output_edit.text = result_dir
 	main._refresh_review()
 	assert(not main.run_button.disabled)
+	# FR-019: a new GUI training run is planned inside its own training/ family
+	# folder under the shared root, matching prediction/, explanation/ and
+	# coefficients/, while the run folder name still starts with run_.
+	var planned_dir: String = main._build_config().output_dir
+	assert(planned_dir.get_base_dir() == result_dir.path_join("training"), planned_dir)
+	assert(planned_dir.get_file().begins_with("run_"), planned_dir)
 	# Clearing the final model in no-search mode must immediately invalidate review.
 	for index in range(main.model_list.item_count):
 		main.model_list.deselect(index)
@@ -150,6 +158,52 @@ func _run_test() -> void:
 	assert(not main.task_option.disabled)
 	assert(main.feature_list.mouse_filter == Control.MOUSE_FILTER_STOP)
 	assert(not main.open_results_button.disabled)
+	# Changing the root only affects later runs; the completed training run folder
+	# stays the open target and its files are not moved.
+	var finished_dir: String = main.last_result_dir
+	assert(finished_dir == result_dir, finished_dir)
+	main.output_edit.text = TestPaths.temp_dir().path_join("psyml 换根 %d" % Time.get_ticks_msec())
+	main._refresh_review()
+	assert(main.last_result_dir == finished_dir)
+	assert(main.open_results_button.tooltip_text == finished_dir)
+	main.output_edit.text = root_dir
+	main._refresh_review()
+	assert(main.last_result_dir == finished_dir)
+	assert(DirAccess.dir_exists_absolute(finished_dir))
+	# FR-019: legacy `run_*` folders directly under the root keep loading exactly
+	# where they are. Loading must not migrate them into training/ or rewrite the
+	# existing files, and their CSV artifacts still preview.
+	var legacy_dir := TestPaths.temp_dir().path_join("psyml legacy run %d" % Time.get_ticks_msec())
+	DirAccess.make_dir_recursive_absolute(legacy_dir)
+	var legacy_file := FileAccess.open(legacy_dir.path_join("model_comparison.csv"), FileAccess.WRITE)
+	legacy_file.store_string("rank,model,validation,selection_metric,selection_score,status\n1,decision_tree,holdout,accuracy,0.9,completed\n")
+	legacy_file.close()
+	legacy_file = FileAccess.open(legacy_dir.path_join("predictions.csv"), FileAccess.WRITE)
+	legacy_file.store_string("observed,predicted\n0,0\n1,1\n")
+	legacy_file.close()
+	legacy_file = FileAccess.open(legacy_dir.path_join("result.json"), FileAccess.WRITE)
+	legacy_file.store_string(JSON.stringify({
+		"status": "completed",
+		"task": "classification",
+		"metrics": {"accuracy": 0.9},
+		"best_model": "decision_tree",
+		"best_validation": "holdout",
+		"selection_metric": "accuracy",
+		"best_parameters": {},
+		"artifacts": {"model_comparison": "model_comparison.csv", "predictions": "predictions.csv"},
+	}, "  "))
+	legacy_file.close()
+	var legacy_result := legacy_dir.path_join("result.json")
+	var legacy_before := FileAccess.get_file_as_string(legacy_result)
+	main._load_results(legacy_result)
+	await process_frame
+	assert(main.last_result_dir == CoreBridge.canonical_path(legacy_dir), main.last_result_dir)
+	assert(not main.open_results_button.disabled)
+	assert(main.metrics_tree.get_root().get_first_child() != null)
+	assert(main.predictions_tree.get_root().get_first_child() != null, "legacy predictions.csv must preview")
+	assert(FileAccess.get_file_as_string(legacy_result) == legacy_before, "legacy result.json must not be rewritten")
+	assert(not DirAccess.dir_exists_absolute(legacy_dir.path_join("training")), "legacy run must not be migrated")
+	assert(DirAccess.open(legacy_dir).get_directories().is_empty(), "loading a legacy run must not create folders")
 	for index in range(main.task_option.item_count):
 		if main.task_option.get_item_metadata(index) == "regression":
 			main.task_option.select(index)

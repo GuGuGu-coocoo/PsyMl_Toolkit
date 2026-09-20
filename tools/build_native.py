@@ -1,17 +1,90 @@
 """Build a self-contained desktop app on its target OS; never publish a release."""
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
 import zipfile
 from pathlib import Path
 
+from psyml import __version__ as CORE_VERSION
+
 ROOT = Path(__file__).absolute().parents[1]
+
+# gui/export_presets.cfg keeps these tokens instead of version numbers: the
+# numeric fields Godot writes into the macOS bundle and the Windows executable
+# are generated from CORE_VERSION for the duration of one export and the
+# original file is restored afterwards.
+MACOS_VERSION_TOKEN = "@PSYML_MACOS_VERSION@"
+WINDOWS_VERSION_TOKEN = "@PSYML_WINDOWS_VERSION@"
+EXPORT_PRESETS = Path("gui") / "export_presets.cfg"
+
+
+def default_label() -> str:
+    """The default build label is the single maintained core version."""
+    return CORE_VERSION
+
+
+def is_development_version(version: str) -> bool:
+    """PEP 440-style development release, for example ``0.3.0.dev0``."""
+    return ".dev" in version
+
+
+def export_version_fields(version: str = CORE_VERSION) -> dict:
+    """Numeric GUI export versions derived from the single core version.
+
+    The macOS bundle takes ``X.Y.Z`` (bounded to three components by the
+    plist format) and the Windows executable takes four numeric components, so
+    the development release ``0.3.0.dev0`` becomes ``0.3.0`` / ``0.3.0.0``.
+    The ``dev`` suffix stays in the GUI label and in BUILD.json only.
+    """
+    match = re.match(r"^(\d+(?:\.\d+)*)", version.strip())
+    if match is None:
+        raise ValueError(f"cannot derive numeric export versions from {version!r}")
+    release = [int(part) for part in match.group(1).split(".")]
+    mac = ".".join(str(part) for part in release[:3])
+    windows_parts = release[:4] + [0] * max(0, 4 - len(release))
+    windows = ".".join(str(part) for part in windows_parts)
+    return {MACOS_VERSION_TOKEN: mac, WINDOWS_VERSION_TOKEN: windows}
+
+
+def render_export_presets(version: str, template: str) -> str:
+    """Replace the version tokens of one export preset document."""
+    rendered = template
+    for token, value in export_version_fields(version).items():
+        if token not in rendered:
+            raise ValueError(f"export presets template is missing {token}")
+        rendered = rendered.replace(token, value)
+    return rendered
+
+
+@contextlib.contextmanager
+def prepared_export_presets(version: str = CORE_VERSION, path=None):
+    """Generate export preset versions for one export, then restore the file.
+
+    The tracked configuration stays token-based and is restored in ``finally``,
+    so neither a successful export nor a failure leaves a modified GUI file.
+    """
+    target = Path(path) if path is not None else ROOT / EXPORT_PRESETS
+    original = target.read_text(encoding="utf-8")
+    target.write_text(render_export_presets(version, original), encoding="utf-8")
+    try:
+        yield target
+    finally:
+        target.write_text(original, encoding="utf-8")
+
+
+def export_gui(godot: str, platform_name: str, output: Path) -> None:
+    """Export one GUI preset with versions generated from the core constant."""
+    with prepared_export_presets():
+        run(godot, "--headless", "--path", ROOT / "gui", "--export-release",
+            platform_name, output)
 
 
 def run(*args):
@@ -25,8 +98,9 @@ def main():
                         help="Local GUI-only rebuild using the existing frozen runtime")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "dist",
                         help="Directory that receives the package (default: dist/)")
-    parser.add_argument("--label", default="0.2.0",
-                        help="Version label for the package name and BUILD.json")
+    parser.add_argument("--label", default=default_label(),
+                        help="Build label for the package name and BUILD.json; "
+                             "defaults to the single core version")
     parser.add_argument("--permutation-smoke", action="store_true",
                         help="Run bundled-core permutation classification/regression smoke")
     parser.add_argument("--explain-smoke", action="store_true",
@@ -74,12 +148,11 @@ def main():
     run(args.godot, "--headless", "--editor", "--path", ROOT / "gui", "--quit")
     if mac:
         app = destination / "PsyML Toolkit.app"
-        run(args.godot, "--headless", "--path", ROOT / "gui", "--export-release", "macOS", app)
+        export_gui(args.godot, "macOS", app)
         binary_dir = app / "Contents/MacOS"
     else:
         binary_dir = destination
-        run(args.godot, "--headless", "--path", ROOT / "gui", "--export-release", "Windows",
-            destination / "PsyML Toolkit.exe")
+        export_gui(args.godot, "Windows", destination / "PsyML Toolkit.exe")
     resource_dir = app / "Contents/Resources" if mac else binary_dir
     shutil.copytree(frozen / "psyml-core", resource_dir / "core", dirs_exist_ok=True)
     shutil.copytree(ROOT / "examples/synthetic", destination / "examples/synthetic",
@@ -96,8 +169,9 @@ def main():
     shutil.copy2(ROOT / "tools/NATIVE_START_HERE.txt", destination / "START_HERE.txt")
     shutil.copytree(ROOT / "tools/licenses", destination / "licenses", dirs_exist_ok=True)
     (destination / "BUILD.json").write_text(json.dumps({
-        "version": args.label, "label": args.label,
-        "development_label": args.label != "0.2.0", "published": False,
+        "version": CORE_VERSION, "label": args.label,
+        "development_label": is_development_version(CORE_VERSION) or args.label != CORE_VERSION,
+        "published": False,
         "platform": architecture,
         "python": platform.python_version(),
         "commit": source_commit,

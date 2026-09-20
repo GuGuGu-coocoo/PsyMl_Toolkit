@@ -219,19 +219,31 @@ func _run_test() -> void:
 
 
 func _check_version_label(main) -> void:
-	# FR-012: the app name carries a small version label from a single source.
+	# FR-017: the app name carries a small version label from a single source.
 	var header: Control = main.get_node("AppMargin/Page/Header")
 	var title: Label = main.get_node("AppMargin/Page/Header/TitleColumn/TitleLabel")
 	var label: Label = main.version_label
 	assert(label != null)
 	assert(title.text == "PsyML Toolkit")
 	assert(main.find_child("SubtitleLabel", true, false) == null)
-	var source_version: String = main._version_from_pyproject(
-		main._read_text_file(main._project_file("pyproject.toml"))
+	var source_version: String = main._version_from_core_module(
+		main._read_text_file(main._project_file("src/psyml/__init__.py"))
 	)
-	assert(not source_version.is_empty(), "source checkout must expose a version")
+	assert(source_version == "0.3.0.dev0", "the maintained core constant is the single source")
+	var source_display: String = main._display_version(source_version)
+	assert(source_display == "0.3.0-dev", "development releases display without the PEP 440 dot")
+	# A source checkout has no BUILD.json; resolution falls back to the core
+	# module instead of the removed pyproject.toml fallback.
+	assert(main._resolve_version() == source_version)
 	assert(label.visible)
-	assert(label.text == TranslationServer.translate("VERSION") + " " + source_version)
+	assert(label.text == TranslationServer.translate("VERSION") + " " + source_display)
+	# A final release and other identifiers are never rewritten.
+	assert(main._display_version("0.3.0") == "0.3.0")
+	assert(main._display_version("0.2.0") == "0.2.0")
+	assert(main._display_version("0.3.0.dev1") == "0.3.0-dev")
+	assert(main._display_version("0.3.0b1.dev0") == "0.3.0b1.dev0")
+	assert(main._display_version("0.3.0.dev0+local") == "0.3.0.dev0+local")
+	assert(main._display_version("9.9.9-mac") == "9.9.9-mac")
 	# A simulated standalone package (same layout as tools/build_native.py) is
 	# resolved through the real candidate function, not a hand-picked path.
 	var layout_root := TestPaths.temp_dir().path_join("package-layout")
@@ -239,20 +251,22 @@ func _check_version_label(main) -> void:
 	var legacy_build := TestPaths.temp_dir().path_join("BUILD.json")
 	if FileAccess.file_exists(legacy_build):
 		DirAccess.remove_absolute(legacy_build)
-	var mac_destination := layout_root.path_join("PsyML-Toolkit-9.9.9-macOS-arm64")
+	var mac_destination := layout_root.path_join("PsyML-Toolkit-0.3.0.dev0-macOS-arm64")
 	var mac_resources := mac_destination.path_join("PsyML Toolkit.app/Contents/Resources")
 	DirAccess.make_dir_recursive_absolute(mac_resources)
-	_write_build_file(mac_destination.path_join("BUILD.json"), "9.9.9-mac")
+	_write_build_file(mac_destination.path_join("BUILD.json"), "0.3.0.dev0")
 	var mac_candidates: Array = main._build_file_candidates_for(mac_resources)
 	assert(mac_candidates.size() == 4, "the candidate lookup must stay bounded")
 	assert(mac_candidates[3] == mac_destination.path_join("BUILD.json"))
-	assert(main._resolve_version_from(mac_candidates) == "9.9.9-mac")
-	var windows_destination := layout_root.path_join("PsyML-Toolkit-9.9.9-Windows-x64")
+	assert(main._resolve_version_from(mac_candidates) == "0.3.0.dev0")
+	assert(main._display_version(main._resolve_version_from(mac_candidates)) == "0.3.0-dev")
+	var windows_destination := layout_root.path_join("PsyML-Toolkit-0.3.0-Windows-x64")
 	DirAccess.make_dir_recursive_absolute(windows_destination)
-	_write_build_file(windows_destination.path_join("BUILD.json"), "9.9.9-win")
+	_write_build_file(windows_destination.path_join("BUILD.json"), "0.3.0")
 	var windows_candidates: Array = main._build_file_candidates_for(windows_destination)
 	assert(windows_candidates[0] == windows_destination.path_join("BUILD.json"))
-	assert(main._resolve_version_from(windows_candidates) == "9.9.9-win")
+	assert(main._resolve_version_from(windows_candidates) == "0.3.0")
+	assert(main._display_version(main._resolve_version_from(windows_candidates)) == "0.3.0")
 	# A source checkout matches no bounded candidate and falls back cleanly.
 	var source_bundle := layout_root.path_join("source-checkout/gui/resources")
 	DirAccess.make_dir_recursive_absolute(source_bundle)
@@ -267,7 +281,7 @@ func _check_version_label(main) -> void:
 		await process_frame
 		await process_frame
 		assert(label.visible)
-		assert(label.text == TranslationServer.translate("VERSION") + " " + source_version)
+		assert(label.text == TranslationServer.translate("VERSION") + " " + source_display)
 		var label_rect := label.get_global_rect()
 		assert(label_rect.size.x > 0.0 and label_rect.size.y > 0.0)
 		assert(header.get_global_rect().has_point(label_rect.position))

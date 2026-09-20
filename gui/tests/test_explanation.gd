@@ -71,6 +71,10 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	var page = main.prediction_page
+	# FR-020: open actions are verified against the exact target they hand to the
+	# OS without launching a file manager during the test.
+	var opened: Array[String] = []
+	page.open_target_handler = func(path: String): opened.append(path)
 	# Page 4 writes into the page-2 result root: a Chinese path with spaces.
 	var output_root := TestPaths.temp_dir().path_join("psyml 输出 解释 %d" % Time.get_ticks_usec())
 	page.set_output_root(output_root)
@@ -174,67 +178,47 @@ func _run() -> void:
 			str(page.explain_artifacts[key]))
 	_expect(not page.explain_open_button.disabled)
 	_expect(not page.explain_folder_button.disabled)
-	_expect(not page.explain_export_button.disabled)
+	_expect(page.explain_folder_button.text == main.tr("OPEN_RESULTS_FOLDER"))
+	_expect(page.explain_open_button.text == main.tr("OPEN_WATERFALL"))
 	_expect(page.explain_view.texture != null, "waterfall image should be displayed")
+	# FR-020: the deliver row holds the two open actions only; the export entry,
+	# its dialog and its texts are gone from the interface and the translations.
+	_expect(page.explain_folder_button.get_parent().get_child_count() == 2,
+		"the explanation row must contain only open actions")
+	for dead_key in ["EXPORT_EXPLANATION", "EXPLAIN_EXPORTED", "EXPLAIN_EXPORT_FAILED"]:
+		_expect(main.tr(dead_key) == dead_key, "dead i18n key still translated: " + dead_key)
 
-	# Export into a new directory delivers all four artifacts and reports success.
-	var export_dir := directory.path_join("exported")
-	page.export_explanation(export_dir)
+	# Opening hands the OS exactly the completed run folder and the waterfall file.
+	opened.clear()
+	page.open_explanation_folder()
+	_expect(opened.size() == 1 and opened[0] == page.explain_output_dir, str(opened))
 	_expect(page.explain_error.is_empty(), page.explain_error)
-	_expect(not page.explain_note.is_empty(), "export must report success")
-	for key in ["json", "csv", "png", "notes"]:
-		var name := str(page.explain_artifacts[key]).get_file()
-		_expect(FileAccess.file_exists(export_dir.path_join(name)), "export missing " + name)
-
-	# A destination holding a same-named CSV, model or background file must not be
-	# overwritten; export falls back to a unique new subdirectory and keeps the
-	# original file content byte-for-byte.
-	var occupied := directory.path_join("occupied")
-	DirAccess.make_dir_recursive_absolute(occupied)
-	_write(occupied.path_join("shap_contributions.csv"), "USER_EXISTING_CSV")
-	_write(occupied.path_join(model_path.get_file()), "USER_MODEL_FILE")
-	_write(occupied.path_join(predict_input.get_file()), "USER_BACKGROUND_FILE")
-	page.export_explanation(occupied)
+	var waterfall := str(page.explain_artifacts["png"])
+	opened.clear()
+	page.open_waterfall()
+	_expect(opened.size() == 1 and opened[0] == waterfall, str(opened))
 	_expect(page.explain_error.is_empty(), page.explain_error)
-	_expect(FileAccess.get_file_as_string(occupied.path_join("shap_contributions.csv")) == "USER_EXISTING_CSV", "existing CSV was overwritten")
-	_expect(FileAccess.get_file_as_string(occupied.path_join(model_path.get_file())) == "USER_MODEL_FILE", "existing model file changed")
-	_expect(FileAccess.get_file_as_string(occupied.path_join(predict_input.get_file())) == "USER_BACKGROUND_FILE", "existing background file changed")
-	var subdirectories := DirAccess.open(occupied).get_directories()
-	_expect(subdirectories.size() == 1, "expected a single unique export subdirectory")
-	for key in ["json", "csv", "png", "notes"]:
-		var name := str(page.explain_artifacts[key]).get_file()
-		_expect(FileAccess.file_exists(occupied.path_join(subdirectories[0]).path_join(name)), "subdirectory export missing " + name)
 
-	# Exporting into the current source directory is refused and changes nothing.
-	var source_csv := str(page.explain_artifacts["csv"])
-	var source_before := FileAccess.get_file_as_string(source_csv)
-	page.export_explanation(source_csv.get_base_dir())
-	_expect(not page.explain_error.is_empty(), "same-source export must be reported")
-	_expect(FileAccess.get_file_as_string(source_csv) == source_before, "source artifact changed")
-	_expect(page.explain_note.is_empty(), "same-source export must not claim success")
-	for key in ["json", "csv", "png", "notes"]:
-		_expect(FileAccess.file_exists(str(page.explain_artifacts[key])), "source artifact removed")
-
-	# A missing source artifact is refused before anything is written.
-	var notes_path := str(page.explain_artifacts["notes"])
-	page.explain_artifacts.erase("notes")
-	var blocked := directory.path_join("blocked")
-	page.export_explanation(blocked)
-	_expect(not page.explain_error.is_empty(), "missing source must be reported")
-	_expect(not DirAccess.dir_exists_absolute(blocked), "missing source must not create the destination")
-	page.explain_artifacts["notes"] = notes_path
-
-	# A destination that is an existing file (copy failure) preserves that file
-	# and reports an error instead of success.
-	var file_target := directory.path_join("not_a_directory")
-	_write(file_target, "OCCUPYING_FILE")
-	page.export_explanation(file_target)
-	_expect(not page.explain_error.is_empty(), "copy failure must be reported")
-	_expect(FileAccess.get_file_as_string(file_target) == "OCCUPYING_FILE", "existing file was changed")
-	_expect(page.explain_note.is_empty(), "copy failure must not claim success")
+	# A run folder or waterfall file that is not there must be a visible error that
+	# opens nothing, instead of opening some other folder or the wrong file.
+	var kept_dir: String = page.explain_output_dir
+	page.explain_output_dir = directory.path_join("gone").path_join("run_missing")
+	opened.clear()
+	page.open_explanation_folder()
+	_expect(page.explain_error == main.tr("EXPLAIN_NO_ARTIFACT"), page.explain_error)
+	_expect(opened.is_empty())
+	page.explain_error = ""
+	page.explain_output_dir = kept_dir
+	var kept_png := str(page.explain_artifacts["png"])
+	page.explain_artifacts.erase("png")
+	opened.clear()
+	page.open_waterfall()
+	_expect(page.explain_error == main.tr("EXPLAIN_NO_ARTIFACT"), page.explain_error)
+	_expect(opened.is_empty())
+	page.explain_error = ""
+	page.explain_artifacts["png"] = kept_png
 
 	# Changing row/class/settings clears the on-screen result but preserves files.
-	var kept_png := str(page.explain_artifacts["png"])
 	page.explain_cycles.value = 3
 	_expect(page.explanation.is_empty() and page.explain_artifacts.is_empty())
 	_expect(FileAccess.file_exists(kept_png), "completed artifacts must not be deleted")
@@ -267,6 +251,15 @@ func _run() -> void:
 	_expect(not page.explain_busy)
 	_expect(page.explanation.is_empty())
 	_expect(FileAccess.file_exists(earlier_png), "cancelling must not delete earlier artifacts")
+	# A cancelled run leaves nothing to open: both actions are disabled and report
+	# the missing artifact instead of opening the discarded run folder.
+	_expect(page.explain_artifacts.is_empty())
+	_expect(page.explain_open_button.disabled and page.explain_folder_button.disabled)
+	opened.clear()
+	page.open_explanation_folder()
+	_expect(page.explain_error == main.tr("EXPLAIN_NO_ARTIFACT"), page.explain_error)
+	_expect(opened.is_empty())
+	page.explain_error = ""
 	var later_root := TestPaths.temp_dir().path_join("psyml 换目录 解释 %d" % Time.get_ticks_usec())
 	page.set_output_root(later_root)
 	page.run_explanation()
