@@ -80,9 +80,9 @@ Python 预测接口位于 `psyml.prediction`：`load_model(path, trusted=True)`�
 
 ### 数据检查与结果解读接口
 
-FR-007：`psyml.data.profiling` 是纯 helper；`profile_columns` / `column_profile` / `category_summary` / `identifier_signals` 从 DataFrame 生成逐列元数据（非缺失数、唯一数、近似唯一比例、可选取值计数与截断、以及有依据的疑似编号信号）。`protocol.dataframe_preview` 只在 `include_sample=True` 时附带取值，默认不返回值；GUI 第 1 页的 `gui/scripts/data_check_ui.gd` 消费该元数据，不从前 5 行估算，也不自动删除列或改变角色。
+`psyml.data.profiling` 是数据检查的纯 helper：`profile_columns` / `column_profile` / `category_summary` / `identifier_signals` 从 DataFrame 生成逐列元数据（非缺失数、唯一数、近似唯一比例、可选取值计数与截断、以及有依据的疑似编号信号）。`protocol.dataframe_preview` 只在 `include_sample=True` 时附带取值，默认不返回值；GUI 第 1 页的 `gui/scripts/data_check_ui.gd` 消费该元数据，不从前 5 行估算，也不自动删除列或改变角色。
 
-FR-009：`psyml.reporting.interpretation` 的 `build_interpretation` 只聚合 runner 已算出的证据（procedure_results、逐组合折、tuning_rows、leaderboard、validation_summary），不增加任何模型拟合；`write_interpretation_outputs` 写 `result_interpretation.json`、`interpretation_baseline_differences.csv`、`result_interpretation.md`，并由 `result.json.artifacts` 索引。独立验证根目录由 `build_independent_interpretation` 只写概览索引。GUI 摘要在 `gui/scripts/result_interpretation_ui.gd`。核心回归在 `tests/test_profiling.py`、`tests/test_interpretation.py`；GUI 回归在 `gui/tests/test_data_check.gd`、`gui/tests/test_interpretation_results.gd`。基线只比较同验证、同折集合、同指标且已成功运行的 dummy，差值正负方向固定（正=更好），描述性统计不回流选择或调参。FR-008 仅完善三语研究者术语指南，不涉及 GUI 或划分算法。
+`psyml.reporting.interpretation` 的 `build_interpretation` 只聚合 runner 已算出的证据（procedure_results、逐组合折、tuning_rows、leaderboard、validation_summary），不增加任何模型拟合；`write_interpretation_outputs` 写 `result_interpretation.json`、`interpretation_baseline_differences.csv`、`result_interpretation.md`，并由 `result.json.artifacts` 索引。独立验证根目录由 `build_independent_interpretation` 只写概览索引。GUI 摘要在 `gui/scripts/result_interpretation_ui.gd`。核心回归在 `tests/test_profiling.py`、`tests/test_interpretation.py`；GUI 回归在 `gui/tests/test_data_check.gd`、`gui/tests/test_interpretation_results.gd`。基线只比较同验证、同折集合、同指标且已成功运行的 dummy，差值正负方向固定（正=更好），描述性统计不回流选择或调参。分组划分说明仅完善三语研究者术语指南，不涉及 GUI 或划分算法。
 
 ### 置换重要性接口
 
@@ -105,7 +105,7 @@ FR-009：`psyml.reporting.interpretation` 的 `build_interpretation` 只聚合 r
 
 ## 可选单样本解释依赖（explain extra）
 
-FR-004 单样本解释依赖 `shap`、`numba`、`llvmlite`，默认不安装，以免普通分析与预测增加冷启动和包体。需要时再装：
+单样本解释依赖 `shap`、`numba`、`llvmlite`，默认不安装，以免普通分析与预测增加冷启动和包体。需要时再装：
 
 ```bash
 uv sync --extra explain
@@ -114,7 +114,7 @@ uv pip install -e ".[explain]"   # pip/venv 等价写法
 
 `pyproject.toml` 按 Python 版本固定 SHAP（3.10 → 0.49.x，3.11 → 0.51.x，3.12 → 0.52.x），`uv.lock` 记录且不升级 scikit-learn 等无关依赖。`tools/build_native.py` 会把 shap/numba/llvmlite 打包进核心、把许可证复制到 `tools/licenses/`，`--explain-smoke` 检查包内分类/回归解释与重建。本机为 Mac，Windows 未执行。
 
-## 拟合系数（FR-005，无额外依赖）
+## 拟合系数（无额外依赖）
 
 [coefficients.py](../src/psyml/models/coefficients.py) 只从已拟合的 PsyML `preprocess`+`model` 流水线读取 `coef_`/`intercept_`，按 `ColumnTransformer.output_indices_` 与各子步骤（imputer `statistics_`、scaler `mean_/scale_` 或 `min_/scale_/data_min_/data_max_`、OneHotEncoder `categories_`）生成精确的变换特征/来源列/类别映射，并对样本以同一 pipeline `transform` 重建 `predict`（回归）或 `decision_function`（分类）进行核验（atol 1e-7 / rtol 1e-6）。它从不 fit、不改变模型、不回流调参，也不换算回原始单位。报告还完整记录 `input_features`/`dropped_features`（全缺失列及原因、原始序号、缺失策略）、`encoding.per_source`（逐列类别与 `drop_idx_`）与训练 dtype 来源（保存元数据或明确 unknown）。使用提供的样本且核验失败（误差超限/形状不符/非有限）时返回 `status=error` 并拒绝写出成功产物；无样本则保持未核验状态，二者在 CLI/GUI 中分开显示。常规 runner 在 `coefficients/` 写出 CSV/JSON/notes；CLI 为 `psyml coefficients`（沿用 trust/hash/version 与 `model_input`，只写新/空目录，JSON 最后）。加载模型路径会校验 PsyML 来源（`psyml_version`/`fit_scope`）与估计器类型，未知模型给出明确原因且普通预测不受影响。测试见 `tests/test_coefficients.py`、`tests/test_coefficients_cli.py` 与 `gui/tests/test_coefficients.gd`；`--coefficients-smoke` 检查本机包内分类/回归提取。
 

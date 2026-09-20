@@ -1,6 +1,6 @@
 # 研究者参考：模型、指标、结果与术语
 
-本指南描述源码检出 **0.3.0**（单一版本源）的行为，其中包含 v0.2.0 之后新增的功能与人工反馈修复（置换重要性、数据检查与结果解读、单样本 SHAP、拟合系数；第一轮 FR-012–FR-016，第二轮 FR-016 补充与 FR-017–FR-020）。独立包与分发 PDF 的版本与可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准；v0.2.0 及更早的独立包与分发 PDF 不包含这些功能与修复，界面与输出布局可能与源码检出不同。版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量；`pyproject.toml` 通过 dynamic 读取它，独立包的 `BUILD.json` 由 `tools/build_native.py` 用同一常量生成，界面小字显示同一值（正式版本 `0.3.0` 原样显示，开发版 `0.3.0.dev0` 显示为 `0.3.0-dev`）。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准，不要用本指南标题推断下载包内容。
+本指南描述源码检出 **0.3.0**（单一版本源）的行为，其中包含 v0.2.0 之后新增的功能与改进（置换重要性、数据检查与结果解读、单样本 SHAP、拟合系数，以及界面与输出流程改进）。独立包与分发 PDF 的版本与可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准；v0.2.0 及更早的独立包与分发 PDF 不包含这些功能与修复，界面与输出布局可能与源码检出不同。版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量；`pyproject.toml` 通过 dynamic 读取它，独立包的 `BUILD.json` 由 `tools/build_native.py` 用同一常量生成，界面小字显示同一值（正式版本 `0.3.0` 原样显示，开发版 `0.3.0.dev0` 显示为 `0.3.0-dev`）。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准，不要用本指南标题推断下载包内容。
 
 [返回 README 中文部分](../README.md#chinese) · **中文** · [English](RESEARCHER_GUIDE_EN.md) · [Français](RESEARCHER_GUIDE_FR.md)
 
@@ -245,7 +245,7 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 **预测产物怎么读（`prediction/run_*/predictions.csv`）。** 文件保留原始数据与行序，只追加预测列：回归追加 `predicted_value`，分类追加 `predicted_class`，分类器原生支持概率时按类别顺序追加 `probability_<类别>`。原始列（含目标列）不改动，列名冲突时只给新增列加数字后缀；目标列存在也只保留，不自动计算外部验证指标、校准概率或优化阈值。**分类与回归的区别**：分类输出类别与非负、不保证已校准的概率，回归只输出连续数值、不生成概率；“打开预测结果文件夹”打开的是本次运行目录，不是直接打开 CSV。预测可以没有真实目标，这**不是外部验证**：外部验证需要独立样本、真实目标和适当的评价设计。更换模型、数据或映射后会清除旧预测并重新检查，旧运行目录中的文件留在磁盘。
 
-### 单样本 SHAP 解释（可选，FR-004）
+### 单样本 SHAP 解释（可选）
 
 第 4 页在模型与数据检查通过后可解释单个样本：选择背景参考文件（background reference）、1 起始的样本行号、背景行数（background rows，默认 50，1–100）与排列轮数（permutation cycles，默认 5，1–20）；分类再选择要解释的类别并显示原始标签。计算在可取消子进程中运行，首次可能较慢，可随时取消。结果区显示从**基准值（base value）**逐项累加到模型输出的**累计瀑布图**（正负方向、原始变量名与值、TopN 与“其余 N 项之和”，CSV 保留全部贡献），只提供“打开瀑布图”与“打开结果文件夹”两个入口，不提供复制或另存导出入口。产物（默认位于 `explanation/run_*/`）为 `shap_explanation.json`、`shap_contributions.csv`、`shap_waterfall.png` 与 `shap_explanation_notes.md`，满足 `base + Σφ = 所选输出`（容差 1e-7/1e-6），且切换行/类别/设置或关闭页面时已完成产物保留在磁盘。命令行 `psyml explain --output-dir` 仍要求新建或空目录并拒绝 `--overwrite`，但界面不再提供导出操作。
 
@@ -262,7 +262,7 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 实现见[模型保存](../src/psyml/models/persistence.py)、[有效参数](../src/psyml/models/parameters.py)与[预测核心](../src/psyml/prediction.py)；解释核心见[explanation.py](../src/psyml/explanation.py)。
 
-### 拟合系数与截距（FR-005）
+### 拟合系数与截距
 
 第 4 页“拟合系数与截距”区只读取**已拟合模型**在**预处理后坐标空间**（缺失填补、缩放、独热编码之后）的参数，不重新拟合、不回流调参、也不换算回原始单位。首版支持回归 `linear_regression`、`ridge`、`lasso`、`elastic_net`、`svr`（`kernel='linear'`）与分类 `logistic_regression`、`lda`、`svm`（`kernel='linear'`，仅二分类）；多类 SVC 的成对系数、非线性核、树、KNN、MLP 与 stacking 给出具体不支持原因。若已加载兼容预测数据，会在同一流水线与容差（1e-7/1e-6）下重建回归预测或分类决策分数并显示核验状态；无数据时明确标注未核验。界面逐输出轴显示截距、输出单位与拟合范围，并区分“未提供核验数据”与“核验失败”；核验失败会拒绝发布任何系数产物（显示具体原因，不显示提取完成、不可导出）。`coefficients.json` 记录被删除的全缺失列及原因、逐原始列映射、`drop_idx_` 与逐列类别映射，训练 dtype 来源为保存元数据或明确 unknown。分类输出轴：二分类 logistic 为 `classes_[1]` 相对 `classes_[0]` 的 log-odds，多类 logistic 为各类 softmax logit，线性 SVC 仅为 margin（不是概率或 log-odds）；类别保存真实标签、类型与索引。第 4 页只保留“打开结果文件夹”（指向本次 `coefficients/run_*/`），不再提供复制或另存导出入口；提取成功时该运行目录一次写齐 `coefficients.csv`、`coefficients.json` 与 `coefficients_notes.md`（JSON 最后写入）。常规分析也会在本次分析目录的 `coefficients/` 写入同名三件，并标注 `fit_scope=all_analyzed_rows`。这些是最终全数据模型的拟合参数（不是超参数），不提供 p 值、置信区间、显著性、因果或定义明确的标准化效应；普通预测、超参数区与 SHAP 区不受影响。CLI 等价命令为 `psyml coefficients --model … --trust-model [--input …] [--output-dir …]`，另有 `--check-only`，且不需要 `explain` 可选依赖。
 
@@ -373,7 +373,7 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 ## 源码版复测步骤
 
-独立应用包与源码检出可能包含不同的修复；以下 5 点用于源码版复测，结果不代表人工验收通过。0.3.0 的打包与发布已由用户明确授权；本指南不声称这些功能已逐项通过人工验收。
+独立应用包与源码检出可能包含不同的修复；以下 5 点用于源码版自测。
 
 1. 在源码检出根目录启动界面（macOS 可双击 `Launch PsyML.command`），依赖安装见[开发者指南](DEVELOPMENT_ZH.md)；独立应用包不包含开发测试环境。导入 `examples/quickstart/` 的分类或回归配置并运行一次。
 2. **版本小字**：软件名下方应以小字显示当前版本号 `0.3.0`。源码版唯一来源是 `src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic），独立包读取包内由同一常量生成的 `BUILD.json`；开发版 `0.3.0.dev0` 界面显示为 `0.3.0-dev`，正式版本 `0.3.0` 原样显示。
