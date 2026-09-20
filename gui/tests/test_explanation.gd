@@ -308,10 +308,14 @@ func _test_bridge_framing(main) -> void:
 		failure["error"] = error)
 
 	# Chunked stdout plus a large stderr must still yield the complete payload.
-	var script := "import sys, time\n"
+	# The script must contain no double quotes: on Windows Godot's argument
+	# quoting does not escape embedded quotes, so `-c` scripts are mangled by
+	# the command-line parser. The JSON is therefore built with json.dumps from
+	# single-quoted literals, which also keeps the command line ASCII.
+	var script := "import sys, time, json\n"
 	script += "sys.stderr.write('E' * 200000)\n"
 	script += "sys.stderr.flush()\n"
-	script += "payload = '{\"schema_version\": \"1.0\", \"ok\": true, \"chunked\": true}'\n"
+	script += "payload = json.dumps({'schema_version': '1.0', 'ok': True, 'chunked': True})\n"
 	script += "for i in range(0, len(payload), 7):\n"
 	script += "    sys.stdout.write(payload[i:i+7])\n"
 	script += "    sys.stdout.flush()\n"
@@ -336,12 +340,12 @@ func _test_bridge_framing(main) -> void:
 
 	# A Unicode payload written in fragments that cut through multi-byte
 	# characters, with no trailing newline, must still arrive exactly. The
-	# bytes are produced from escapes so the Windows command line stays ASCII.
+	# bytes are produced from escapes so the Windows command line stays ASCII,
+	# and the script keeps the no-double-quotes rule from the case above.
 	ready["payload"] = {}
 	failure["error"] = {}
-	var unicode_script := "import sys, time\n"
-	unicode_script += "payload = b'{\"schema_version\": \"1.0\", \"ok\": true, \"note\": \"'"
-	unicode_script += " + b'\\xe4\\xb8\\xad\\xe6\\x96\\x87' + b'\"}'\n"
+	var unicode_script := "import sys, time, json\n"
+	unicode_script += "payload = json.dumps({'schema_version': '1.0', 'ok': True, 'note': '\\u4e2d\\u6587'}, ensure_ascii=False).encode('utf-8')\n"
 	unicode_script += "for i in range(0, len(payload), 4):\n"
 	unicode_script += "    sys.stdout.buffer.write(payload[i:i+4])\n"
 	unicode_script += "    sys.stdout.buffer.flush()\n"

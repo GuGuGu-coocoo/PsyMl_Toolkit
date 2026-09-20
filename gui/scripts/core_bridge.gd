@@ -338,7 +338,19 @@ func _poll_explanation() -> void:
 		message = str(payload.error.get("message", message))
 	if message.is_empty():
 		message = "Explanation exited without a valid result."
-	_fail_task({"code": "explanation_failed", "message": message}, generation)
+	# Bounded diagnostics (no payload content) make platform-specific framing
+	# failures actionable from CI logs alone.
+	_fail_task(
+		{
+			"code": "explanation_failed",
+			"message": message,
+			"exit_code": exit_code,
+			"stdout_chars": _explain_stdout.length(),
+			"stderr_chars": _explain_stderr.length(),
+			"stdout_parsed": payload is Dictionary,
+		},
+		generation,
+	)
 
 
 func _parse_complete_json(text: String):
