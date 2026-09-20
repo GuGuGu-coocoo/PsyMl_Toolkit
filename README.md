@@ -6,6 +6,81 @@
   <a href="#chinese">中文</a> · <a href="#english">English</a> · <a href="#french">Français</a>
 </p>
 
+## 目录 / Contents / Table des matières
+
+**中文**
+
+- [打开应用](#打开应用)
+- [测试数据与快速复现](#测试数据与快速复现)
+- [数据分析操作](#数据分析操作)
+  - [1. 数据与分析设置](#1-数据与分析设置)
+  - [2. 任务、目标与分组](#2-任务目标与分组)
+  - [3. 预处理](#3-预处理)
+  - [4. 验证策略：主要验证或独立输出](#4-验证策略主要验证或独立输出)
+  - [5. 候选模型：可多选](#5-候选模型可多选)
+  - [6. 参数与选择指标](#6-参数与选择指标)
+  - [7. 检查、运行、观察与终止](#7-检查运行观察与终止)
+  - [8. 结果与解释](#8-结果与解释)
+  - [8.1 置换重要性（解释产物）](#81-置换重要性解释产物)
+  - [8.2 结果解读（基线差值、折间波动与失败摘要）](#82-结果解读基线差值折间波动与失败摘要)
+  - [9. 保存模型与新数据预测](#9-保存模型与新数据预测)
+  - [9.1 单样本 SHAP 解释（需可选 explain 依赖）](#91-单样本-shap-解释需可选-explain-依赖)
+  - [9.2 拟合系数与截距](#92-拟合系数与截距)
+- [输出文件：按优先检查顺序](#输出文件按优先检查顺序)
+- [方法边界、隐私与许可](#方法边界隐私与许可)
+- [配置与功能边界](#配置与功能边界)
+- [开发与参与](#开发与参与)
+
+**English**
+
+- [Open the application](#open-the-application)
+- [Sample data and quick reproduction](#sample-data-and-quick-reproduction)
+- [Data analysis workflow](#data-analysis-workflow)
+  - [1. Data and variables](#1-data-and-variables)
+  - [2. Task, outcome and groups](#2-task-outcome-and-groups)
+  - [3. Preprocessing](#3-preprocessing)
+  - [4. Validation: a primary design or independent outputs](#4-validation-a-primary-design-or-independent-outputs)
+  - [5. Candidate models](#5-candidate-models)
+  - [6. Parameters and selection metric](#6-parameters-and-selection-metric)
+  - [7. Review, run, monitor and stop](#7-review-run-monitor-and-stop)
+  - [8. Results and interpretation](#8-results-and-interpretation)
+  - [8.1 Permutation importance (interpretation)](#81-permutation-importance-interpretation)
+  - [8.2 Result interpretation (baseline difference, fold variability and failures)](#82-result-interpretation-baseline-difference-fold-variability-and-failures)
+  - [9. Save a model and predict new data](#9-save-a-model-and-predict-new-data)
+  - [9.1 Single-sample SHAP explanation (optional explain extra)](#91-single-sample-shap-explanation-optional-explain-extra)
+  - [9.2 Fitted coefficients and intercepts](#92-fitted-coefficients-and-intercepts)
+- [Output files, in review order](#output-files-in-review-order)
+- [Methodological scope, privacy and license](#methodological-scope-privacy-and-license)
+- [Configuration and feature boundaries](#configuration-and-feature-boundaries)
+- [Development and participation](#development-and-participation)
+
+**Français**
+
+- [Ouvrir l’application](#ouvrir-lapplication)
+- [Données de test et reproduction rapide](#données-de-test-et-reproduction-rapide)
+- [Procédure d’analyse des données](#procédure-danalyse-des-données)
+  - [1. Données et variables](#1-données-et-variables)
+  - [2. Tâche, cible et groupes](#2-tâche-cible-et-groupes)
+  - [3. Prétraitement](#3-prétraitement)
+  - [4. Validation : choix principal ou sorties indépendantes](#4-validation--choix-principal-ou-sorties-indépendantes)
+  - [5. Modèles candidats](#5-modèles-candidats)
+  - [6. Paramètres et métrique de sélection](#6-paramètres-et-métrique-de-sélection)
+  - [7. Vérifier, lancer, suivre et arrêter](#7-vérifier-lancer-suivre-et-arrêter)
+  - [8. Résultats et interprétation](#8-résultats-et-interprétation)
+  - [8.1 Importance par permutation (interprétation)](#81-importance-par-permutation-interprétation)
+  - [8.2 Interprétation des résultats (écart à la baseline, variabilité et échecs)](#82-interprétation-des-résultats-écart-à-la-baseline-variabilité-et-échecs)
+  - [9. Enregistrer un modèle et prédire de nouvelles données](#9-enregistrer-un-modèle-et-prédire-de-nouvelles-données)
+  - [9.1 Explication SHAP d'un échantillon (extension explain facultative)](#91-explication-shap-dun-échantillon-extension-explain-facultative)
+  - [9.2 Coefficients et intercepts ajustés](#92-coefficients-et-intercepts-ajustés)
+- [Fichiers produits, par ordre de lecture](#fichiers-produits-par-ordre-de-lecture)
+- [Portée méthodologique, confidentialité et licence](#portée-méthodologique-confidentialité-et-licence)
+- [Configuration et limites fonctionnelles](#configuration-et-limites-fonctionnelles)
+- [Développement et participation](#développement-et-participation)
+
+**通用 / Common / Commun**
+
+- [Batch prediction CLI / 批量预测命令行 / Prédiction en ligne de commande](#batch-prediction-cli--批量预测命令行--prédiction-en-ligne-de-commande)
+
 <a id="chinese"></a>
 
 ## 中文
