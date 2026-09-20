@@ -1,4 +1,4 @@
-"""Concise, evidence-based interpretation of already-computed results (FR-009).
+"""Concise, evidence-based interpretation of already-computed results.
 
 This module only aggregates evidence that the runner already produced
 (``procedure_results``, per-combination ``combo_folds``, ``tuning_rows``,

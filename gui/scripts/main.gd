@@ -9,7 +9,7 @@ const RADIUS := 6
 const VERSION_FONT_SIZE := 13
 
 const DataPreview = preload("res://scripts/data_preview.gd")
-## FR-019: training runs live in their own family folder under the shared result
+## Training runs live in their own family folder under the shared result
 ## root, like the page-4 prediction/, explanation/ and coefficients/ families.
 ## Legacy `run_*` folders directly under the root keep loading where they are;
 ## nothing migrates or rewrites them.
@@ -973,7 +973,7 @@ func _build_config() -> Dictionary:
 		return {"error": tr("SELECT_OUTPUT")}
 	if run_folder_name.is_empty():
 		run_folder_name = _new_run_folder()
-	# FR-019: a new GUI training run is created inside `<root>/training/run_*`.
+	# A new GUI training run is created inside `<root>/training/run_*`.
 	# The core CLI is untouched: an explicit output_dir from a user or an
 	# imported config still writes exactly where it points.
 	output_path = output_path.path_join(TRAINING_FAMILY).path_join(run_folder_name)

@@ -1,5 +1,5 @@
 extends RefCounted
-## FR-005 fitted coefficients on the results page: a compact, visible status line
+## Fitted coefficients on the results page: a compact, visible status line
 ## and an explicit way to open the artifacts produced by the analysis.
 ##
 ## Reads only what the runner already wrote into `result.json`; it never recomputes

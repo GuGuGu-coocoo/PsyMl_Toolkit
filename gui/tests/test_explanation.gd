@@ -71,7 +71,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	var page = main.prediction_page
-	# FR-020: open actions are verified against the exact target they hand to the
+	# Open actions are verified against the exact target they hand to the
 	# OS without launching a file manager during the test.
 	var opened: Array[String] = []
 	page.open_target_handler = func(path: String): opened.append(path)
@@ -167,7 +167,7 @@ func _run() -> void:
 	for key in ["json", "csv", "png", "notes"]:
 		_expect(page.explain_artifacts.has(key), "missing artifact " + key)
 		_expect(FileAccess.file_exists(str(page.explain_artifacts[key])), str(page.explain_artifacts))
-	# FR-014: they really live under the selected root, inside a new
+	# They really live under the selected root, inside a new
 	# explanation/run_* folder owned by this operation.
 	_expect(page.explain_output_dir.begins_with(output_root + "/"), page.explain_output_dir)
 	_expect(page.explain_output_dir.get_base_dir() == output_root.path_join("explanation"), page.explain_output_dir)
@@ -181,7 +181,7 @@ func _run() -> void:
 	_expect(page.explain_folder_button.text == main.tr("OPEN_RESULTS_FOLDER"))
 	_expect(page.explain_open_button.text == main.tr("OPEN_WATERFALL"))
 	_expect(page.explain_view.texture != null, "waterfall image should be displayed")
-	# FR-020: the deliver row holds the two open actions only; the export entry,
+	# The deliver row holds the two open actions only; the export entry,
 	# its dialog and its texts are gone from the interface and the translations.
 	_expect(page.explain_folder_button.get_parent().get_child_count() == 2,
 		"the explanation row must contain only open actions")

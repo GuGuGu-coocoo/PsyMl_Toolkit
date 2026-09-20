@@ -1,5 +1,5 @@
 extends SceneTree
-## GUI regression for FR-007 data check: category counts, identifier hints,
+## GUI regression for the data check: category counts, identifier hints,
 ## role/task/group switching, language and stale-state clearing.
 
 const TestPaths = preload("res://tests/test_paths.gd")

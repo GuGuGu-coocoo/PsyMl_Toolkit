@@ -1,4 +1,4 @@
-"""FR-007: reusable column profiling, category counts and identifier hints."""
+"""Reusable column profiling, category counts and identifier hints."""
 
 from __future__ import annotations
 

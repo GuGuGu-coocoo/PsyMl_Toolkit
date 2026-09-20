@@ -70,7 +70,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	var page = main.prediction_page
-	# FR-020: open actions are verified against the exact target they hand to the
+	# Open actions are verified against the exact target they hand to the
 	# OS without launching a file manager during the test.
 	var opened: Array[String] = []
 	page.open_target_handler = func(path: String): opened.append(path)
@@ -156,7 +156,7 @@ func _run() -> void:
 	for key in ["json", "csv", "notes"]:
 		_expect(page.coefficients_artifacts.has(key), "missing artifact " + key)
 		_expect(FileAccess.file_exists(str(page.coefficients_artifacts[key])), str(page.coefficients_artifacts))
-	# FR-014: they really live under the selected root, inside a new
+	# They really live under the selected root, inside a new
 	# coefficients/run_* folder owned by this operation.
 	_expect(page.coefficients_output_dir.begins_with(output_root + "/"), page.coefficients_output_dir)
 	_expect(
@@ -168,7 +168,7 @@ func _run() -> void:
 			str(page.coefficients_artifacts[key]).begins_with(page.coefficients_output_dir + "/"),
 			str(page.coefficients_artifacts[key]))
 	_expect(not page.coefficients_open_button.disabled)
-	# FR-020: the coefficient actions keep only opening; the export entry, dialog
+	# The coefficient actions keep only opening; the export entry, dialog
 	# and texts are gone, and opening targets the completed run folder itself.
 	_expect(page.coefficients_open_button.get_parent().get_child_count() == 1,
 		"the coefficients row must contain only the open action")

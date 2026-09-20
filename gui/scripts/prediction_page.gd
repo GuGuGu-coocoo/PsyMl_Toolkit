@@ -552,7 +552,7 @@ func confirm_mapping() -> void:
 
 
 func prediction_ready() -> bool:
-	# FR-018/FR-020: the one condition shared by the button state and the open
+	# The one condition shared by the button state and the open
 	# action. A frozen run folder is not success by itself: the CSV must exist on
 	# disk and the state must come from a predict response that completed in this
 	# UI. Busy, failed, empty or CSV-less states therefore cannot be opened.
@@ -564,7 +564,7 @@ func prediction_ready() -> bool:
 
 
 func open_prediction_folder() -> void:
-	# FR-018/FR-020: the only delivery action on page 4 is opening the run folder
+	# The only delivery action on page 4 is opening the run folder
 	# that produced this prediction. The CSV file itself is never opened directly.
 	error_message = ""
 	if not prediction_ready():

@@ -1,4 +1,4 @@
-"""FR-009: concise, evidence-based result interpretation."""
+"""Concise, evidence-based result interpretation."""
 
 from __future__ import annotations
 

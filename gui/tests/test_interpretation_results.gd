@@ -1,5 +1,5 @@
 extends SceneTree
-## GUI regression for FR-009 result interpretation: baseline difference,
+## GUI regression for result interpretation: baseline difference,
 ## fold variability, failure/uncertainty states and no stale results.
 
 const TestPaths = preload("res://tests/test_paths.gd")

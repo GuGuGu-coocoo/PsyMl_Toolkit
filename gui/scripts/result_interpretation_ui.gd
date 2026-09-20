@@ -1,5 +1,5 @@
 extends RefCounted
-## FR-009 result interpretation: compact trilingual summary of the baseline
+## Result interpretation: compact trilingual summary of the baseline
 ## difference, between-fold variability and failure hierarchy for one result.
 ##
 ## Reads `result_interpretation.json` written by the runner; never recomputes

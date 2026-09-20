@@ -1,5 +1,5 @@
 extends SceneTree
-## Capture the FR-007 data check and FR-009 result interpretation UI for QA.
+## Capture the data check and result interpretation UI for QA.
 ##
 ## Uses synthetic data only. These are rendered offscreen/window captures for
 ## visual review; headless success alone is not visual acceptance. Run windowed
@@ -81,7 +81,7 @@ func _capture() -> void:
 			main.feature_list.select(index, false)
 	main._refresh_review()
 
-	# FR-007 data check on the opened preview.
+	# Data check on the opened preview.
 	main.tabs.current_tab = 0
 	await create_timer(0.3).timeout
 	_scroll_to(main.data_check_ui.category_tree)
@@ -100,7 +100,7 @@ func _capture() -> void:
 	await _grab(output.path_join("data-check-id-en.png"))
 	main._on_language_selected(0)
 
-	# FR-009 result interpretation with a successful dummy baseline.
+	# Result interpretation with a successful dummy baseline.
 	for index in range(main.model_list.item_count):
 		main.model_list.deselect(index)
 		if main.model_list.get_item_metadata(index) in ["decision_tree", "dummy"]:

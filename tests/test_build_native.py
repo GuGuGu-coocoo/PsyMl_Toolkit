@@ -18,7 +18,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / "tools"
-FIXTURE_ROOT = ROOT / "tmp" / "phase-F" / "test_build_native"
+FIXTURE_ROOT = ROOT / "tmp" / "test_build_native"
 VERSION = "0.3.0"
 COMMIT = "a" * 40
 PLATFORM_SUFFIXES = {"macOS": "macOS-arm64", "Windows": "Windows-x64"}

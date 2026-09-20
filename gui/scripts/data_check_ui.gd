@@ -1,5 +1,5 @@
 extends RefCounted
-## FR-007 data check: observed category counts/proportions and identifier hints.
+## Data check: observed category counts/proportions and identifier hints.
 ##
 ## Reads only the profiling metadata already returned by `protocol.dataframe_preview`
 ## (never estimates from the first five sample rows). Values are shown only when

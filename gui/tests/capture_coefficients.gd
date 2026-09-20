@@ -2,7 +2,7 @@ extends SceneTree
 ## Capture the fitted-coefficients UI for visual QA (synthetic data only).
 ##
 ## Run windowed (not --headless) with PSYML_PYTHON and PSYML_SCREENSHOT_DIR set:
-##   PSYML_SCREENSHOT_DIR=tmp/phase-D-worker/screenshots \
+##   PSYML_SCREENSHOT_DIR=tmp/screenshots \
 ##   godot --path gui --script res://tests/capture_coefficients.gd
 ## Screenshots for zh/en/fr are saved as coefficients-zh.png, coefficients-en.png,
 ## coefficients-fr.png.

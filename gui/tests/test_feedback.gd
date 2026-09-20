@@ -165,7 +165,7 @@ func _run_test() -> void:
 	await _wheel(right.global_position + Vector2(5, 100))
 	assert(outer.scroll_vertical > before)
 	# One gesture keeps one owner: crossing the nested tree while the page owns
-	# the gesture must not hand control to the tree (FR-013).
+	# the gesture must not hand control to the tree.
 	before = outer.scroll_vertical
 	await _wheel(main.variable_tree.global_position + Vector2(30, 30))
 	assert(outer.scroll_vertical > before)
@@ -219,7 +219,7 @@ func _run_test() -> void:
 
 
 func _check_version_label(main) -> void:
-	# FR-017: the app name carries a small version label from a single source.
+	# The app name carries a small version label from a single source.
 	var header: Control = main.get_node("AppMargin/Page/Header")
 	var title: Label = main.get_node("AppMargin/Page/Header/TitleColumn/TitleLabel")
 	var label: Label = main.version_label
@@ -294,7 +294,7 @@ func _check_version_label(main) -> void:
 
 
 func _check_page4_output_row(main) -> void:
-	# FR-014 layout regression in the narrow window: the shared result-root row
+	# Layout regression in the narrow window: the shared result-root row
 	# must keep its label on one line and stay inside the prediction page.
 	main.get_window().size = Vector2i(1000, 700)
 	main.tabs.current_tab = 4
@@ -319,7 +319,7 @@ func _check_page4_output_row(main) -> void:
 
 
 func _check_scroll_owner(main) -> void:
-	# FR-013: one scroll layer per gesture, verified with injected wheel and pan
+	# One scroll layer per gesture, verified with injected wheel and pan
 	# events on the real page plus a nested list that reports its own scroll.
 	main.tabs.current_tab = 0
 	await process_frame
@@ -466,7 +466,7 @@ func _check_scroll_owner(main) -> void:
 
 
 func _check_core_path_canonicalization(main) -> void:
-	# FR-014: core JSON uses Windows `\` separators (pathlib). Page 4 must
+	# Core JSON uses Windows `\` separators (pathlib). Page 4 must
 	# normalize on receipt so artifacts compare and display with Godot's `/`
 	# convention on every platform, not only where the core happens to emit `/`.
 	var page = main.prediction_page

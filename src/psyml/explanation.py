@@ -5,7 +5,7 @@ never changes prediction semantics. It explains one already-selected row from a
 user-provided prediction file against a user-provided background file, using the
 model-agnostic ``shap.PermutationExplainer`` on the complete fitted pipeline.
 
-Scientific boundaries (see the FR-004 feasibility report):
+Scientific boundaries:
 
 * Contributions are approximate, sampling-based Shapley values, not exact SHAP.
 * Contributions are additive on the single selected model output (a class
@@ -212,7 +212,7 @@ def _pipeline_structure_reason(model: Pipeline) -> str | None:
 
 
 def model_support(loaded: LoadedModel) -> ModelSupport:
-    """Verify the fitted structure and provenance against the FR-004 subset."""
+    """Verify the fitted structure and provenance against the supported subset."""
     model = loaded.model
     if not isinstance(model, Pipeline):
         return ModelSupport(

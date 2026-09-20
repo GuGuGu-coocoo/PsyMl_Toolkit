@@ -2,7 +2,7 @@ extends SceneTree
 ## Capture the single-sample explanation UI for visual QA (synthetic data only).
 ##
 ## Run windowed (not --headless) with PSYML_PYTHON and PSYML_SCREENSHOT_DIR set:
-##   PSYML_SCREENSHOT_DIR=tmp/phase-C-worker/screenshots \
+##   PSYML_SCREENSHOT_DIR=tmp/screenshots \
 ##   godot --path gui --script res://tests/capture_shap.gd
 ## Screenshots for zh/en/fr are saved as shap-zh.png, shap-en.png, shap-fr.png.
 

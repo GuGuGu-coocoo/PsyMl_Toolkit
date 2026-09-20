@@ -90,7 +90,7 @@ func _run_test() -> void:
 	main.output_edit.text = result_dir
 	main._refresh_review()
 	assert(not main.run_button.disabled)
-	# FR-019: a new GUI training run is planned inside its own training/ family
+	# A new GUI training run is planned inside its own training/ family
 	# folder under the shared root, matching prediction/, explanation/ and
 	# coefficients/, while the run folder name still starts with run_.
 	var planned_dir: String = main._build_config().output_dir
@@ -107,7 +107,7 @@ func _run_test() -> void:
 	main.model_list.multi_selected.emit(1, true)
 	assert(not main.run_button.disabled)
 	assert(main._build_config().selection_protocol == "nested_family_v1")
-	# FR-015: while the runner reports `finalizing`, the page must show the
+	# While the runner reports `finalizing`, the page must show the
 	# writing state, stay below a full bar and keep the run cancellable; only
 	# `completed` may mark it finished or navigate to the results page.
 	var finalizing := {"seen": 0, "problem": ""}
@@ -170,7 +170,7 @@ func _run_test() -> void:
 	main._refresh_review()
 	assert(main.last_result_dir == finished_dir)
 	assert(DirAccess.dir_exists_absolute(finished_dir))
-	# FR-019: legacy `run_*` folders directly under the root keep loading exactly
+	# Legacy `run_*` folders directly under the root keep loading exactly
 	# where they are. Loading must not migrate them into training/ or rewrite the
 	# existing files, and their CSV artifacts still preview.
 	var legacy_dir := TestPaths.temp_dir().path_join("psyml legacy run %d" % Time.get_ticks_msec())

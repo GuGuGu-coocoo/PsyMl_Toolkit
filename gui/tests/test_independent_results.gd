@@ -90,7 +90,7 @@ func _run_test() -> void:
 	assert(main._build_config().primary_validation == null)
 	main._on_language_selected(0)
 	main.output_edit.text = TestPaths.temp_dir().path_join("psyml-independent-%d" % Time.get_ticks_usec())
-	# FR-015: each independent sub-run also reports `finalizing`; the GUI must
+	# Each independent sub-run also reports `finalizing`; the GUI must
 	# show the writing state, keep the bar short of full and stay cancellable,
 	# and only `completed` may mark the run finished.
 	var finalizing := {"seen": 0, "problem": ""}
@@ -176,7 +176,7 @@ func _run_test() -> void:
 	await process_frame
 	await process_frame
 	# A gesture that starts over the nested table scrolls the table, not the
-	# page (FR-013). Wait out the release delay so this is a fresh gesture.
+	# page. Wait out the release delay so this is a fresh gesture.
 	await create_timer(0.4).timeout
 	var before: int = page.scroll_vertical
 	await _wheel(main.comparison_tree.global_position + Vector2(30, 30))

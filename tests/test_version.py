@@ -1,4 +1,4 @@
-"""FR-017: one maintained version constant and the metadata derived from it."""
+"""One maintained version constant and the metadata derived from it."""
 
 import importlib.metadata
 import importlib.util
@@ -47,7 +47,7 @@ def _export_presets_template() -> str:
 
 def _temporary_gui_project(name: str) -> Path:
     """A disposable project tree with the tracked export presets copied into it."""
-    project = ROOT / "tmp" / "phase-E-round2" / "test_version" / name
+    project = ROOT / "tmp" / "test_version" / name
     if project.exists():
         shutil.rmtree(project)
     (project / "gui").mkdir(parents=True)

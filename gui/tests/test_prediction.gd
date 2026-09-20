@@ -60,7 +60,7 @@ func _run_directories(root: String) -> Array:
 
 func _prediction_delivery_states(
 		main, page, opened: Array[String], directory: String, model_path: String, data_path: String) -> void:
-	# FR-018/FR-020 delivery states: every state that is not a completed run must
+	# Delivery states: every state that is not a completed run must
 	# keep the button disabled and make the open action refuse without calling the
 	# opener; only a new successful run restores opening for its own run folder.
 	var smoke_root: String = NativeSmoke.smoke_root()
@@ -225,7 +225,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	var page = main.prediction_page
-	# FR-020: open actions are verified against the exact target they hand to the OS
+	# Open actions are verified against the exact target they hand to the OS
 	# without launching a file manager from the test.
 	var opened: Array[String] = []
 	page.open_target_handler = func(path: String): opened.append(path)
@@ -314,7 +314,7 @@ func _run() -> void:
 		assert(not page.prediction_folder_button.disabled and not page.predictions.is_empty())
 		assert(page.predictions.row_count == 10)
 		assert(page.predictions.columns[0].name == "sample_id")
-		# FR-014: the artifact is really written under the selected root, in a new
+		# The artifact is really written under the selected root, in a new
 		# prediction/run_* folder owned by this operation; the model folder is
 		# never used to infer where a page-4 result belongs.
 		var first_path: String = page.result_path
@@ -323,7 +323,7 @@ func _run() -> void:
 		assert(first_path.get_base_dir().get_file().begins_with("run_"), first_path)
 		assert(FileAccess.file_exists(first_path), first_path)
 		assert(not first_path.begins_with(str(config.output_dir)), "page 4 must not write into the model folder")
-		# FR-018: the run folder holds one artifact only, a plain CSV the user can
+		# The run folder holds one artifact only, a plain CSV the user can
 		# open directly; no Parquet is written next to it.
 		assert(first_path.get_file() == "predictions.csv", first_path)
 		var artifact_names := DirAccess.open(first_path.get_base_dir()).get_files()
@@ -373,7 +373,7 @@ func _run() -> void:
 				await RenderingServer.frame_post_draw
 				root.get_texture().get_image().save_png(destination.path_join("10-prediction-results.png"))
 		if task == "classification":
-			# FR-018/FR-020: the GUI reads back the CSV it wrote, so the preview
+			# The GUI reads back the CSV it wrote, so the preview
 			# matches the artifact exactly, including Chinese text, commas inside
 			# quoted fields and empty cells. The removed export dialog has no
 			# replacement: opening the run folder is the only delivery action.
@@ -470,7 +470,7 @@ func _run() -> void:
 	assert(opened.size() == 1 and opened[0] == page.result_path.get_base_dir(), str(opened))
 	page.mapping_options[0].item_selected.emit(1)
 	assert(page.predict_button.disabled and page.prediction_folder_button.disabled)
-	# FR-018/FR-020: real state transitions of the shared readiness condition.
+	# Real state transitions of the shared readiness condition.
 	await _prediction_delivery_states(main, page, opened, directory, manual, mapping_data)
 	# Readable failures must leave the application usable.
 	var corrupt := directory.path_join("corrupt.joblib")
