@@ -58,7 +58,8 @@ def main():
 4. 第 2 页选择结果保存位置并运行；第 3 页查看结果并打开完整结果文件夹。
 5. 第 4 页确认模型来源可信，加载结果 model/best_decision_tree.joblib。
    保留旁边的 model_metadata.json，再加载 TestData/classification_predict.csv。
-   运行预测，应得到 10 行；点击“预测结果另存为…”保存。
+   运行预测，应得到 10 行，写入本次运行目录 prediction/run_*/predictions.csv；
+   点击“打开预测结果文件夹”打开该目录，界面不再提供另存对话框。
 6. 回归测试使用 regression_config.json、best_ridge.joblib 和 regression_predict.csv。
 
 文件夹说明

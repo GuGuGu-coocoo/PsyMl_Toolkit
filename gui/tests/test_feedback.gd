@@ -229,15 +229,16 @@ func _check_version_label(main) -> void:
 	var source_version: String = main._version_from_core_module(
 		main._read_text_file(main._project_file("src/psyml/__init__.py"))
 	)
-	assert(source_version == "0.3.0.dev0", "the maintained core constant is the single source")
+	assert(source_version == "0.3.0", "the maintained core constant is the single source")
 	var source_display: String = main._display_version(source_version)
-	assert(source_display == "0.3.0-dev", "development releases display without the PEP 440 dot")
+	assert(source_display == "0.3.0", "a final release is displayed unchanged")
 	# A source checkout has no BUILD.json; resolution falls back to the core
 	# module instead of the removed pyproject.toml fallback.
 	assert(main._resolve_version() == source_version)
 	assert(label.visible)
 	assert(label.text == TranslationServer.translate("VERSION") + " " + source_display)
-	# A final release and other identifiers are never rewritten.
+	# Development labels keep their PEP 440 dot removal; final releases and
+	# other identifiers are never rewritten.
 	assert(main._display_version("0.3.0") == "0.3.0")
 	assert(main._display_version("0.2.0") == "0.2.0")
 	assert(main._display_version("0.3.0.dev1") == "0.3.0-dev")

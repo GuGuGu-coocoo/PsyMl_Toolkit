@@ -19,7 +19,10 @@ except ModuleNotFoundError:  # Python 3.10 fallback
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE_MODULE = ROOT / "src" / "psyml" / "__init__.py"
-MAINTAINED_VERSION = "0.3.0.dev0"
+MAINTAINED_VERSION = "0.3.0"
+# The development label stays covered even though the source is now a final
+# release: the conversion helpers must keep working for the next dev cycle.
+DEVELOPMENT_EXAMPLE = "0.3.0.dev0"
 MACOS_RELEASE = "0.3.0"
 WINDOWS_RELEASE = "0.3.0.0"
 
@@ -62,7 +65,9 @@ def test_single_maintained_version_constant():
     )
     assert assignments == [MAINTAINED_VERSION]
     assert psyml.__version__ == MAINTAINED_VERSION
-    assert re.fullmatch(r"\d+(?:\.\d+)+\.dev\d+", MAINTAINED_VERSION)
+    assert re.fullmatch(r"\d+(?:\.\d+)+", MAINTAINED_VERSION)
+    # Dev-version parsing/formatting stays covered for the next development cycle.
+    assert re.fullmatch(r"\d+(?:\.\d+)+\.dev\d+", DEVELOPMENT_EXAMPLE)
 
 
 def test_pyproject_declares_the_dynamic_version_from_the_core_module():
@@ -91,6 +96,7 @@ def test_installed_metadata_matches_the_core_constant():
 def test_locked_environment_has_no_stale_project_version():
     lock_text = (ROOT / "uv.lock").read_text(encoding="utf-8")
     assert "0.2.0" not in lock_text
+    assert DEVELOPMENT_EXAMPLE not in lock_text
     packages = [
         package
         for package in tomllib.loads(lock_text)["package"]
@@ -104,8 +110,8 @@ def test_build_native_derives_defaults_from_the_core_constant():
     module = _load_build_native()
     assert module.CORE_VERSION == MAINTAINED_VERSION
     assert module.default_label() == MAINTAINED_VERSION
-    assert module.is_development_version(MAINTAINED_VERSION)
-    assert not module.is_development_version("0.3.0")
+    assert not module.is_development_version(MAINTAINED_VERSION)
+    assert module.is_development_version(DEVELOPMENT_EXAMPLE)
 
 
 def test_build_native_derives_native_export_versions_from_the_core_constant():
@@ -118,6 +124,7 @@ def test_build_native_derives_native_export_versions_from_the_core_constant():
     assert module.export_version_fields(module.CORE_VERSION) == fields
     # A final release keeps the same numeric fields; dev stays in GUI/BUILD only.
     assert module.export_version_fields("0.3.0") == fields
+    assert module.export_version_fields(DEVELOPMENT_EXAMPLE) == fields
     for unusable in ["", "dev", "v0.3.0", "unreleased"]:
         with pytest.raises(ValueError):
             module.export_version_fields(unusable)

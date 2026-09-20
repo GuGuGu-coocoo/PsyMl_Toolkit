@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 from urllib.parse import urljoin
 
+from release_metadata import CURRENT_LABEL, default_label, notice_for_label
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.styles import ParagraphStyle
@@ -68,7 +69,7 @@ def inline(text: str, base: str) -> str:
 
 
 def render(source: Path, text: str, target: Path, title: str,
-           label: str = "v0.2.0", base_ref: str = "v0.2.0") -> None:
+           label: str, base_ref: str) -> None:
     body = ParagraphStyle(
         "body", fontName="PsyMLCJK", fontSize=10, leading=16,
         wordWrap="CJK", spaceAfter=7, alignment=TA_LEFT,
@@ -88,26 +89,28 @@ def render(source: Path, text: str, target: Path, title: str,
         "本文可离线阅读。蓝色链接指向对应仓库文件或外部资料，需要联网。"
         "软件操作均在图形界面中完成，无需输入命令。", small,
     ))
-    if label != "v0.2.0":
-        story.append(Paragraph(
-            f"<b>开发版 QA 文档（{label}）：</b>本文件由当前开发源码生成，描述尚未发布的功能，"
-            "不适用于 v0.2.0 下载包；发布版请以下载包内 PDF 为准。", small,
-        ))
+    notice = notice_for_label(label)
+    if notice is not None:
+        story.append(Paragraph(notice, small))
     if source.name == "README.md":
-        story.append(Paragraph("收到分享包后，从这里开始", heading[2]))
+        story.append(Paragraph("打开应用并完成第一次分析", heading[2]))
         story.append(Paragraph(
-            "1. 完整解压分享包。打开 Windows 文件夹，双击 PsyML Toolkit.exe，保留旁边的 core 文件夹。<br/>"
-            "2. 在第 1 页点击“导入配置…”，选择 TestData 中的 classification_config.json；"
+            "1. 完整解压本版本的独立应用包。Mac 双击 PsyML Toolkit.app；Windows 双击 PsyML Toolkit.exe，"
+            "保留旁边的 core 文件夹。<br/>"
+            "2. 在第 1 页点击“导入配置…”，选择应用内 examples/quickstart/classification_config.json；"
             "训练数据会自动读取，保持“保存最佳模型”勾选。<br/>"
             "3. 在第 2 页选择本机结果文件夹并运行；第 3 页查看结果并打开完整结果文件夹。<br/>"
-            "4. 第 4 页加载结果 model/ 中的 best_decision_tree.joblib，保留旁边的 model_metadata.json；"
-            "加载 TestData/classification_predict.csv，运行预测并另存结果，应得到 10 行。<br/>"
-            "5. 使用 regression_config.json、best_ridge.joblib 和 regression_predict.csv 可试回归。<br/>"
-            "分享包的 Documents 文件夹含两份中文 PDF；TestData 是与应用内 examples/quickstart 相同的测试资料。"
-            "全部为合成数据，仅用于熟悉流程。应用内含运行环境，无需安装 Python 或使用命令行。<br/>"
-            "Mac 用户请到 GitHub 下载 v0.2.0 的 macOS-arm64 应用，分享包只含 Windows 版："
-            '<link href="https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.2.0" color="#334a88">'
-            "打开 GitHub Release</link>。", body))
+            "4. 训练结果写入本次运行目录的 model/。第 4 页确认模型来源可信后，用“加载模型…”选择 "
+            "model/best_decision_tree.joblib（保留旁边的 model_metadata.json），再用“加载预测数据…”选择 "
+            "examples/quickstart/classification_predict.csv；运行预测应得到 10 行，点击“打开预测结果文件夹”"
+            "查看本次运行目录中的 predictions.csv。<br/>"
+            "5. 回归示例使用 regression_config.json、best_ridge.joblib 与 regression_predict.csv，流程相同。<br/>"
+            "全部试用资料集中在应用内 examples/quickstart/，均为合成数据，仅用于熟悉流程；"
+            "应用内含运行环境，无需安装 Python 或使用命令行；预测产物为可直接打开的 predictions.csv，"
+            "界面入口是“打开预测结果文件夹”。<br/>"
+            f"两个平台的独立应用包都在 GitHub 发布页提供，实际可下载的附件与平台以 "
+            f'<link href="https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/{label}" '
+            f'color="#334a88">{label} Release 页面</link>为准。', body))
     story.append(Spacer(1, 12))
     lines = text.splitlines()
     i = 0
@@ -195,17 +198,21 @@ def render(source: Path, text: str, target: Path, title: str,
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--font", type=Path, required=True)
-    parser.add_argument("--label", default="v0.2.0",
-                        help="Version label shown in the PDF; non-default marks a QA document")
-    parser.add_argument("--base-ref", default="v0.2.0",
-                        help="Git ref used for source links")
+    parser.add_argument("--label", default=default_label(),
+                        help="Release label shown in the PDF; defaults to the current "
+                             "core version. Any other label is marked as a historical "
+                             "document (development labels as QA)")
+    parser.add_argument("--base-ref", default=None,
+                        help="Git ref used for source links; defaults to --label")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "output/pdf")
     args = parser.parse_args()
+    if args.base_ref is None:
+        args.base_ref = args.label
     pdfmetrics.registerFont(TTFont("PsyMLCJK", str(args.font)))
     pdfmetrics.registerFontFamily("PsyMLCJK", normal="PsyMLCJK", bold="PsyMLCJK")
     readme = ROOT / "README.md"
     guide = ROOT / "docs/RESEARCHER_GUIDE_ZH.md"
-    suffix = "" if args.label == "v0.2.0" else "_" + args.label
+    suffix = "" if args.label == CURRENT_LABEL else "_" + args.label
     chinese = readme.read_text(encoding="utf-8").split('<a id="chinese"></a>')[1]
     chinese = chinese.split('<a id="english"></a>')[0].replace("## 中文", "", 1)
     render(readme, chinese, args.output_dir / f"README_ZH{suffix}.pdf", "中文版使用说明",
