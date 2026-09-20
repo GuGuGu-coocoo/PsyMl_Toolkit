@@ -11,6 +11,10 @@ static func temp_dir() -> String:
 	var path := configured
 	if path.is_empty():
 		path = ProjectSettings.globalize_path("res://../tmp/phase-A-worker/gui")
+	# globalize_path keeps the ".." segment of "res://../tmp/..."; canonicalize so
+	# paths built here compare equal to simplify_path() results (CI sets no
+	# PSYML_TEST_TMP, so an unresolved path made such assertions fail only on CI).
+	path = path.simplify_path()
 	DirAccess.make_dir_recursive_absolute(path)
 	return path
 
