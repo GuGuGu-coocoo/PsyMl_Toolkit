@@ -213,6 +213,7 @@ func _run_test() -> void:
 	await _check_version_label(main)
 	await _check_page4_output_row(main)
 	await _check_scroll_owner(main)
+	_check_core_path_canonicalization(main)
 	print("PSYML_FEEDBACK_OK")
 	quit(0)
 
@@ -447,6 +448,20 @@ func _check_scroll_owner(main) -> void:
 	await process_frame
 	nested.queue_free()
 	await process_frame
+
+
+func _check_core_path_canonicalization(main) -> void:
+	# FR-014: core JSON uses Windows `\` separators (pathlib). Page 4 must
+	# normalize on receipt so artifacts compare and display with Godot's `/`
+	# convention on every platform, not only where the core happens to emit `/`.
+	var page = main.prediction_page
+	var artifacts: Dictionary = page._canonical_artifact_paths({
+		"json": "D:\\a\\b\\run_1\\shap_explanation.json",
+		"png": "D:\\a\\b\\gui\\..\\tmp\\x\\run_1\\shap_waterfall.png",
+	})
+	assert(artifacts["json"] == "D:/a/b/run_1/shap_explanation.json")
+	assert(artifacts["png"] == "D:/a/b/tmp/x/run_1/shap_waterfall.png")
+	assert(page._canonical_artifact_paths(null).is_empty())
 
 
 func _reset_gesture(page: ScrollContainer, bar: ScrollBar) -> void:

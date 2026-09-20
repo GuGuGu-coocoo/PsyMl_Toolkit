@@ -492,11 +492,21 @@ func _response(payload: Dictionary) -> void:
 			data = payload.preview
 			compatibility = payload.compatibility
 			predictions = payload.predictions
-			result_path = payload.output_path
+			result_path = CoreBridge.canonical_path(str(payload.output_path))
 			_build_explanation_classes()
 		"export":
-			export_path = payload.output_path
+			export_path = CoreBridge.canonical_path(str(payload.output_path))
 	refresh_language()
+
+
+func _canonical_artifact_paths(raw) -> Dictionary:
+	# Core JSON carries Windows `\` separators (pathlib); normalize once on
+	# receipt so page-4 paths compare and display like every Godot-side path.
+	var canonical := {}
+	if raw is Dictionary:
+		for key in raw:
+			canonical[key] = CoreBridge.canonical_path(str(raw[key]))
+	return canonical
 
 
 func run_prediction() -> void:
@@ -673,9 +683,9 @@ func _explanation_response(payload: Dictionary, generation: int) -> void:
 		refresh_language()
 		return
 	explanation = payload.get("explanation", {})
-	explain_artifacts = payload.get("artifacts", {})
+	explain_artifacts = _canonical_artifact_paths(payload.get("artifacts", {}))
 	if payload.get("output_dir"):
-		explain_output_dir = str(payload.output_dir)
+		explain_output_dir = CoreBridge.canonical_path(str(payload.output_dir))
 	if explanation.is_empty():
 		explain_error = tr("EXPLAIN_FAILED")
 	refresh_language()
@@ -908,9 +918,9 @@ func _coefficients_response(payload: Dictionary, generation: int) -> void:
 		refresh_language()
 		return
 	coefficient_report = payload.get("coefficients", {})
-	coefficients_artifacts = payload.get("artifacts", {})
+	coefficients_artifacts = _canonical_artifact_paths(payload.get("artifacts", {}))
 	if payload.get("output_dir"):
-		coefficients_output_dir = str(payload.output_dir)
+		coefficients_output_dir = CoreBridge.canonical_path(str(payload.output_dir))
 	if coefficient_report.is_empty():
 		coefficients_error = tr("COEFFICIENTS_FAILED")
 	refresh_language()
