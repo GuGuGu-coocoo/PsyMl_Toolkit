@@ -31,7 +31,6 @@ gui/tests/fixtures/*.csv.import
 examples/public/data/
 
 # Local internal documentation
-docs/PSYML_TOOLKIT_DEVELOPMENT_PLAN.md
 /docs/internal/
 
 # Release/PDF working files
