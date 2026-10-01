@@ -145,24 +145,32 @@ comparator additionally recomputes balanced accuracy and macro-F1 from
 per-class TP/FN/FP counts as a metric-level cross-check (not a second
 independent fit).
 
-The comparator never compares "only some columns": every production column must
-exist in the reference and is actively checked; a row-count mismatch, a missing
-production column or an unregistered reference-only column fails the check.
-Numeric fields have explicit rules: any ±Inf, a one-sided NaN, or a NaN in a
-**statistic that must be finite** fails even when both sides agree; only two
-kinds of empty values are allowed — registered may-be-empty diagnostics (for
-example an empty `error` column) and NaN scores on explicitly `status=failed`
-candidates; a dtype mismatch (numeric vs text) also fails. The reference-only
-`inner_scores` diagnostic is not skipped: it must hold a finite score list of
-the configured inner-fold length for every completed candidate, with an
-unweighted mean equal to that candidate's score. This policy exists because the
-first helper required identical column sets, misclassified the reference
-diagnostic column and serialized an `inf` diagnostic into JSON, aborting the
-run; the fix is covered by three regression groups in
-`tests/test_public_dsa_case_contract.py`: failures cannot be masked (missing/
-unregistered columns, numeric drift, row-count mismatch), non-finite values are
-rejected (one-sided NaN, statistic NaN, Inf, dtype mismatch), and the reference
-diagnostic must be validated.
+The comparator never compares "only some columns": every acceptance table has a
+**fixed required-column contract** defined from the frozen protocol and the
+expected artifact schemas (`compare_dsa.REQUIRED_COLUMNS`), checked on the
+production and the reference side **separately**; either side missing a
+required column fails and reports the table name and the missing columns. Two
+tables missing the same critical column also fail — the contract never depends
+on the current production column names and is not an intersection of the two
+tables. On top of that, every production column must exist in the reference and
+is actively checked; a row-count mismatch or an unregistered reference-only
+column fails. Numeric fields have explicit rules: any ±Inf, a one-sided NaN, or
+a NaN in a **statistic that must be finite** fails even when both sides agree;
+only two kinds of empty values are allowed — registered may-be-empty
+diagnostics (for example an empty `error` column) and NaN scores on explicitly
+`status=failed` candidates; a dtype mismatch (numeric vs text) also fails. The
+reference-only `inner_scores` diagnostic is not skipped: it must hold a finite
+score list of the configured inner-fold length for every completed candidate,
+with an unweighted mean equal to that candidate's score. This policy exists
+because the first helper required identical column sets, misclassified the
+reference diagnostic column and serialized an `inf` diagnostic into JSON,
+aborting the run; the fix is covered by four regression groups in
+`tests/test_public_dsa_case_contract.py`: the fixed required-column contract
+(production-side missing, reference-side missing, both sides missing the same
+critical column, reordering still passing, unknown table name raising),
+failures cannot be masked (missing/unregistered columns, numeric drift,
+row-count mismatch), non-finite values are rejected (one-sided NaN, statistic
+NaN, Inf, dtype mismatch), and the reference diagnostic must be validated.
 
 ## 6. Metric conventions
 

@@ -321,85 +321,159 @@ def test_max_abs_diff_ignores_non_finite_pairs():
     assert compare_dsa.max_abs_diff([np.nan], [np.nan]) == 0.0
 
 
-def test_metric_table_comparison_cannot_mask_failures():
-    left = pd.DataFrame(
+def _parameter_search_table() -> pd.DataFrame:
+    """A schema-compliant parameter_search table for the frozen contract."""
+    return pd.DataFrame(
         {
             "model": ["dummy", "logistic_regression"],
+            "validation": ["group_k_fold", "group_k_fold"],
+            "outer_fold": [1, 1],
+            "selection_scope": ["outer_training_fold", "outer_training_fold"],
             "candidate": [1, 2],
+            "selection_metric": ["balanced_accuracy", "balanced_accuracy"],
             "score": [0.5, 0.75],
+            "parameters": ['{"strategy": "prior"}', '{"C": 1.0}'],
             "status": ["completed", "completed"],
             "error": [float("nan"), float("nan")],
         }
     )
+
+
+def test_metric_table_comparison_cannot_mask_failures():
+    table = _parameter_search_table()
     # Identical tables pass; empty error columns are equal, not a failure.
-    assert compare_dsa.compare_metric_tables(left, left.copy())["passed"]
+    assert compare_dsa.compare_metric_tables(
+        table, table.copy(), table_name="parameter_search"
+    )["passed"]
     # The documented reference-only diagnostic column is allowed and validated separately.
-    with_diagnostic = left.copy()
+    with_diagnostic = table.copy()
     with_diagnostic["inner_scores"] = ['[0.4, 0.5, 0.6]', '[0.7, 0.75, 0.8]']
-    assert compare_dsa.compare_metric_tables(left, with_diagnostic)["passed"]
+    assert compare_dsa.compare_metric_tables(
+        table, with_diagnostic, table_name="parameter_search"
+    )["passed"]
     # Numeric drift beyond the frozen tolerance must fail.
-    drifted = left.copy()
+    drifted = table.copy()
     drifted.loc[1, "score"] = 0.75 + 1e-6
-    result = compare_dsa.compare_metric_tables(left, drifted)
+    result = compare_dsa.compare_metric_tables(table, drifted, table_name="parameter_search")
     assert not result["passed"]
     assert result["max_abs_numeric_difference"] >= 1e-6
-    # A missing production column must fail, never be silently skipped.
-    result = compare_dsa.compare_metric_tables(left, left.drop(columns=["score"]))
+    # A production column missing from the reference must fail.
+    result = compare_dsa.compare_metric_tables(
+        table, table.drop(columns=["score"]), table_name="parameter_search"
+    )
     assert not result["passed"]
-    assert result["missing_reference_columns"] == ["score"]
+    assert result["reference_missing_required_columns"] == ["score"]
     # An unregistered reference-only column must fail, never be silently skipped.
-    unexpected = left.copy()
+    unexpected = table.copy()
     unexpected["surprise"] = 1
-    result = compare_dsa.compare_metric_tables(left, unexpected)
+    result = compare_dsa.compare_metric_tables(table, unexpected, table_name="parameter_search")
     assert not result["passed"]
     assert result["unexpected_reference_columns"] == ["surprise"]
     # Row-count mismatch must fail.
-    result = compare_dsa.compare_metric_tables(left, left.iloc[:1])
+    result = compare_dsa.compare_metric_tables(
+        table, table.iloc[:1], table_name="parameter_search"
+    )
     assert not result["passed"]
+    # Column reordering on either side must not change the outcome.
+    reordered_left = table[list(reversed(table.columns))]
+    reordered_right = table[list(table.columns[3:]) + list(table.columns[:3])]
+    assert compare_dsa.compare_metric_tables(
+        reordered_left, reordered_right, table_name="parameter_search"
+    )["passed"]
+
+
+def test_required_columns_are_fixed_per_table_and_checked_on_both_sides():
+    table = _parameter_search_table()
+    # Both sides missing the SAME critical column must still fail: the contract
+    # is fixed per table and does not depend on the production column names.
+    both_missing = compare_dsa.compare_metric_tables(
+        table.drop(columns=["score"]),
+        table.drop(columns=["score"]),
+        table_name="parameter_search",
+    )
+    assert not both_missing["passed"]
+    assert both_missing["production_missing_required_columns"] == ["score"]
+    assert both_missing["reference_missing_required_columns"] == ["score"]
+    # Production side only.
+    production_missing = compare_dsa.compare_metric_tables(
+        table.drop(columns=["candidate"]), table.copy(), table_name="parameter_search"
+    )
+    assert not production_missing["passed"]
+    assert production_missing["production_missing_required_columns"] == ["candidate"]
+    assert production_missing["reference_missing_required_columns"] == []
+    # Reference side only.
+    reference_missing = compare_dsa.compare_metric_tables(
+        table.copy(), table.drop(columns=["status"]), table_name="parameter_search"
+    )
+    assert not reference_missing["passed"]
+    assert reference_missing["production_missing_required_columns"] == []
+    assert reference_missing["reference_missing_required_columns"] == ["status"]
+    # A different table type has its own fixed contract.
+    fold_metrics = pd.DataFrame(
+        {
+            "fold": [1],
+            "model": ["logistic_regression"],
+            "validation": ["group_k_fold"],
+            "accuracy": [0.5],
+            "balanced_accuracy": [0.5],
+            "precision_weighted": [0.5],
+            "recall_weighted": [0.5],
+            "f1_weighted": [0.5],
+            "precision_macro": [0.5],
+            "recall_macro": [0.5],
+            "f1_macro": [0.5],
+            "roc_auc_ovr_weighted": [0.9],
+        }
+    )
+    missing_contract = compare_dsa.compare_metric_tables(
+        fold_metrics.drop(columns=["balanced_accuracy"]),
+        fold_metrics.drop(columns=["balanced_accuracy"]),
+        table_name="fold_metrics",
+    )
+    assert not missing_contract["passed"]
+    assert missing_contract["production_missing_required_columns"] == ["balanced_accuracy"]
+    # An unknown table name is a programming error, never a silent pass.
+    with pytest.raises(KeyError):
+        compare_dsa.compare_metric_tables(table, table.copy(), table_name="unknown_table")
 
 
 def test_metric_table_comparison_rejects_non_finite_values():
-    base = pd.DataFrame(
-        {
-            "model": ["dummy", "dummy"],
-            "score": [0.5, 0.5],
-            "status": ["completed", "completed"],
-            "error": [float("nan"), float("nan")],
-        }
-    )
+    base = _parameter_search_table()
     # The registered empty diagnostic column is allowed on both sides.
-    assert compare_dsa.compare_metric_tables(base, base.copy())["passed"]
+    assert compare_dsa.compare_metric_tables(
+        base, base.copy(), table_name="parameter_search"
+    )["passed"]
     # One-sided NaN in a statistic fails.
     one_sided = base.copy()
     one_sided.loc[0, "score"] = float("nan")
-    result = compare_dsa.compare_metric_tables(base, one_sided)
+    result = compare_dsa.compare_metric_tables(base, one_sided, table_name="parameter_search")
     assert not result["passed"]
     assert any("one side only" in problem for problem in result["non_finite_problems"])
     # A NaN in a statistic that must be finite fails even when both sides agree.
     both_nan_left = base.copy()
     both_nan_left.loc[0, "score"] = float("nan")
-    result = compare_dsa.compare_metric_tables(both_nan_left, both_nan_left.copy())
+    result = compare_dsa.compare_metric_tables(
+        both_nan_left, both_nan_left.copy(), table_name="parameter_search"
+    )
     assert not result["passed"]
     assert any("must be finite" in problem for problem in result["non_finite_problems"])
     # NaN is legitimate on an explicitly failed candidate row.
-    failed = pd.DataFrame(
-        {
-            "model": ["logistic_regression"],
-            "score": [float("nan")],
-            "status": ["failed"],
-            "error": ["LinAlgError: injected"],
-        }
-    )
-    assert compare_dsa.compare_metric_tables(failed, failed.copy())["passed"]
+    failed = base.iloc[:1].copy()
+    failed["score"] = [float("nan")]
+    failed["status"] = ["failed"]
+    failed["error"] = ["LinAlgError: injected"]
+    assert compare_dsa.compare_metric_tables(
+        failed, failed.copy(), table_name="parameter_search"
+    )["passed"]
     # Infinity is never accepted, and dtype mismatches fail explicitly.
     infinite = base.copy()
     infinite.loc[0, "score"] = float("inf")
-    result = compare_dsa.compare_metric_tables(base, infinite)
+    result = compare_dsa.compare_metric_tables(base, infinite, table_name="parameter_search")
     assert not result["passed"]
     assert any("infinite value" in problem for problem in result["non_finite_problems"])
     text_score = base.copy()
     text_score["score"] = text_score["score"].astype(str)
-    result = compare_dsa.compare_metric_tables(base, text_score)
+    result = compare_dsa.compare_metric_tables(base, text_score, table_name="parameter_search")
     assert not result["passed"]
     assert any("dtype mismatch" in problem for problem in result["non_finite_problems"])
 

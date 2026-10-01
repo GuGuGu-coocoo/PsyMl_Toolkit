@@ -37,6 +37,78 @@ REFERENCE_DIAGNOSTIC_COLUMNS = frozenset({"inner_scores"})
 # Numeric columns that are legitimately empty when no problem occurred. Every
 # other NaN (outside an explicitly failed candidate row) fails the comparison.
 MAY_BE_EMPTY_NUMERIC_COLUMNS = frozenset({"error"})
+# Fixed per-table column contracts from the frozen protocol and the expected
+# artifact schemas. They deliberately do not depend on the production table's
+# current columns: two tables missing the same critical column must still fail.
+_REQUIRED_PREDICTION_COLUMNS = ("row_index", "fold", "observed", "predicted", "model")
+REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
+    "predictions": _REQUIRED_PREDICTION_COLUMNS,
+    "predictions_with_probabilities": (
+        *_REQUIRED_PREDICTION_COLUMNS,
+        *PROBABILITY_COLUMNS,
+    ),
+    "observed_oof_probabilities": (
+        *_REQUIRED_PREDICTION_COLUMNS,
+        *PROBABILITY_COLUMNS,
+    ),
+    "fold_metrics": (
+        "fold",
+        "model",
+        "validation",
+        "accuracy",
+        "balanced_accuracy",
+        "precision_weighted",
+        "recall_weighted",
+        "f1_weighted",
+        "precision_macro",
+        "recall_macro",
+        "f1_macro",
+        "roc_auc_ovr_weighted",
+    ),
+    "metrics": (
+        "accuracy",
+        "balanced_accuracy",
+        "precision_weighted",
+        "recall_weighted",
+        "f1_weighted",
+        "precision_macro",
+        "recall_macro",
+        "f1_macro",
+        "roc_auc_ovr_weighted",
+    ),
+    "metrics_summary": ("metric", "mean", "std", "min", "max", "n_folds"),
+    "selection_trace": (
+        "validation",
+        "outer_fold",
+        "selection_scope",
+        "model",
+        "parameters",
+        "score",
+    ),
+    "parameter_search": (
+        "model",
+        "validation",
+        "outer_fold",
+        "selection_scope",
+        "candidate",
+        "selection_metric",
+        "score",
+        "parameters",
+        "status",
+        "error",
+    ),
+}
+
+
+def missing_required_columns(table: pd.DataFrame, table_name: str) -> list[str]:
+    """Return the frozen required columns absent from ``table``.
+
+    The contract is fixed per table name, so a framework-wide column loss that
+    affects production and reference alike is still reported as a failure.
+    """
+    if table_name not in REQUIRED_COLUMNS:
+        raise KeyError(f"No required-column contract is defined for table {table_name!r}")
+    return [column for column in REQUIRED_COLUMNS[table_name] if column not in table.columns]
 
 
 def max_abs_diff(left, right) -> float:
@@ -53,27 +125,35 @@ def compare_metric_tables(
     left: pd.DataFrame,
     right: pd.DataFrame,
     *,
+    table_name: str,
     numeric_atol: float = dsa_case.METRIC_ATOL,
     reference_only_allowed: frozenset[str] = REFERENCE_DIAGNOSTIC_COLUMNS,
     may_be_empty_numeric: frozenset[str] = MAY_BE_EMPTY_NUMERIC_COLUMNS,
 ) -> dict[str, Any]:
     """Compare one production table against the reference without skipping anything.
 
-    Every production column must exist in the reference and is actively
-    compared. Missing production columns, unregistered reference-only columns,
-    row-count mismatches, one-sided NaN values and any infinity fail the check.
-    A NaN that is present on both sides is only accepted for columns listed in
-    ``may_be_empty_numeric`` or for rows whose ``status`` is ``failed``; a NaN
-    in a statistic that must be finite fails explicitly instead of being
-    skipped. Values are compared within ``numeric_atol`` with ``rtol=0``.
+    Required columns come from the fixed ``REQUIRED_COLUMNS`` contract for
+    ``table_name``, checked on the production and the reference side
+    separately, so a shared column loss fails too. Every production column must
+    also exist in the reference and is actively compared; unregistered
+    reference-only columns fail, as do row-count mismatches, one-sided NaN,
+    NaN in a statistic that must be finite and any infinity. Values are
+    compared within ``numeric_atol`` with ``rtol=0``.
     """
+    production_missing = missing_required_columns(left, table_name)
+    reference_missing = missing_required_columns(right, table_name)
     result: dict[str, Any] = {
+        "table": table_name,
         "passed": True,
         "max_abs_numeric_difference": 0.0,
+        "production_missing_required_columns": production_missing,
+        "reference_missing_required_columns": reference_missing,
         "missing_reference_columns": [],
         "unexpected_reference_columns": [],
         "non_finite_problems": [],
     }
+    if production_missing or reference_missing:
+        result["passed"] = False
     missing = [column for column in left.columns if column not in right.columns]
     unexpected = [
         column
@@ -222,7 +302,10 @@ def _frames_equal_as_text(left: pd.DataFrame, right: pd.DataFrame) -> bool:
 
 
 def _sorted(frame: pd.DataFrame) -> pd.DataFrame:
-    return frame.sort_values(["row_index", "fold"]).reset_index(drop=True)
+    keys = [column for column in ("row_index", "fold") if column in frame.columns]
+    if not keys:
+        return frame.reset_index(drop=True)
+    return frame.sort_values(keys).reset_index(drop=True)
 
 
 def compare(
@@ -257,10 +340,17 @@ def compare(
     for name in ("predictions", "fold_metrics", "selection_trace", "parameter_search", "metrics_summary"):
         left = pd.read_csv(primary / f"{name}.csv")
         right = pd.read_csv(observed / "run" / f"{name}.csv")
+        primary_missing = missing_required_columns(left, name)
+        observed_missing = missing_required_columns(right, name)
         check(
             numerical,
             f"observational_run_equals_primary_{name}",
-            left.equals(right),
+            not primary_missing and not observed_missing and left.equals(right),
+            {
+                "table": name,
+                "primary_missing_required_columns": primary_missing,
+                "observed_missing_required_columns": observed_missing,
+            },
         )
 
     reference_splits = dsa_case.read_json(reference / "fold_membership.json")
@@ -355,26 +445,64 @@ def compare(
     primary_predictions = _sorted(pd.read_csv(primary / "predictions.csv"))
     reference_predictions = _sorted(pd.read_csv(reference / "predictions_with_probabilities.csv"))
     observed_predictions = _sorted(pd.read_csv(observed / "observed_oof_probabilities.csv"))
+    primary_predictions_missing = missing_required_columns(primary_predictions, "predictions")
+    reference_predictions_missing = missing_required_columns(
+        reference_predictions, "predictions_with_probabilities"
+    )
+    observed_predictions_missing = missing_required_columns(
+        observed_predictions, "observed_oof_probabilities"
+    )
     check(
         numerical,
         "each_original_row_has_exactly_one_oof_prediction",
-        len(primary_predictions) == len(frame)
+        not primary_predictions_missing
+        and len(primary_predictions) == len(frame)
         and primary_predictions["row_index"].nunique() == len(frame)
         and set(primary_predictions["row_index"]) == set(frame.index),
+        {"table": "predictions", "production_missing_required_columns": primary_predictions_missing},
     )
     identity_columns = ["row_index", "fold", "observed", "predicted", "model"]
     check(
         numerical,
         "oof_predictions_fold_observed_family_exact",
-        primary_predictions[identity_columns].equals(reference_predictions[identity_columns]),
+        not primary_predictions_missing
+        and not reference_predictions_missing
+        and primary_predictions[identity_columns].equals(reference_predictions[identity_columns]),
+        {
+            "primary_missing_required_columns": primary_predictions_missing,
+            "reference_missing_required_columns": reference_predictions_missing,
+        },
     )
-    if list(reference_predictions.columns)[5:] != list(PROBABILITY_COLUMNS):
-        check(
-            numerical,
-            "oof_probabilities",
-            False,
-            {"error": "reference probability columns do not follow classes_ 1..19"},
-        )
+    probability_columns_missing = [
+        column
+        for column in PROBABILITY_COLUMNS
+        if column not in reference_predictions.columns or column not in observed_predictions.columns
+    ]
+    reference_tail_ok = (
+        len(reference_predictions.columns) == 5 + len(PROBABILITY_COLUMNS)
+        and list(reference_predictions.columns)[5:] == list(PROBABILITY_COLUMNS)
+    )
+    observed_tail_ok = (
+        len(observed_predictions.columns) == 5 + len(PROBABILITY_COLUMNS)
+        and list(observed_predictions.columns)[5:] == list(PROBABILITY_COLUMNS)
+    )
+    probability_detail: dict[str, Any] = {
+        "reference_missing_required_columns": reference_predictions_missing,
+        "observed_missing_required_columns": observed_predictions_missing,
+        "missing_probability_columns": probability_columns_missing,
+        "reference_probability_order_ok": reference_tail_ok,
+        "observed_probability_order_ok": observed_tail_ok,
+    }
+    probability_required_missing = bool(
+        reference_predictions_missing or observed_predictions_missing
+    )
+    if (
+        probability_columns_missing
+        or probability_required_missing
+        or not reference_tail_ok
+        or not observed_tail_ok
+    ):
+        check(numerical, "oof_probabilities", False, probability_detail)
     else:
         check(
             numerical,
@@ -386,6 +514,7 @@ def compare(
                 atol=dsa_case.PROBABILITY_ATOL,
             ),
             {
+                **probability_detail,
                 "max_abs_difference": max_abs_diff(
                     reference_predictions[list(PROBABILITY_COLUMNS)].to_numpy(),
                     observed_predictions[list(PROBABILITY_COLUMNS)].to_numpy(),
@@ -398,10 +527,17 @@ def compare(
     for name in ("fold_metrics", "metrics_summary", "selection_trace", "parameter_search"):
         left = pd.read_csv(primary / f"{name}.csv")
         right = pd.read_csv(reference / f"{name}.csv")
-        comparison = compare_metric_tables(left, right)
+        comparison = compare_metric_tables(left, right, table_name=name)
         detail: dict[str, Any] = {
+            "table": name,
             "max_abs_numeric_difference": comparison["max_abs_numeric_difference"],
             "atol": dsa_case.METRIC_ATOL,
+            "production_missing_required_columns": comparison[
+                "production_missing_required_columns"
+            ],
+            "reference_missing_required_columns": comparison[
+                "reference_missing_required_columns"
+            ],
             "missing_reference_columns": comparison["missing_reference_columns"],
             "unexpected_reference_columns": comparison["unexpected_reference_columns"],
         }
@@ -534,65 +670,87 @@ def compare(
     )
     check(numerical, "saved_pipeline_missing_feature_blocked", not missing["compatible"], missing)
 
-    joined = primary_predictions.merge(
-        frame.reset_index(names="row_index")[["row_index", "segment_id", "subject_id"]],
-        on="row_index",
-        validate="one_to_one",
-    )
-    joined.to_csv(output / "oof_predictions_by_segment.csv", index=False)
-    per_subject = [
-        {
-            "subject_id": int(subject),
-            "n_segments": len(rows),
-            "balanced_accuracy": float(balanced_accuracy_score(rows["observed"], rows["predicted"])),
-        }
-        for subject, rows in joined.groupby("subject_id")
-    ]
-    pd.DataFrame(per_subject).to_csv(output / "per_subject_metrics.csv", index=False)
-    dummy = pd.read_csv(reference / "dummy_oof.csv")
-    differences = []
-    for fold, rows in joined.groupby("fold"):
-        fold_dummy = dummy[dummy["fold"] == fold]
-        procedure_score = float(balanced_accuracy_score(rows["observed"], rows["predicted"]))
-        dummy_score = float(balanced_accuracy_score(fold_dummy["observed"], fold_dummy["predicted"]))
-        differences.append(
+    predictions_complete = not primary_predictions_missing
+    if not predictions_complete:
+        for blocked_name in (
+            "metrics_match_direct_confusion_count_definitions",
+            "pooled_oof_confusion_matrix_exact",
+        ):
+            check(
+                numerical,
+                blocked_name,
+                False,
+                {
+                    "blocked_by_missing_required_columns": primary_predictions_missing,
+                    "table": "predictions / fold_metrics",
+                },
+            )
+    else:
+        joined = primary_predictions.merge(
+            frame.reset_index(names="row_index")[["row_index", "segment_id", "subject_id"]],
+            on="row_index",
+            validate="one_to_one",
+        )
+        joined.to_csv(output / "oof_predictions_by_segment.csv", index=False)
+        per_subject = [
             {
-                "fold": int(fold),
-                "procedure_balanced_accuracy": procedure_score,
-                "dummy_balanced_accuracy": dummy_score,
-                "difference": procedure_score - dummy_score,
+                "subject_id": int(subject),
+                "n_segments": len(rows),
+                "balanced_accuracy": float(
+                    balanced_accuracy_score(rows["observed"], rows["predicted"])
+                ),
             }
-        )
-    pd.DataFrame(differences).to_csv(output / "paired_dummy_differences.csv", index=False)
+            for subject, rows in joined.groupby("subject_id")
+        ]
+        pd.DataFrame(per_subject).to_csv(output / "per_subject_metrics.csv", index=False)
+        dummy = pd.read_csv(reference / "dummy_oof.csv")
+        differences = []
+        for fold, rows in joined.groupby("fold"):
+            fold_dummy = dummy[dummy["fold"] == fold]
+            procedure_score = float(balanced_accuracy_score(rows["observed"], rows["predicted"]))
+            dummy_score = float(
+                balanced_accuracy_score(fold_dummy["observed"], fold_dummy["predicted"])
+            )
+            differences.append(
+                {
+                    "fold": int(fold),
+                    "procedure_balanced_accuracy": procedure_score,
+                    "dummy_balanced_accuracy": dummy_score,
+                    "difference": procedure_score - dummy_score,
+                }
+            )
+        pd.DataFrame(differences).to_csv(output / "paired_dummy_differences.csv", index=False)
 
-    math_ok = True
-    fold_metrics = pd.read_csv(primary / "fold_metrics.csv")
-    for fold, rows in primary_predictions.groupby("fold"):
-        direct = direct_metrics(rows["observed"].to_numpy(), rows["predicted"].to_numpy())
-        expected = fold_metrics[fold_metrics["fold"] == fold].iloc[0]
-        math_ok &= all(
-            abs(direct[name] - float(expected[name])) <= 1e-12 for name in direct
+        math_ok = True
+        fold_metrics = pd.read_csv(primary / "fold_metrics.csv")
+        for fold, rows in primary_predictions.groupby("fold"):
+            direct = direct_metrics(rows["observed"].to_numpy(), rows["predicted"].to_numpy())
+            expected = fold_metrics[fold_metrics["fold"] == fold].iloc[0]
+            math_ok &= all(
+                abs(direct[name] - float(expected[name])) <= 1e-12 for name in direct
+            )
+        check(
+            numerical,
+            "metrics_match_direct_confusion_count_definitions",
+            math_ok,
+            {
+                "definitions": (
+                    "BA=mean class TP/(TP+FN); macroF1=mean 2TP/(2TP+FP+FN); accuracy=correct/N"
+                ),
+                "atol": 1e-12,
+            },
         )
-    check(
-        numerical,
-        "metrics_match_direct_confusion_count_definitions",
-        math_ok,
-        {
-            "definitions": (
-                "BA=mean class TP/(TP+FN); macroF1=mean 2TP/(2TP+FP+FN); accuracy=correct/N"
+        primary_matrix = pd.read_csv(primary / "confusion_matrix.csv", index_col=0)
+        check(
+            numerical,
+            "pooled_oof_confusion_matrix_exact",
+            np.array_equal(
+                primary_matrix.to_numpy(),
+                confusion_matrix(
+                    primary_predictions["observed"], primary_predictions["predicted"]
+                ),
             ),
-            "atol": 1e-12,
-        },
-    )
-    primary_matrix = pd.read_csv(primary / "confusion_matrix.csv", index_col=0)
-    check(
-        numerical,
-        "pooled_oof_confusion_matrix_exact",
-        np.array_equal(
-            primary_matrix.to_numpy(),
-            confusion_matrix(primary_predictions["observed"], primary_predictions["predicted"]),
-        ),
-    )
+        )
     check(
         numerical,
         "source_input_csv_matches_frozen_hash",
@@ -625,12 +783,21 @@ def compare(
 
     if golden is not None:
         golden_predictions = _sorted(pd.read_csv(golden / "predictions.csv"))
+        golden_predictions_missing = [
+            column for column in REQUIRED_COLUMNS["predictions"] if column not in golden_predictions.columns
+        ]
         check(
             golden_checks,
             "golden_oof_predictions_exact",
-            primary_predictions[identity_columns].equals(
+            not primary_predictions_missing
+            and not golden_predictions_missing
+            and primary_predictions[identity_columns].equals(
                 golden_predictions[identity_columns]
             ),
+            {
+                "primary_missing_required_columns": primary_predictions_missing,
+                "golden_missing_required_columns": golden_predictions_missing,
+            },
         )
         golden_pairs = (
             ("metrics.csv", pd.read_csv(golden / "metrics.csv")),
@@ -641,8 +808,19 @@ def compare(
         )
         golden_ok = True
         golden_differences: dict[str, float] = {}
+        golden_missing_required: dict[str, list[str]] = {}
         for name, golden_frame in golden_pairs:
+            table_name = name.removesuffix(".csv")
             current = pd.read_csv(primary / name)
+            current_missing = missing_required_columns(current, table_name)
+            golden_missing = missing_required_columns(golden_frame, table_name)
+            if current_missing or golden_missing:
+                golden_ok = False
+                golden_missing_required[name] = {
+                    "primary": current_missing,
+                    "golden": golden_missing,
+                }
+                continue
             for column in current.columns:
                 if column not in golden_frame.columns:
                     continue
@@ -671,6 +849,7 @@ def compare(
             {
                 "max_abs_difference": max(golden_differences.values(), default=0.0),
                 "atol": 1e-12,
+                "missing_required_columns": golden_missing_required,
                 "scope": (
                     "frozen baseline recorded on Linux; cross-platform float differences "
                     "must be reported, never hidden"

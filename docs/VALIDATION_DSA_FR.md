@@ -157,26 +157,35 @@ TP/FN/FP par classe (contrôle au niveau des métriques, pas un deuxième
 ajustement indépendant).
 
 Le comparateur ne compare jamais « seulement certaines colonnes » : chaque
-colonne de production doit exister dans la référence et est contrôlée ; un écart
-du nombre de lignes, une colonne de production manquante ou une colonne
-supplémentaire non enregistrée dans la référence échoue. Les champs numériques
-suivent des règles explicites : tout ±Inf, un NaN d’un seul côté, ou un NaN dans
-une **statistique qui doit être finie** échoue même si les deux côtés
-concordent ; seules deux catégories de valeurs vides sont admises — les
-diagnostics enregistrés comme pouvant être vides (par exemple une colonne
-`error` vide) et les scores NaN d’un candidat explicitement `status=failed` ; une
-discordance de dtype (numérique vs texte) échoue aussi. La colonne de diagnostic
-`inner_scores` propre à la référence n’est pas ignorée : elle doit contenir une
-liste finie de scores de la longueur des plis internes pour chaque candidat
-terminé, dont la moyenne non pondérée égale le score déclaré. Cette politique
-vient d’un premier correctif : l’auxiliaire initial exigeait des ensembles de
-colonnes identiques, prenait le diagnostic de la référence pour une divergence
-et sérialisait un `inf` dans le JSON, interrompant l’exécution ; le
-comportement retenu est couvert par trois groupes de tests de régression dans
-`tests/test_public_dsa_case_contract.py` : aucun masquage (colonnes manquantes/
-non enregistrées, dérive numérique, nombre de lignes), rejet des valeurs non
-finies (NaN unilatéral, NaN de statistique, Inf, dtype) et validation du
-diagnostic de la référence.
+table d’acceptation a un **contrat de colonnes obligatoires fixe**, défini
+d’après le protocole figé et les schémas d’artefacts attendus
+(`compare_dsa.REQUIRED_COLUMNS`), vérifié **séparément** côté production et côté
+référence ; toute colonne obligatoire manquante d’un côté échoue et signale le
+nom de la table et les colonnes manquantes. Deux tables auxquelles il manque la
+même colonne critique échouent aussi — le contrat ne dépend jamais des noms de
+colonnes de production du moment et n’est pas une intersection des deux tables.
+En outre, chaque colonne de production doit exister dans la référence et est
+contrôlée ; un écart du nombre de lignes ou une colonne supplémentaire non
+enregistrée échoue. Les champs numériques suivent des règles explicites : tout
+±Inf, un NaN d’un seul côté, ou un NaN dans une **statistique qui doit être
+finie** échoue même si les deux côtés concordent ; seules deux catégories de
+valeurs vides sont admises — les diagnostics enregistrés comme pouvant être
+vides (par exemple une colonne `error` vide) et les scores NaN d’un candidat
+explicitement `status=failed` ; une discordance de dtype (numérique vs texte)
+échoue aussi. La colonne de diagnostic `inner_scores` propre à la référence
+n’est pas ignorée : elle doit contenir une liste finie de scores de la longueur
+des plis internes pour chaque candidat terminé, dont la moyenne non pondérée
+égale le score déclaré. Cette politique vient d’un premier correctif :
+l’auxiliaire initial exigeait des ensembles de colonnes identiques, prenait le
+diagnostic de la référence pour une divergence et sérialisait un `inf` dans le
+JSON, interrompant l’exécution ; le comportement retenu est couvert par quatre
+groupes de tests de régression dans
+`tests/test_public_dsa_case_contract.py` : contrat de colonnes obligatoires fixe
+(manquant côté production, manquant côté référence, même colonne critique
+absente des deux côtés, réordonnancement toujours accepté, nom de table inconnu
+en erreur), aucun masquage (colonnes manquantes/non enregistrées, dérive
+numérique, nombre de lignes), rejet des valeurs non finies (NaN unilatéral, NaN
+de statistique, Inf, dtype) et validation du diagnostic de la référence.
 
 ## 6. Conventions de métriques
 

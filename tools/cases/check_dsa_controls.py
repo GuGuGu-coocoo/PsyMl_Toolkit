@@ -173,11 +173,15 @@ def _compare_tables(
     left_path: Path,
     right_path: Path,
     *,
+    table_name: str,
     numeric_atol: float = dsa_case.METRIC_ATOL,
 ) -> dict[str, Any]:
     """Compare with the shared no-masking policy used by the acceptance comparator."""
     return compare_dsa.compare_metric_tables(
-        pd.read_csv(left_path), pd.read_csv(right_path), numeric_atol=numeric_atol
+        pd.read_csv(left_path),
+        pd.read_csv(right_path),
+        table_name=table_name,
+        numeric_atol=numeric_atol,
     )
 
 
@@ -307,11 +311,19 @@ def run_controls(
         comparison = _compare_tables(
             Path(canary_config.output_dir) / f"{name}.csv",
             reference_output / f"{reference_name}.csv",
+            table_name=name,
         )
         passed = comparison["passed"]
         detail: dict[str, Any] = {
+            "table": name,
             "max_abs_numeric_difference": comparison["max_abs_numeric_difference"],
             "atol": dsa_case.METRIC_ATOL,
+            "production_missing_required_columns": comparison[
+                "production_missing_required_columns"
+            ],
+            "reference_missing_required_columns": comparison[
+                "reference_missing_required_columns"
+            ],
             "missing_reference_columns": comparison["missing_reference_columns"],
             "unexpected_reference_columns": comparison["unexpected_reference_columns"],
         }
