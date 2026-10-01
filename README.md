@@ -297,6 +297,8 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 仓库截图和测试夹具使用随机合成数据，不包含参与者信息。公开示例采用 UCI 的 [Iris](https://doi.org/10.24432/C56C76) 和[混凝土抗压强度](https://doi.org/10.24432/C5PK67)数据；运行方法见[公开示例说明](examples/public/README.md)。请勿在 GitHub Issue 中上传真实研究数据或敏感信息。
 
+**公开行为数据数值验证。** 我们在 UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) 数据上，固定按参与者分组的嵌套交叉验证协议，并用独立 scikit-learn 工作流复算。在所记录的 Linux 环境和固定代码版本下，9,120 条折外预测逐行一致，主 balanced accuracy 为 0.5740（8 名参与者、19 类活动），切分、训练折预处理、选择及模型保存/加载检查均通过。此结果验证的是该案例的软件流程；不代表外部人群效度，也不替代 GUI、Windows 或全部依赖组合测试。见[验证范围与完整结果](docs/VALIDATION_DSA_ZH.md)及[可复算示例](examples/public/dsa_group_nested_v1/README.md)。
+
 除另行标注的第三方内容外，项目代码与文档采用 [Apache License 2.0](LICENSE)，允许使用、修改和分发，并包含明确的专利授权。第三方依赖与数据仍遵循各自许可证。
 
 ### 配置与功能边界
@@ -568,6 +570,8 @@ Nested family/parameter selection and training-only preprocessing reduce common 
 
 Screenshots and test fixtures use random synthetic data. Public examples use UCI’s [Iris](https://doi.org/10.24432/C56C76) and [Concrete Compressive Strength](https://doi.org/10.24432/C5PK67) datasets; see the [public example instructions](examples/public/README.md). Never attach real research data or sensitive participant information to a GitHub Issue.
 
+**Numerical validation on public activity data.** A prespecified participant-grouped nested cross-validation case on UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) was independently recomputed with scikit-learn. In the recorded Linux environment and pinned code version, all 9,120 out-of-fold class predictions agreed exactly; mean outer-fold balanced accuracy was 0.5740 across 8 participants and 19 activities. Split membership, training-fold preprocessing, selection and saved-model replay checks passed. This validates the tested workflow, not external-population validity, GUI behavior, Windows or every dependency combination. See the [validation scope and results](docs/VALIDATION_DSA_EN.md) and [reproducible example](examples/public/dsa_group_nested_v1/README.md).
+
 Except for separately identified third-party material, the project is licensed under the [Apache License 2.0](LICENSE), permitting use, modification and distribution and including an express patent grant. Dependencies and datasets retain their own licenses.
 
 ### Configuration and feature boundaries
@@ -838,6 +842,8 @@ Conseils d’utilisation : cliquez sur les cases pour sélectionner plusieurs é
 La sélection imbriquée des familles/paramètres et le prétraitement limité à l’entraînement réduisent les fuites et biais de sélection courants. Ils ne remplacent ni validation externe, ni raisonnement sur la taille d’échantillon, ni expertise du domaine, ni responsabilité du chercheur. La conception suit les recommandations scikit-learn sur les [fuites de données](https://scikit-learn.org/stable/common_pitfalls.html), la [validation imbriquée](https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html), la [recherche de paramètres](https://scikit-learn.org/stable/modules/grid_search.html) et la [validation par groupes](https://scikit-learn.org/stable/modules/cross_validation.html), ainsi que [TRIPOD+AI](https://www.bmj.com/content/385/bmj-2023-078378).
 
 Les captures et jeux de test sont synthétiques et aléatoires. Les exemples publics utilisent [Iris](https://doi.org/10.24432/C56C76) et [Concrete Compressive Strength](https://doi.org/10.24432/C5PK67) d’UCI ; voir les [instructions](examples/public/README.md). Ne joignez jamais de données de recherche réelles ou sensibles à une issue GitHub.
+
+**Validation numérique sur des données publiques d’activités.** Un protocole prédéfini de validation croisée imbriquée, groupée par participant, a été appliqué aux données UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F), puis recalculé avec un flux scikit-learn indépendant. Dans l’environnement Linux documenté et pour la version de code fixée, les 9 120 prédictions de classe hors pli concordent exactement ; la balanced accuracy moyenne des plis externes est de 0,5740, pour 8 participants et 19 activités. Les contrôles des partitions, du prétraitement ajusté dans les plis d’entraînement, de la sélection et du modèle enregistré ont réussi. Cette validation concerne le flux testé, pas sa validité dans d’autres populations, l’interface graphique, Windows ou toutes les combinaisons de dépendances. Voir la [portée et les résultats](docs/VALIDATION_DSA_FR.md) et l’[exemple reproductible](examples/public/dsa_group_nested_v1/README.md).
 
 Sauf éléments tiers signalés séparément, le projet est sous [licence Apache 2.0](LICENSE), qui autorise l’utilisation, la modification et la distribution et inclut une concession explicite de brevets. Les dépendances et données conservent leurs propres licences.
 

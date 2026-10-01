@@ -14,7 +14,7 @@ Liste de contrôles de régression pour le développement ; non requise pour uti
 - `gui/tests/`：GUI 与核心桥接、完整流程、滚动、多语言及独立验证测试。
 - `examples/quickstart/`：用户试用的分类、回归配置，48 行训练数据与各 10 行预测数据。
 - `examples/synthetic/`：旧开发夹具与格式矩阵；`two_groups.csv` 用于边界检查。
-- `examples/public/`：可选公开数据示例，需要额外下载；默认快速测试不需要。
+- `examples/public/`：可选公开数据示例，需要额外下载；默认快速测试不需要。其中 DSA 案例还包含独立复算与真实数据负控，见下文“公开 DSA 案例”。
 
 这些命令在完整源码检出中执行，独立应用包不包含开发测试环境。隐私审计还需要 `legacy/` 中的历史夹具；只有源码副本明确不含该目录时，才跳过 `tools/audit_repository.py`。源码检出当前为正式版本 `0.3.0`（单一版本源），包含 v0.2.0 之后新增的功能与改进；独立包与分发 PDF 的可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准，v0.2.0 及更早的下载包与分发 PDF 不含这些功能与修复。第 4 页预测结果与系数区块的截图已随本轮界面更新（`docs/images/*/10-prediction-results.png`、`12-coefficients.png`），其余截图仍是修复前的界面。发布候选的 ZIP、PDF 与 SHA-256 由 `tools/verify_release_artifacts.py` 实际读取内容核验，不检查日志成功字符串。
 
@@ -111,6 +111,14 @@ uv run pytest tests/test_parameter_matrix.py -q --durations=10
 ```
 
 它随默认核心测试自动运行，无需额外服务或网络。可添加 `--junitxml=output/parameter-matrix.xml` 保存逐项结果。不要把这组兼容性检查当作模型效能验证，也不要为避免失败而静默改变研究者的参数；对数据与模型不兼容的组合，验证明确报错或保留失败候选记录。
+
+## 公开 DSA 案例 / Public DSA case / Cas public DSA
+
+中文：`examples/public/dsa_group_nested_v1/` 是一个可选的公开行为数据软件验证案例，与合成回归测试用途不同：默认测试集的 `tests/test_public_dsa_case_contract.py` 只在小型合成数据上检查配置、数据转换契约、参考实现边界与导出规范（不联网、不下载、不拟合 9,120 行）；完整复算需要先取得 UCI 数据，再按该目录 README 的显式命令依次运行原生 CLI、独立 scikit-learn 参考、观察性审计、冻结容差比较与工程负控，耗时以分钟计。比较脚本的 26 项数值 + 4 项结构 + 2 项导出核验与负控全部通过才说明该次运行通过；任何一项失败都保留差异并非零退出。案例通过不等于 GUI、Windows、macOS 包或官方 `uv.lock` 环境已通过，也不能替代真实窗口检查。
+
+English: `examples/public/dsa_group_nested_v1/` is an optional public-data software verification case, not a synthetic regression test. The default suite runs `tests/test_public_dsa_case_contract.py`, which only checks the configuration, data-conversion contract, reference boundaries and export schema on small synthetic archives (no network, no download, no 9,120-row fit). The full recomputation needs the UCI data first, then the explicit CLI, independent scikit-learn reference, observation audit, frozen-tolerance comparison and engineering controls in the directory README; it takes minutes. A run passes only when all 26 numerical, 4 structural, 2 export-schema and control checks pass; failures keep their differences and exit non-zero. Case success does not mean the GUI, Windows, macOS packages or the official `uv.lock` environment passed, and it never replaces real-window review.
+
+Français : `examples/public/dsa_group_nested_v1/` est un cas facultatif de vérification logicielle sur données publiques, distinct des tests de régression synthétiques. La suite par défaut exécute `tests/test_public_dsa_case_contract.py`, qui ne vérifie la configuration, le contrat de conversion, les limites de l’implémentation indépendante et le schéma d’export que sur de petites archives synthétiques (sans réseau, sans téléchargement, sans ajustement sur 9 120 lignes). La recompilation complète exige d’abord les données UCI, puis les commandes explicites du README (CLI, référence scikit-learn indépendante, audit d’observation, comparaison aux tolérances figées et contrôles) ; elle dure quelques minutes. Une exécution ne réussit que si les 26 contrôles numériques, 4 structurels, 2 de schéma d’export et tous les contrôles passent ; sinon les différences sont conservées et le code de sortie est non nul. La réussite du cas ne signifie pas que l’interface, Windows, macOS ou l’environnement `uv.lock` officiel sont validés, et ne remplace jamais la revue en fenêtre réelle.
 
 ## 0.2.0 模型保存与预测 / Model saving and prediction / Enregistrement et prédiction
 
