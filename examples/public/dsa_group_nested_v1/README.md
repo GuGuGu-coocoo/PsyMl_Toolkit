@@ -74,6 +74,7 @@ uv run python tools/cases/check_dsa_controls.py \
 - 独立参考与 PsyML 共用 scikit-learn 的估计器、切分器和指标实现，因此核对的是**工作流**而不是 sklearn 求解器本身。
 - canary 是单次工程扰动，不是置换检验，不估计假阳性率，也不证明不存在泄漏。
 - 原生 19 类混淆矩阵图最初在默认布局下标注拥挤（三位数相邻、横轴标签密集）；2026-10-02 已在核心绘图路径（非 GUI）做按类别数自适应的最小修复，并通过回归测试与实际视觉检查；数值 CSV 与指标不受影响。
+- 跨平台数值差异（`roc_auc_ovr_weighted` 约 2.03e-7）保留公开；机制诊断（Linux OpenBLAS 内核对照与本机 Mac 核查）见[诊断附录](../../../docs/VALIDATION_DSA_DIAGNOSTICS_ZH.md)：受控实验可重现同量级差异，原始 Mac 具体根因仍未确认。
 - 本案例只维护文档与示例层：不改变核心训练逻辑、不修改 GUI、不升级版本号。
 
 ## English
@@ -119,5 +120,9 @@ engineering perturbation, not a permutation test or a false-positive-rate
 estimate. The native 19-class confusion-matrix figure was crowded under its
 original default layout; on 2026-10-02 the core plotting path (not the GUI)
 received a class-count adaptive fix with regression tests and visual checks,
-leaving numeric CSVs and metrics unaffected. This example changes
+leaving numeric CSVs and metrics unaffected. The retained cross-platform
+difference (ROC-AUC about 2.03e-7) is diagnosed in the
+[diagnostics appendix](../../../docs/VALIDATION_DSA_DIAGNOSTICS_EN.md):
+controlled experiments reproduce differences of the same magnitude, while the
+original Mac root cause remains unconfirmed. This example changes
 documentation and examples only.

@@ -113,6 +113,7 @@
       "reverification_macos.json",
       "reverification_uv_lock.json"
     ],
+    "numerical_diagnostics": "See docs/VALIDATION_DSA_DIAGNOSTICS_{ZH,EN,FR}.md (Linux OpenBLAS kernel contrast and local Mac checks, 2026-10-02); the original Mac root cause remains unconfirmed.",
     "statement": "Software conformance and reproducibility evidence only; no claim about algorithmic novelty, other populations, clinical use or user error reduction."
   }
 }
