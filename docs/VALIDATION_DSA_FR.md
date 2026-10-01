@@ -1,225 +1,80 @@
-# Validation PsyML sur données publiques d’activités : cas DSA groupé par participant
+# Validation croisée imbriquée groupée par participant de PsyML sur des données publiques d’activité humaine : reproduction numérique et vérification inter-plateformes
 
 [中文](VALIDATION_DSA_ZH.md) · [English](VALIDATION_DSA_EN.md)
 
-Ce document décrit un cas reproductible de validation logicielle : les données
-publiques UCI *Daily and Sports Activities* (DSA, UCI 256) sont modélisées avec
-un protocole figé de validation croisée imbriquée groupée par participant, puis
-le résultat est vérifié point par point contre une implémentation scikit-learn
-indépendante qui n’importe jamais PsyML. L’exemple exécutable se trouve dans
-[`examples/public/dsa_group_nested_v1/`](../examples/public/dsa_group_nested_v1/README.md)
-et les valeurs attendues figées dans le
-[`expected/`](../examples/public/dsa_group_nested_v1/expected/README.md) de ce
-dossier.
+Cas `psyml_dsa_group_nested_v1` · PsyML `0.3.0` (commit `de33abfe52ccfee67f461a850edd00a14d2fbfaa`) · 2026-10-01
 
-## 1. Objectif et portée
+## Résumé
 
-Le cas sert la maintenance du projet et l’acceptation du flux : conversion des
-données, appartenance des plis, prétraitement ajusté uniquement sur les plis
-d’entraînement, sélection imbriquée, prédiction hors pli, calcul des métriques,
-export de la matrice de confusion et rechargement du modèle enregistré, avec
-accord numérique entre les deux implémentations. Ce n’est **pas** un nouvel
-algorithme, pas une reproduction du benchmark de l’article original, pas une
-comparaison d’outils, et cela ne soutient aucune affirmation sur les construits
-psychologiques, l’usage clinique, la causalité ou la réduction de l’erreur des
-utilisateurs.
+**Objectif.** Éprouver le comportement numérique du flux de validation imbriquée groupée par participant de PsyML sur des données réelles : les partitions, le prétraitement limité aux plis d’entraînement, la sélection interne, la prédiction hors pli, le calcul des métriques et la persistance du modèle suivent-ils un protocole figé à l’avance, et une implémentation indépendante les reproduit-elle ?
 
-> Un protocole prédéfini de validation croisée imbriquée, groupée par
-> participant, a été appliqué à un jeu public d’activités quotidiennes, puis un
-> flux scikit-learn indépendant a recalculé la séparation, le prétraitement des
-> plis d’entraînement, la sélection interne, la prédiction hors pli, l’évaluation
-> et la persistance du modèle. Dans l’environnement figé, les deux
-> implémentations concordent ligne à ligne pour les prédictions et les
-> statistiques de prétraitement et réussissent les tests de perturbation ciblés.
-> Ce cas fournit des preuves de conformité numérique et de reproductibilité pour
-> le flux testé ; il n’affirme rien sur la nouveauté algorithmique, la validité
-> externe dans d’autres populations, ni la réduction de l’erreur des
-> utilisateurs.
+**Méthodes.** Les données sont le jeu UCI *Daily and Sports Activities* (DSA) : 8 participants, 19 activités, 60 enregistrements de cinq secondes par participant et activité, soit 9 120 enregistrements. Chaque segment ne fournit que l’accélération et la vitesse angulaire du torse (trois axes chacune), réduites en moyenne et écart-type de population par canal, soit 12 variables. Le plan externe est une validation croisée à 4 plis groupée par participant ; le plan interne une validation croisée stratifiée à 3 plis groupée par participant ; les candidats sont Dummy et la régression logistique ; la sélection utilise la moyenne non pondérée des balanced accuracies internes. Une implémentation de référence indépendante n’importe jamais PsyML et reconstruit le même protocole avec les API publiques de scikit-learn. Des contrôles d’ingénierie couvrent un audit d’isolement des groupes, des perturbations ciblées du pli externe 1 et un canari de labels mélangés.
 
-En tant que maintenance d’un logiciel de recherche, la contribution
-descriptible est l’exécution et la traçabilité unifiées de la conception de
-l’étude, du prétraitement limité aux plis d’entraînement, de la sélection
-imbriquée, de la sémantique d’évaluation et des artefacts reproductibles ; ce
-n’est ni un nouveau modèle, ni une revendication de performance, ni un résultat
-sur l’erreur humaine.
+**Principaux résultats.** La métrique principale, la moyenne des balanced accuracies des plis externes, vaut 0.5740131578947368. Les 9 120 prédictions hors pli concordent ligne à ligne entre les deux implémentations ; les lignes d’entraînement, familles, paramètres et statistiques de prétraitement des 54 ajustements s’alignent ; la relecture du modèle enregistré correspond au modèle final indépendant. Ces valeurs proviennent de l’exécution Linux figée du paquet de cas d’origine. Lors d’une reprise macOS locale, les prédictions dures sont identiques octet pour octet ; seule la ROC-AUC dérivée des probabilités diffère d’environ 2.03e-7, les probabilités hors pli différant d’au plus environ 1.98e-5. Cet écart est conservé et publié tel quel.
 
-## 2. Version, date et environnement
+**Portée.** Les résultats ne soutiennent la conformité numérique et la reproductibilité du flux testé que pour ce cas ; ils ne constituent ni un nouvel algorithme, ni une revendication de performance, ni un résultat clinique ou populationnel, et ils ne montrent pas que toutes les fonctions de l’outil sont vérifiées sur toutes les plateformes.
 
-- Commit source figé : `de33abfe52ccfee67f461a850edd00a14d2fbfaa` (PsyML `0.3.0`).
-- Protocole figé le 2026-10-01 à 11:48:43 UTC ; première exécution réelle sur
-  données à 11:49:02.979300 UTC. Figé avant la modélisation ; aucun changement
-  après consultation des scores.
-- SHA-256 du modèle de configuration figé d’origine :
-  `a156dee0bde4e65f4e89ceef28320faa6931ded8dc9eccab62b514b2dba69941`
-  (contient les chemins de l’époque ; conservé pour la vérification
-  forensique. L’exemple du dépôt garde les champs scientifiques et utilise des
-  chemins relatifs).
-- Environnement de parité du cas (Linux x86_64) : Python 3.12.14, NumPy 2.3.5,
-  pandas 2.2.3, scikit-learn 1.8.0, SciPy 1.17.0, joblib 1.5.3,
-  matplotlib 3.10.8, pyreadstat 1.3.6 ; `OPENBLAS_NUM_THREADS`,
-  `OMP_NUM_THREADS` et `MKL_NUM_THREADS` à 1. pyarrow et SHAP non installés.
-- Il s’agit d’un **environnement de parité du cas** : un venv isolé a installé
-  ces dépendances et construit la source figée avec `--no-deps`.
-  L’environnement officiel du `uv.lock` du dépôt **n’a pas** été reconstruit
-  (le lock actuel fixe scikit-learn 1.9.0 sur Python ≥ 3.11) et n’a pas servi de
-  base aux valeurs enregistrées.
-- `uv run psyml ...` utilise l’environnement actif du dépôt. Une autre version
-  ou plateforme produit un **nouveau résultat de vérification** : elle ne doit
-  jamais écraser `expected/` ni relâcher les tolérances.
+## 1. Introduction
 
-## 3. Données, attribution et conversion
+La justesse d’un outil d’apprentissage automatique ne se lit pas dans le score final. Pour les chercheurs, il importe tout autant que les partitions isolent réellement les participants, que le prétraitement soit ajusté à l’intérieur des plis d’entraînement, que les modèles et paramètres soient choisis sur des preuves d’entraînement, que les prédictions et métriques hors pli puissent être recalculées indépendamment, et qu’un modèle enregistré se rejoue fidèlement. Vérifier ces étapes sur des données comportementales réelles avec un protocole figé expose des problèmes de conversion et de groupement que des données synthétiques peuvent masquer. Séparer par participant plutôt que par ligne évite de placer des segments voisins d’une même personne de part et d’autre de la frontière entraînement/test : c’est l’exigence de base contre les fuites pour ce type de données.
 
-- Données : Barshan, B. & Altun, K. (2010). *Daily and Sports Activities*
-  [Dataset]. UCI Machine Learning Repository. DOI
-  <https://doi.org/10.24432/C5C59F> ; page
-  <https://archive.ics.uci.edu/dataset/256/daily+and+sports+activities> ;
-  licence CC BY 4.0 (selon la page officielle ; aucun membre restrictif
-  supplémentaire trouvé dans le ZIP). Les auteurs ne cautionnent ni PsyML ni ce
-  cas.
-- Structure : 8 adultes (20–30 ans), 19 activités, 60 segments de cinq secondes
-  par participant et activité, 9 120 segments ; chaque segment fait 125×45. Les
-  dossiers `p1..p8` sont les identifiants officiels. **Les 8 participants sont
-  les unités indépendantes ; les 9 120 segments ne sont pas 9 120 personnes**,
-  et des segments voisins peuvent être corrélés. L’archive ne définit aucune
-  séparation entraînement/test.
-- ZIP brut : 170 800 010 octets, SHA-256
-  `f42ad7744ecf14151c9fa3a86dfb5b24de9d7cb7ffe956ef5de242983459c77e` ;
-  téléchargé uniquement depuis l’URL officielle et entièrement vérifié avant
-  lecture.
-- Conversion : seuls les 9 120 membres
-  `data/a01..a19/p1..p8/s01..s60.txt` sont lus (énumération stricte : membre
-  manquant, dupliqué, supplémentaire hors dossier, forme autre que 125×45 ou
-  valeur NaN/infinie interrompent l’exécution). Seules les six premières
-  colonnes sont utilisées (accélération du torse x/y/z et vitesse angulaire du
-  torse x/y/z) ; chaque segment fournit, par canal, la moyenne puis l’écart-type
-  de population (`ddof=0`) dans cet ordre, soit 12 variables. Ni filtrage, ni
-  ACP, ni sélection de variables, ni normalisation inter-segments.
-- CSV dérivé : 2 343 871 octets, SHA-256
-  `75a5fe87a58f4cfde777d914d674362b5148854a3c7064d8c686c0e25c3a047e` ;
-  colonnes fixées à `segment_id,subject_id,activity` plus les 12 variables ;
-  UTF-8, LF, sans index, `float_format %.17g` ; exactement 60 lignes par
-  participant × activité, 480 par classe, 1 140 par participant. Une
-  recompilation indépendante des 12 statistiques (`csv.reader` + `math.fsum`) a
-  donné un écart absolu maximal de 1.2434497875801753e-14 (atol=rtol=1e-12).
-- Les colonnes de rôle `segment_id`, `subject_id`, `activity` ne servent qu’à la
-  jointure, au regroupement et à la cible ; elles n’entrent **jamais** dans
-  `feature_columns`.
-- Le dépôt ne redistribue pas les données : `examples/public/data/` est ignoré
-  par Git et le CSV dérivé reste local. `tools/cases/prepare_dsa.py` ne
-  télécharge pas, n’extrait pas toute l’arborescence et n’exécute aucun code de
-  l’archive ; il publie la procédure, l’attribution et les empreintes.
+Ce rapport documente un tel cas : PsyML est exécuté sur les données publiques UCI *Daily and Sports Activities* (DSA) selon un protocole figé à l’avance, puis comparé point par point à une implémentation scikit-learn indépendante qui n’importe pas PsyML. Il s’agit d’un travail de maintenance logicielle et d’acceptation de flux, **non** d’un article de nouvelle méthode, d’une reproduction du benchmark de l’article original ou d’une comparaison d’outils ; il ne soutient aucune affirmation sur les construits psychologiques, l’usage clinique, la causalité ou les effets humains.
 
-## 4. Protocole figé et règles de sélection
+## 2. Données et méthodes
 
-- Extérieur : `GroupKFold(n_splits=4, shuffle=False)` sur l’ordre d’origine.
-  Participants test par pli : `[4,8]`, `[3,7]`, `[2,6]`, `[1,5]` (2 280 segments
-  test et 6 840 entraînement par pli).
-- Intérieur : `StratifiedGroupKFold(n_splits=3, shuffle=True,
-  random_state=20261001 + numéro de pli externe)` (plis numérotés à partir de 1,
-  soit 20261002…20261005) ; chaque pli valide 2 participants et entraîne sur 4,
-  et chaque partition contient les 19 classes.
-- Choix final sur toutes les données : même `StratifiedGroupKFold(n_splits=3,
-  shuffle=True, random_state=20261001)` ; il ne fournit **aucun nouveau score
-  de test non biaisé**.
-- Chaque ajustement construit un pipeline neuf `ColumnTransformer(numeric) →
-  SimpleImputer(strategy='median') → StandardScaler → estimateur`, ajusté
-  uniquement sur les lignes d’entraînement correspondantes.
-- Candidats : ordre des familles `['dummy','logistic_regression']` ;
-  `DummyClassifier(strategy='prior', random_state=20261001)` ;
-  `LogisticRegression(C∈[0.1, 1.0], solver='lbfgs', max_iter=2000, tol=1e-8,
-  class_weight=None, fit_intercept=True, random_state=20261001)` ;
-  `max_candidates=2` s’applique par famille et ne déclenche jamais
-  d’échantillonnage aléatoire.
-- Sélection : moyenne non pondérée des balanced accuracies internes ;
-  remplacement uniquement sur une valeur **strictement supérieure**, égalité
-  exacte conservant le premier candidat/famille ; les scores externes ne
-  départagent jamais. Un pli interne en échec invalide le candidat (pas de
-  moyenne sur les plis réussis) ; si le gagnant interne échoue à l’extérieur,
-  toute la procédure échoue et aucune autre famille n’est substituée.
-- Volume : 45 ajustements internes + 8 ajustements externes par famille + 1
-  ajustement final = 54 par flux complet ; CPU uniquement, un seul thread de
-  bibliothèque numérique, sans SHAP.
+### 2.1 Source, licence et attribution
 
-## 5. Rôles et frontières de code
+- Données : Barshan, B. & Altun, K. (2010). *Daily and Sports Activities* [Dataset]. UCI Machine Learning Repository. DOI [10.24432/C5C59F](https://doi.org/10.24432/C5C59F) ; page <https://archive.ics.uci.edu/dataset/256/daily+and+sports+activities>.
+- Licence : la page officielle indique CC BY 4.0 ; aucun membre du ZIP téléchargé n’ajoute de restriction supplémentaire. Les auteurs des données ne cautionnent ni PsyML ni ce cas.
+- Article original : Altun, K., Barshan, B., & Tunçel, O. (2010). Comparative study on classifying human activities with miniature inertial and magnetic sensors. *Pattern Recognition*, 43(10), 3605–3620. <https://doi.org/10.1016/j.patcog.2010.04.019>.
+- ZIP brut : 170 800 010 octets, SHA-256 `f42ad7744ecf14151c9fa3a86dfb5b24de9d7cb7ffe956ef5de242983459c77e` ; téléchargé uniquement depuis l’emplacement officiel et entièrement vérifié avant lecture.
 
-| Exécution | Emplacement | Rôle | Frontière |
-| --- | --- | --- | --- |
-| CLI native (principale) | `uv run psyml run --config ...` | Seul résultat principal | Entrée de production ; source non modifiée |
-| Référence indépendante | [`tools/cases/reference_dsa.py`](../tools/cases/reference_dsa.py) | Reconstruit le protocole avec les API publiques scikit-learn | **N’importe jamais psyml** et ne copie pas sa chaîne d’appel ; vérification statique des imports en test et revue du flux de données |
-| Complément d’observation | [`tools/cases/observe_psyml_dsa.py`](../tools/cases/observe_psyml_dsa.py) | Complète l’appartenance des plis et l’audit des 54 ajustements | Ne fait qu’envelopper et enregistrer les appels de production ; ne change ni entrées, ni plis, ni modèles, ni seuils ; **pas une implémentation indépendante** |
-| Acceptation comparative | [`tools/cases/compare_dsa.py`](../tools/cases/compare_dsa.py) | 26 contrôles numériques + 4 structurels + 2 d’export | Peut importer PsyML pour inspecter la persistance ; conserve les écarts et sort en code non nul en cas d’échec |
-| Contrôles d’ingénierie | [`tools/cases/check_dsa_controls.py`](../tools/cases/check_dsa_controls.py) | Audit du row-split, perturbations du pli 1, canari de labels mélangés | Diagnostique seulement ; les scores perturbés ne servent jamais à réviser le protocole ni à choisir un modèle |
+### 2.2 Participants, activités et enregistrements
 
-La référence indépendante partage les estimateurs, séparateurs et métriques
-scikit-learn avec PsyML : elle valide le flux, pas les solveurs. Le comparateur
-recalcule en outre la balanced accuracy et le macro-F1 à partir des comptes
-TP/FN/FP par classe (contrôle au niveau des métriques, pas un deuxième
-ajustement indépendant).
+Le jeu contient 19 activités quotidiennes et sportives réalisées par 8 adultes de 20 à 30 ans, avec 60 segments de cinq secondes par participant et activité — 9 120 segments, chacun de forme initiale 125 lignes × 45 colonnes. Les dossiers `p1..p8` sont les identifiants officiels. **Les 8 participants sont les unités indépendantes ; les 9 120 segments ne doivent pas être traités comme 9 120 individus indépendants**, et des segments voisins peuvent être corrélés. L’archive ne définit aucune séparation entraînement/test.
 
-Le comparateur ne compare jamais « seulement certaines colonnes » : chaque
-table d’acceptation a un **contrat de colonnes obligatoires fixe**, défini
-d’après le protocole figé et les schémas d’artefacts attendus
-(`compare_dsa.REQUIRED_COLUMNS`), vérifié **séparément** côté production et côté
-référence ; toute colonne obligatoire manquante d’un côté échoue et signale le
-nom de la table et les colonnes manquantes. Deux tables auxquelles il manque la
-même colonne critique échouent aussi — le contrat ne dépend jamais des noms de
-colonnes de production du moment et n’est pas une intersection des deux tables.
-En outre, chaque colonne de production doit exister dans la référence et est
-contrôlée ; un écart du nombre de lignes ou une colonne supplémentaire non
-enregistrée échoue. Les champs numériques suivent des règles explicites : tout
-±Inf, un NaN d’un seul côté, ou un NaN dans une **statistique qui doit être
-finie** échoue même si les deux côtés concordent ; seules deux catégories de
-valeurs vides sont admises — les diagnostics enregistrés comme pouvant être
-vides (par exemple une colonne `error` vide) et les scores NaN d’un candidat
-explicitement `status=failed` ; une discordance de dtype (numérique vs texte)
-échoue aussi. La colonne de diagnostic `inner_scores` propre à la référence
-n’est pas ignorée : elle doit contenir une liste finie de scores de la longueur
-des plis internes pour chaque candidat terminé, dont la moyenne non pondérée
-égale le score déclaré. Cette politique vient d’un premier correctif :
-l’auxiliaire initial exigeait des ensembles de colonnes identiques, prenait le
-diagnostic de la référence pour une divergence et sérialisait un `inf` dans le
-JSON, interrompant l’exécution ; le comportement retenu est couvert par quatre
-groupes de tests de régression dans
-`tests/test_public_dsa_case_contract.py` : contrat de colonnes obligatoires fixe
-(manquant côté production, manquant côté référence, même colonne critique
-absente des deux côtés, réordonnancement toujours accepté, nom de table inconnu
-en erreur), aucun masquage (colonnes manquantes/non enregistrées, dérive
-numérique, nombre de lignes), rejet des valeurs non finies (NaN unilatéral, NaN
-de statistique, Inf, dtype) et validation du diagnostic de la référence.
+### 2.3 Construction des variables
 
-La validation du diagnostic (`inner_scores`) et le recalcul direct des métriques
-vérifient aussi d’abord leurs colonnes de dépendance réelles
-(`status/score/inner_scores` et `fold/accuracy/balanced_accuracy/f1_macro`) :
-une dépendance manquante est signalée comme échec avec le nom de table, les
-colonnes manquantes et la raison, sans valeur par défaut, sans saut, sans
-exception non rattrapée et sans interrompre le rapport, de sorte que les
-contrôles indépendants ultérieurs encore exécutables (par exemple la matrice
-de confusion lorsque les prédictions sont complètes) continuent. Les tests de
-flux complet `compare()` couvrent un `score` de `parameter_search` manquant
-côté référence puis des deux côtés, et un `fold_metrics` de production privé de
-`balanced_accuracy` ou de `fold` ; ils vérifient que `checks.json` est écrit,
-que le rapport porte le nom de table et les colonnes manquantes exacts et que
-la CLI sort en code non nul.
+Seuls les 9 120 membres `data/a01..a19/p1..p8/s01..s60.txt` sont lus, dans un ordre fixe : membre manquant, dupliqué, supplémentaire hors dossier, forme autre que 125×45 ou valeur NaN/infinie interrompent la conversion, sans suppression silencieuse. Chaque segment ne fournit que ses six premières colonnes (accélération du torse x/y/z et vitesse angulaire du torse x/y/z) ; par canal, la moyenne puis l’écart-type de population (`std(ddof=0)`) sont calculés dans cet ordre, soit 12 variables. Les autres capteurs et magnétomètres ne sont pas utilisés ; aucun filtrage, ACP, sélection de variables ni normalisation inter-segments. Le CSV dérivé est en UTF-8, LF, sans index, `float_format %.17g` ; `segment_id`, `subject_id` et `activity` ne servent qu’à la jointure, au regroupement et à la cible et n’entrent jamais dans les variables.
 
-## 6. Conventions de métriques
+### 2.4 Prétraitement limité au pli d’entraînement
 
-- Principal : moyenne non pondérée, sur les plis externes, de la balanced
-  accuracy de la procédure sélectionnée en interne. L’écart-type entre plis
-  utilise `ddof=0` et reste descriptif, sans erreur type ni intervalle de
-  confiance.
-- Secondaire : même agrégation pour l’accuracy et le macro-F1
-  (`zero_division=0`) ; matrice de confusion hors pli mise en commun
-  (explicitement « pooled ») ; différences appariées procédure−Dummy ; balanced
-  accuracy par participant (descriptive).
-- **La moyenne des plis et le « pooled » ne se mélangent pas** : des plis
-  équilibrés et de taille égale font coïncider accuracy/BA pooled avec la
-  moyenne des plis, mais le macro-F1 diffère (pooled 0.5702035749465654 contre
-  0.5513874769696934).
-- Le modèle final est ajusté sur toutes les lignes analysées ; sa relecture
-  vérifie la persistance et le schéma, **pas** la validité externe, et ne peut
-  pas être présenté comme un score de généralisation.
+Chaque ajustement construit un pipeline neuf `ColumnTransformer(numeric) → SimpleImputer(strategy='median') → StandardScaler → estimateur`, ajusté uniquement sur les lignes d’entraînement correspondantes. Le cas ne contient pas de valeurs manquantes, mais le pipeline visible est conservé pour pouvoir auditer sa portée d’ajustement.
 
-## 7. Valeurs enregistrées et trace de sélection (cas figé)
+### 2.5 Partitions externe et interne
+
+- Externe : `GroupKFold(n_splits=4, shuffle=False)` dans l’ordre d’origine ; les participants test des quatre plis sont `[4,8]`, `[3,7]`, `[2,6]`, `[1,5]` ; chaque pli met de côté 2 280 segments et entraîne sur 6 840.
+- Interne : `StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=20261001 + numéro de pli externe)` (plis numérotés à partir de 1), pour sélectionner à l’intérieur de l’ensemble d’entraînement externe ; chaque pli interne valide 2 participants et entraîne sur 4, et chaque partition contient les 19 classes.
+- Sélection finale sur toutes les données : la même validation croisée stratifiée à 3 plis groupée avec `random_state=20261001` ; elle ne sert qu’à déterminer le modèle final et ne fournit **aucun nouveau score de test non biaisé**.
+
+### 2.6 Candidats et règle de sélection
+
+L’ordre des familles est `['dummy', 'logistic_regression']` : `DummyClassifier(strategy='prior')` et `LogisticRegression(C∈[0.1, 1.0], solver='lbfgs', max_iter=2000, tol=1e-8, class_weight=None, fit_intercept=True)`, tous deux avec `random_state=20261001`. Chaque paramètre fixe est écrit explicitement dans la configuration ; `max_candidates=2` s’applique par famille et ne déclenche jamais d’échantillonnage aléatoire.
+
+Sélection : pour chaque candidat, la moyenne non pondérée des trois balanced accuracies internes ; le remplacement exige une valeur **strictement supérieure**, et une égalité exacte conserve le premier candidat/famille dans l’ordre de configuration ; les scores externes ne départagent jamais. Un pli interne en échec invalide le candidat, sans moyenner les plis réussis à la place ; si le gagnant interne échoue dans le pli externe, toute la procédure échoue et aucune autre famille n’est substituée. Un flux complet réalise 54 ajustements : 45 internes + 8 externes par famille + 1 final. CPU uniquement, un seul thread de bibliothèque numérique, sans SHAP.
+
+### 2.7 Métriques et conventions de rapport
+
+- Principal : la **moyenne non pondérée des plis** de la balanced accuracy externe de la procédure sélectionnée en interne. L’écart-type entre plis (`ddof=0`) est une variation descriptive et **ne doit pas être lu comme une erreur type ni un intervalle de confiance de population**.
+- Secondaire : même agrégation pour l’accuracy et le macro-F1 (`zero_division=0`) ; matrice de confusion et macro-F1 hors pli mises en commun (pooled) ; différences appariées procédure−Dummy ; balanced accuracy par participant (descriptive).
+- **La moyenne des plis et le pooled sont rapportés séparément** : des plis de taille égale et à classes équilibrées font coïncider accuracy/BA pooled avec la moyenne des plis, mais le macro-F1 diffère (voir 3.1).
+- Le modèle final est ajusté sur toutes les lignes analysées ; sa relecture vérifie la persistance et le schéma, **pas** la validité externe, et ne peut pas être lue comme un score de généralisation.
+
+### 2.8 Référence indépendante et complément d’observation
+
+- La référence indépendante ([`tools/cases/reference_dsa.py`](../tools/cases/reference_dsa.py)) **n’importe jamais PsyML** et reconstruit partitions, prétraitement, sélection interne, prédiction hors pli et ajustement final à partir des API publiques de scikit-learn ; la suite de tests vérifie statiquement ses imports et son flux de données a été relu. Elle **partage les estimateurs, séparateurs et métriques de scikit-learn** avec PsyML : elle valide donc le flux, pas les solveurs scikit-learn eux-mêmes.
+- Le complément d’observation ([`tools/cases/observe_psyml_dsa.py`](../tools/cases/observe_psyml_dsa.py)) ne fait qu’envelopper et enregistrer les appels de production de PsyML pour compléter l’appartenance des plis et l’audit des 54 ajustements ; il ne se présente pas comme une implémentation indépendante.
+- Le comparateur ([`tools/cases/compare_dsa.py`](../tools/cases/compare_dsa.py)) vérifie l’appartenance, les ensembles de classes, l’isolement des groupes, la portée d’ajustement, les statistiques de prétraitement, les paramètres et scores des candidats, la trace de sélection, les prédictions et probabilités hors pli, les métriques et la relecture du modèle enregistré, sous des tolérances déclarées à l’avance ; il peut importer PsyML pour inspecter la persistance et **ne se présente pas comme une implémentation indépendante** ; il recalcule en outre la balanced accuracy et le macro-F1 à partir des comptes TP/FN/FP par classe. Tout échec conserve ses écarts et sort en code non nul ; voir annexe D.
+
+### 2.9 Contrôles d’ingénierie et acceptation
+
+Quatre contrôles sont exécutés sur les données réelles : audit de fuite de groupes sur une séparation aléatoire par lignes (l’auditeur supplémentaire doit le détecter ; PsyML lui-même avertit sans bloquer, et cela ne doit pas être décrit comme une protection intégrée) ; rotation des labels du pli externe 1 fixé (scores internes, sélection, statistiques d’entraînement et prédictions/probabilités de test inchangés) ; ajout de 1000 aux variables de test du pli externe 1 fixé (statistiques d’entraînement et sélection interne inchangées, prédictions libres) ; et un canari de labels mélangés intra-participant (ordre croissant de `subject_id`, un seul `default_rng(20261002)`, variables et ordre des lignes intacts ; seuil d’alerte prédéfini : BA moyenne des plis > 0,10). Le canari est une perturbation d’ingénierie, **pas un test de permutation**, et n’estime pas de taux de faux positifs.
+
+## 3. Résultats
+
+### 3.1 Valeurs principales
+
+Les valeurs ci-dessous proviennent de l’exécution Linux figée du paquet de cas d’origine et ont été revérifiées par la reprise macOS locale (3.5).
 
 | Grandeur | Valeur |
 | --- | --- |
@@ -227,221 +82,142 @@ la CLI sort en code non nul.
 | Pli externe 2 (participants test 3, 7), balanced accuracy | 0.4986842105263158 |
 | Pli externe 3 (participants test 2, 6), balanced accuracy | 0.6644736842105264 |
 | Pli externe 4 (participants test 1, 5), balanced accuracy | 0.5934210526315788 |
-| **Balanced accuracy principale (moyenne des plis)** | **0.5740131578947368** |
+| **Principal : balanced accuracy moyenne des plis** | **0.5740131578947368** |
 | Macro-F1 moyen des plis | 0.5513874769696934 |
-| Écart-type entre plis (ddof=0, BA / macro-F1) | ≈ 0.062103 / ≈ 0.068311 |
+| Écart-type entre plis (ddof=0, BA / macro-F1) | ≈ 0,062103 / ≈ 0,068311 |
 | Dummy du même pli | 1/19 = 0.05263157894736842 |
 | Différence moyenne procédure − Dummy | 0.5213815789473684 |
 | Macro-F1 pooled hors pli | 0.5702035749465654 |
-| Étendue par participant | ≈ 0.4553–0.6658 (8 participants, descriptif) |
+| Étendue par participant hors pli | ≈ 0,4553–0,6658 (8 participants, descriptif) |
 
-Les quatre plis externes et le choix final ont tous retenu
-`logistic_regression, C=1.0`, avec des moyennes internes de
-0.5381578947368421, 0.577485380116959, 0.5399122807017545 et
-0.508187134502924, et un score final de 0.5450779727095517. Le classement des
-familles à l’extérieur est exploratoire : ce n’est pas un nouveau score «
-meilleur modèle » non biaisé et cela ne prouve pas l’inutilité de comparer des
-familles.
+La valeur principale proche de 0,574 est le résultat de ce cas sous le protocole convenu ; elle sert à vérifier que le flux a été correctement exécuté, n’est pas un apport algorithmique nouveau et ne doit pas être comparée directement à des valeurs d’articles obtenues avec d’autres capteurs, variables ou partitions.
 
-## 8. Résultats d’acceptation et contrôles
+### 3.2 Résultats par pli et trace de sélection
 
-| Catégorie | Nombre | Résultat | Preuve |
+Les quatre plis externes et le choix final ont tous retenu `logistic_regression, C=1.0`, avec des moyennes internes de 0.5381578947368421, 0.577485380116959, 0.5399122807017545 et 0.508187134502924, et un choix final de 0.5450779727095517. Le classement des familles à l’extérieur est exploratoire et ne constitue pas un nouveau score « meilleur modèle » non biaisé.
+
+### 3.3 Conformité logiciel–référence
+
+- Les 9 120 prédictions hors pli concordent ligne à ligne entre les deux implémentations (exactement, selon le paquet de cas ; le fichier de prédictions dures de la reprise macOS est identique octet pour octet au résultat figé, voir 3.5).
+- Les lignes d’entraînement, familles, paramètres et statistiques de prétraitement des 54 ajustements s’alignent ; le comparateur recalcule aussi directement médiane/moyenne/variance à partir des lignes d’entraînement et la balanced accuracy/macro-F1 à partir des comptes TP/FN/FP par classe.
+- L’écart maximal de probabilité entre PsyML et la référence indépendante est 0 ; la CLI native et la reprise d’observation exportent des fichiers identiques de prédictions, métriques de pli, recherche et sélection.
+- Après un chargement de confiance, les classes et probabilités du modèle enregistré correspondent au modèle final indépendant ; la réorganisation des colonnes est sans effet et une variable manquante est refusée. La relecture utilise les lignes d’analyse d’origine et **n’est pas** une validation externe.
+
+### 3.4 Résultats des contrôles
+
+| Catégorie | Nombre | Résultat | Résumé |
 | --- | --- | --- | --- |
-| Acceptation numérique | 26 | Réussi | `checks.json` du comparateur |
+| Acceptation numérique | 26 | Réussi | Appartenance, ajustements, prétraitement, sélection, prédictions/probabilités hors pli, relecture du modèle enregistré |
 | Contrôles structurels | 4 | Réussi | Partitions disjointes couvrant les lignes source ; 19 classes par partition ; portées internes strictement incluses dans l’entraînement externe ; colonnes de rôle exclues |
 | Contrôles d’export | 2 | Réussi | Colonnes de probabilité dans l’ordre de `classes_` ; métadonnées du modèle enregistré identiques au modèle final indépendant |
-| Contrôles sur données réelles | 7 | Réussi | L’auditeur de groupes supplémentaire rejette le row-split ordinaire ; la rotation des labels du pli externe 1 ne change ni scores/choix internes ni statistiques d’entraînement ni prédictions/probabilités de test ; l’ajout de +1000 aux variables du pli 1 ne change ni statistiques ni sélection interne |
-| Canari de labels mélangés | 6 + 1 | Réussi | Le flux imbriqué complet avec labels mélangés par participant concorde avec la référence ; BA = 0.0532894736842105, sous le seuil d’alerte prédéfini 0,10 ; le mélange ne touche que la colonne cible (1 contrôle octet) |
+| Contrôles sur données réelles | 7 | Réussi | Fuite de la séparation par lignes détectée par l’auditeur supplémentaire ; la rotation des labels du pli 1 ne change ni scores/choix internes ni statistiques d’entraînement ni prédictions/probabilités de test ; +1000 sur les variables du pli 1 ne change ni statistiques ni sélection interne |
+| Canari de labels mélangés | 6 + 1 | Réussi | Le flux imbriqué complet correspond à la référence indépendante ; BA moyenne des plis = 0.0532894736842105, sous le seuil 0,10 ; le mélange ne touche que la colonne cible |
 
-Autres faits clés : les 9 120 prédictions hors pli concordent ligne à ligne ;
-les lignes d’entraînement, familles, paramètres et statistiques de prétraitement
-des 54 ajustements s’alignent (statistiques à 1e-12, coefficients/intercepts à
-0) ; l’écart maximal de probabilité PsyML-référence est 0 ; la CLI native et la
-relecture d’observation produisent des fichiers identiques ; le modèle
-enregistré rechargé de façon fiable reproduit les classes et probabilités du
-modèle final indépendant, résiste à la réorganisation des colonnes et refuse une
-variable manquante ; l’empreinte du CSV d’entrée correspond à la valeur figée.
-Les tests existants du dépôt sur la perturbation du classement externe et le
-repli en cas d’échec (`tests/test_nested_family_selection.py`) ont été
-**réellement exécutés** pendant cette intégration, pas seulement cités.
+Sur les fuites de groupes, deux faits doivent rester distincts : PsyML avertit lorsqu’une colonne de groupe accompagne un k-fold ordinaire mais ne le **bloque pas** en dur ; l’injection de faute de ce cas est détectée par l’auditeur supplémentaire. En outre, les tests existants de perturbation du classement externe et de repli en cas d’échec (`tests/test_nested_family_selection.py`) ont été réellement exécutés et réussis pendant cette intégration.
 
-Fuites de groupes : PsyML avertit lorsqu’une colonne de groupe accompagne un
-k-fold ordinaire, mais ne le **bloque pas** en dur. Ici, l’auditeur
-supplémentaire détecte l’injection de faute ; ce comportement ne doit pas être
-présenté comme une protection intégrée de PsyML.
+### 3.5 Vérification inter-plateformes
 
-Journal d’exécution de maintenance (2026-10-01, trois environnements
-enregistrés séparément) :
+Pendant l’intégration du dépôt, toutes les étapes ont été rejouées sous macOS (aarch64) avec les mêmes versions de parité que le cas figé (Python 3.12.14, scikit-learn 1.8.0, SciPy 1.17.0, …) ; le relevé est dans [`expected/reverification_macos.json`](../examples/public/dsa_group_nested_v1/expected/reverification_macos.json).
 
-- **`.venv` local du dépôt** (Python 3.12.13 ; numpy 2.5.2, pandas 3.0.5,
-  scikit-learn 1.9.0, scipy 1.18.1, joblib 1.6.0, matplotlib 3.11.1,
-  pyarrow 23.0.1, plus l’extra explain `shap 0.52.0`) : `ruff check src tests
-  tools` a réussi ; la suite par défaut `pytest -q` a rapporté **1212 réussites**
-  (jeu de tests actuel ; la reprise antérieure, avant l’ajout des 3 tests de
-  régression du comparateur, en rapportait 1209) ; `tools/audit_repository.py` a
-  réussi l’audit. Comme l’extra explain est installé, les tests d’explication
-  SHAP s’exécutent réellement ici.
-- **Environnement officiel `uv.lock`** (chemin séparé,
-  `UV_PROJECT_ENVIRONMENT=… uv sync --locked --group dev` ; `uv.lock` non
-  modifié) : Python 3.12.13 avec les mêmes versions verrouillées
-  (scikit-learn 1.9.0, joblib 1.6.0, matplotlib 3.11.1, pyarrow 23.0.1, …) ;
-  `pytest -q` a rapporté **1152 réussites, 2 ignorés**, code 0. Les deux
-  ignorés sont les `pytest.importorskip("shap")` au niveau module de
-  `tests/test_explanation.py` et `tests/test_explanation_cli.py`, car cette
-  commande n’installe volontairement pas l’extra explain — ces deux tests **ne
-  sont pas comptés comme réussis**. Cet environnement n’a **pas** rejoué le cas
-  DSA lui-même.
-- **Environnement de parité du cas** (Python 3.12.14, scikit-learn 1.8.0,
-  scipy 1.17.0, …) ne sert qu’au recalcul du cas DSA et diffère des deux
-  environnements de test ; ses chiffres ne doivent pas être présentés comme ceux
-  de l’environnement officiel verrouillé ou du développement local.
+- Codes de sortie : CLI native 0, référence 0, observation 0, comparaison 1, contrôles 0 ; le 1 de la comparaison provient uniquement de l’écart métrique inter-plateformes ci-dessous et est conservé volontairement.
+- Les 9 120 prédictions dures hors pli sont **identiques octet pour octet** au résultat figé (SHA-256 de `predictions.csv` : `36c39a34c9317d568c79f37de17c2b566d10f24db9de0625886f3bda83022b53`) ; accuracies par pli, trace de sélection, macro-F1 et différences Dummy correspondent à la base figée.
+- Le seul écart concerne `roc_auc_ovr_weighted`, dérivé des probabilités (colonnes touchées : `fold_metrics.csv`, `metrics.csv`, moyenne/écart-type/min de `metrics_summary.csv`) : environ 2,03e-7 pour les plis externes 1 et 2, et 0 pour les plis 3 et 4. L’écart maximal des probabilités hors pli est 1.9762588500393807e-05 (maxima par pli 1,98e-5, 8,70e-6, 6,56e-6, 5,23e-6 ; 97 415 des 173 280 cellules de probabilité dépassent 1e-10).
+- Alignement et localisation : les deux côtés ordonnent les colonnes de probabilité en `probability_1..19`, les `classes_` des deux modèles finaux valent 1..19, et les séquences `row_index` ainsi que `fold/observed/predicted/model` sont identiques. Recalculer la ROC-AUC sous macOS à partir des **matrices de probabilité figées** reproduit les valeurs figées à 1,11e-16 près : le calcul de la métrique est donc cohérent entre plateformes, et l’écart suit les probabilités ajustées — les deux modèles finaux diffèrent d’au plus environ 3,07e-5 pour les coefficients, 7,08e-5 pour les intercepts et 3,03e-6 pour les probabilités sur toutes les données.
+- **La cause de cet écart n’est pas confirmée et pourrait être liée aux implémentations numériques des plateformes** ; aucune expérience de cause racine au niveau implémentation n’a été menée, et il n’est pas écrit « causé par telle bibliothèque d’algèbre linéaire ». Ce cas ne revendique pas l’équivalence numérique entre plateformes, et aucune tolérance ni base n’a été modifiée pour cela.
+- La BA du canari et l’empreinte du CSV mélangé correspondent aux valeurs figées ; le décalage +1000 des variables a modifié 2 122 prédictions, même nombre que sous Linux. Après l’exécution, les 423 fichiers du manifeste figé ont été contrôlés : aucun fichier Python/GUI/test/lock ne diffère ; seuls les 3 documents publics intentionnellement modifiés par cette intégration diffèrent.
 
-## 9. Reprise macOS enregistrée pendant cette intégration (preuve additive)
+### 3.6 Environnements de test, avertissements et CI
 
-L’intégration a rejoué toutes les étapes avec la source figée et les mêmes
-versions de parité (macOS aarch64, Python 3.12.14, scikit-learn 1.8.0, etc. ;
-voir
-[`expected/reverification_macos.json`](../examples/public/dsa_group_nested_v1/expected/reverification_macos.json)) :
+Trois environnements sont enregistrés séparément pour éviter toute confusion :
 
-- Codes de sortie : CLI native 0, référence 0, observation 0, comparaison 1,
-  contrôles 0 ; le 1 de la comparaison vient uniquement de l’écart de métrique
-  inter-plateformes ci-dessous.
-- Les 26 contrôles numériques, 4 structurels et 2 d’export réussissent ; les
-  9 120 prédictions hors pli sont **identiques octet pour octet** au résultat
-  figé (SHA-256 de `predictions.csv` :
-  `36c39a34c9317d568c79f37de17c2b566d10f24db9de0625886f3bda83022b53`) ;
-  les BA par pli, la trace de sélection, le macro-F1 et les différences Dummy
-  correspondent à la base figée.
-- Le seul écart par rapport à la base figée concerne `roc_auc_ovr_weighted`,
-  dérivé des probabilités (colonnes touchées : `fold_metrics.csv`,
-  `metrics.csv`, moyenne/écart-type/min de `metrics_summary.csv`) : environ
-  2,03e-7 pour les plis externes 1 et 2 et 0 pour les plis 3 et 4. Les 9 120
-  probabilités hors pli diffèrent d’au plus 1.9762588500393807e-05 (maxima par
-  pli : 1,98e-5, 8,70e-6, 6,56e-6, 5,23e-6 ; 97 415 des 173 280 cellules de
-  probabilité dépassent 1e-10). Prédictions dures, appartenances, sélection et
-  toutes les métriques fondées sur les labels sont identiques ; **cette reprise
-  ne revendique pas l’équivalence numérique entre plateformes**.
-- Les détails ont été alignés et vérifiés : ordre des classes
-  (`probability_1..19` des deux côtés, `classes_` des deux modèles finaux =
-  1..19), alignement des échantillons (séquences `row_index` et colonnes
-  `fold/observed/predicted/model` identiques, 9 120 prédictions dures
-  identiques octet pour octet), dépendances et configuration des bibliothèques
-  numériques (configuration numpy/scipy côté macOS et enregistrements des deux
-  environnements) conservés dans l’archive de preuves locale ignorée par Git ;
-  les différences par ligne et par pli et les principales lignes divergentes
-  figurent dans `probability_difference_details.json` et
-  `probability_differences_by_row.csv`.
-- Expérience d’isolation (mêmes versions de parité) : recalculer le ROC-AUC
-  sous macOS à partir des **matrices de probabilité figées** reproduit les
-  valeurs figées à 1,11e-16 près, donc le calcul de la métrique est cohérent
-  entre plateformes ; l’écart suit les probabilités — les deux modèles finaux
-  diffèrent d’au plus environ 3,07e-5 pour les coefficients, 7,08e-5 pour les
-  intercepts et 3,03e-6 pour les probabilités sur toutes les données.
-  Conclusion : l’écart provient du niveau des paramètres/probabilités ajustés ;
-  **la cause n’est pas confirmée et pourrait être liée aux implémentations
-  numériques des plateformes** — aucune expérience de cause racine au niveau
-  implémentation n’a été menée, et il n’est pas écrit « causé par le chemin
-  d’algèbre linéaire ». L’écart est conservé et signalé, jamais utilisé pour
-  relâcher les tolérances ni remplacer la base ; le cas n’est donc pas présenté
-  comme un « succès complet ».
-- La BA du canari et l’empreinte du CSV mélangé correspondent aux valeurs figées
-  (`e02699c680cfaa6ec91477c79fff68d7229013d7cc9f7c2acb2ddc4b0d961d86`) ; le
-  décalage +1000 des variables a modifié 2 122 prédictions, même nombre que
-  sous Linux.
-- Après l’exécution, les 423 fichiers du manifeste figé ont été contrôlés :
-  aucun fichier Python/GUI/test/lock ne diffère ; seuls les 3 documents publics
-  intentionnellement modifiés par cette intégration (`README.md`,
-  `docs/TESTING.md`, `examples/public/README.md`) diffèrent.
-- Toutes les étapes ont produit un stderr vide ; le `warnings.json` de la CLI
-  conserve la mise en garde scientifique (les métriques principales évaluent la
-  procédure de sélection imbriquée ; le classement des familles est
-  exploratoire), tandis que les listes de la référence, de l’observation et des
-  contrôles sont vides, sans ConvergenceWarning.
+- **Environnement de parité du cas** : Python 3.12.14, scikit-learn 1.8.0, etc. sous Linux x86_64 et macOS aarch64, utilisé pour les valeurs de 3.1–3.5 ; ce n’est pas l’environnement officiel verrouillé.
+- **`.venv` local du dépôt** (Python 3.12.13, scikit-learn 1.9.0, plus l’extra explain `shap 0.52.0`) : `ruff` réussit, la suite par défaut `pytest -q` rapporte **1217 réussites** (dont les 24 tests contractuels/d’intégration de ce cas) et l’audit de confidentialité réussit ; les tests d’explication SHAP s’exécutent réellement ici.
+- **Environnement officiel `uv.lock`** (chemin séparé, `UV_PROJECT_ENVIRONMENT=… uv sync --locked --group dev` ; `uv.lock` non modifié) : `pytest -q` rapporte **1152 réussites, 2 ignorés**, code 0. Les deux ignorés sont les `pytest.importorskip("shap")` au niveau module de `tests/test_explanation*.py`, car cette commande omet volontairement l’extra explain — ces deux tests ne sont pas comptés comme réussis, et cet environnement n’a **pas** rejoué le cas DSA lui-même.
 
-Cette reprise est une preuve supplémentaire inter-plateformes ; elle ne
-remplace pas la base Linux figée. Windows et l’environnement officiel verrouillé
-restent non exécutés.
+Avertissements Python pendant le cas : le `warnings.json` de la CLI native conserve une mise en garde scientifique (les métriques principales évaluent la procédure de sélection imbriquée ; le classement des familles est exploratoire) ; les listes de la référence, de l’observation et des contrôles sont vides ; aucun ConvergenceWarning ; toutes les étapes ont produit un stderr vide.
 
-## 10. Avertissements, écarts et échecs conservés
+Après la poussée, la CI principale du dépôt ([run 36880091260](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36880091260)) a réussi sous Windows, macOS et Linux (lint, tests, suite GUI Godot, construction de la wheel et smoke). Une CI verte signifie que les contrôles automatisés existants du dépôt ont réussi pour ce commit ; **cela ne signifie pas que Windows a rejoué ce cas DSA**, et cela ne remplace pas la revue humaine des fenêtres réelles et des applications empaquetées.
 
-- La première reprise portable du paquet de cas s’est arrêtée au seuil strict de
-  stderr car une analyse de polices neuve ne trouvait pas de dossier de cache
-  inscriptible ; la comparaison numérique avait réussi, les journaux ont été
-  conservés, seuls les chemins de cache des sous-processus ont été redirigés
-  vers un dossier inscriptible avant une reprise complète réussie. Il s’agit de
-  portabilité du lanceur, pas d’une erreur de logique d’entraînement.
-- La première comparaison a produit un avertissement de diagnostic All-NaN dû à
-  une colonne `error` vide lue comme entièrement NaN ; seul le diagnostic de
-  rapport a été corrigé, sans changement de modèle, données, sélection,
-  tolérances ni résultats. Les outils du dépôt ignorent les diagnostics non
-  finis/vides et ne traitent pas une colonne d’erreur vide comme un échec
-  scientifique.
-- Aucun défaut n’a nécessité de modification du cœur numérique de PsyML.
+## 4. Discussion
 
-## 11. Limite de lisibilité de la figure native
+### 4.1 Ce que les preuves soutiennent
 
-L’export natif de la matrice de confusion à 19 classes est dense à sa taille
-compacte par défaut : annotations à trois chiffres voisines et étiquettes d’axe
-serrées, certains chiffres se touchant visuellement. Le CSV sous-jacent, les
-totaux et les métriques sont corrects. C’est une limite réelle de lisibilité de
-l’export, **pas un échec numérique et pas une preuve que l’interface a été
-testée**. La figure d’origine est conservée ; une redessin indépendante
-clairement étiquetée (même CSV, 361 cellules vérifiées par programme) en est
-distincte et n’est pas une sortie de production. Ce dépôt ne contient aucune
-correction graphique de production ; toute modification de figsize/étiquetage
-adaptatif exige d’abord un plan minimal et une vérification trilingue
-multi-classes.
+Le cas soutient ceci : pour la version de code, le protocole et l’environnement enregistrés, le flux imbriqué groupé par participant de PsyML et une implémentation scikit-learn reconstruite indépendamment produisent les mêmes partitions, choix et prédictions ; le prétraitement des plis d’entraînement et la persistance peuvent être vérifiés point par point ; et les contrôles d’ingénierie n’ont montré aucun signe de fuite de groupes ni de contamination de sélection dans ce flux. Il confirme aussi que le dépôt génère les données dérivées localement et ne redistribue pas le jeu de données.
 
-## 12. Ce qui n’a pas été exécuté
+### 4.2 Relation avec les travaux antérieurs
 
-- La suite Python complète pour ce cas est couverte par le journal de
-  maintenance : cette intégration a réellement exécuté `ruff check src tests
-  tools` (réussi), la suite par défaut dans le `.venv` local (`pytest -q` :
-  1212 réussites, dont les 19 nouveaux tests contractuels et les tests existants
-  de perturbation du classement externe/repli) et `tools/audit_repository.py`
-  (réussi) ; l’environnement officiel `uv.lock` a été créé séparément et a
-  exécuté la suite selon la convention du dépôt (1152 réussites + 2 ignorés
-  explain-extra, voir section 8), mais n’a **pas** rejoué le cas DSA lui-même.
-- Godot/interface, fenêtres réelles, paquets autonomes Windows et macOS (la
-  reprise macOS utilisait un environnement source, pas une application
-  empaquetée).
-- SHAP/explication, formats autres que CSV, étude dédiée des tolérances
-  inter-plateformes, études utilisateurs, validation externe et audit de
-  sécurité complet.
-- Le retéléchargement et la conversion du ZIP brut complet (le CSV dérivé fourni
-  a été utilisé ; `prepare_dsa.py` est couvert par des tests contractuels sur
-  des ZIP synthétiques : énumération stricte, empreinte, forme, valeurs finies,
-  refus de comptage).
+L’article original compare plusieurs classifieurs, utilise cinq unités de capteurs (poitrine, deux bras, deux jambes, magnétomètres inclus), des variables traitées par ACP, et évalue sous-échantillonnage aléatoire, 10 plis aléatoires et validation par participant laissé de côté. Ses entrées, variables, modèles et partitions diffèrent de ce cas. Ce cas n’utilise qu’une unité de torse avec 12 statistiques fixes, un plan externe fixe à 4 plis groupés et un plan interne à 3 plis stratifiés groupés, avec seulement Dummy et la régression logistique comme candidats ; il ne cherche pas à comparer des scores avec l’article original ni avec une autre étude. L’article original a déjà évalué la généralisation à de nouveaux participants : ce cas n’introduit donc pas la validation groupée, et sa valeur ne porte aucune interprétation de performance de domaine.
 
-## 13. Commandes de reprise et conditions d’échec
+### 4.3 Limites et périmètre non vérifié
+
+- Les enregistrements publics de huit participants ne peuvent soutenir aucune conclusion clinique, de population générale ou naturaliste ; ce cas n’est pas une validation externe et ne couvre pas d’autres protocoles d’acquisition, appareils ou populations.
+- La référence indépendante partage les solveurs scikit-learn avec PsyML ; le canari de labels mélangés est une perturbation d’ingénierie unique, pas un test de permutation, et n’estime ni taux de faux positifs ni absence de fuite.
+- La cause de l’écart inter-plateformes n’est pas confirmée ; le rapport conserve l’écart brut et ne l’interprète ni comme défaut ni comme amélioration logicielle.
+- Non exécuté : inspection en fenêtre réelle au-delà des contrôles Godot/GUI automatisés, applications empaquetées Windows et macOS, cas DSA dans l’environnement officiel `uv.lock`, explications SHAP dans l’environnement officiellement verrouillé, formats d’entrée autres que CSV, études utilisateurs et validation sur données externes, audit de sécurité complet, et nouveau téléchargement/conversion du ZIP brut complet (l’énumération stricte, les empreintes, formes, valeurs finies et refus de comptage de `prepare_dsa.py` sont couverts par des tests contractuels sur ZIP synthétiques).
+
+### 4.4 Lisibilité des figures
+
+L’export natif de la matrice de confusion à 19 classes est dense à sa taille compacte par défaut : annotations à trois chiffres voisines et étiquettes d’axe serrées, certains chiffres se touchant visuellement. Le CSV sous-jacent, les totaux et les métriques sont corrects. C’est une limite de lisibilité de l’export, **pas un échec numérique et pas une preuve que l’interface a été testée**. La figure d’origine est conservée ; une figure redessinée indépendante, clairement étiquetée (même CSV, 361 cellules vérifiées par programme), en est distincte et n’est pas une sortie de production. Toute modification de figsize/étiquetage adaptatif exige d’abord un plan minimal et une vérification trilingue multi-classes.
+
+## 5. Disponibilité des données et du code, et reproduction
+
+- Les données sont obtenues sous CC BY 4.0 depuis l’emplacement officiel d’UCI ; le dépôt **ne les redistribue pas**, et le CSV dérivé n’est généré que dans le dossier local ignoré par Git `examples/public/data/`. L’attribution et la note de modification se trouvent dans `examples/public/dsa_group_nested_v1/expected/` et `tools/cases/prepare_dsa.py`.
+- Le code est publié sous Apache License 2.0. Les outils du cas sont dans `tools/cases/`, la configuration dans `examples/public/configs/dsa_group_nested_v1.json`, les attentes figées dans `examples/public/dsa_group_nested_v1/expected/`, et les tests contractuels/d’intégration dans `tests/test_public_dsa_case_contract.py`.
+- Reproduction (depuis la racine du dépôt) :
 
 ```bash
 # 1) Facultatif : reconstruire le CSV dérivé depuis le ZIP officiel (contrôles stricts, aucun code de l’archive exécuté)
 uv run python tools/cases/prepare_dsa.py --archive <official.zip> --output-dir examples/public/data
-# 2-5) CLI principale, référence indépendante, observation, comparaison, contrôles :
-#      la séquence complète se trouve dans examples/public/dsa_group_nested_v1/README.md
+# 2-5) CLI native, référence indépendante, audit d’observation, comparaison, contrôles :
+#      la séquence complète est dans examples/public/dsa_group_nested_v1/README.md
 ```
 
-Conditions d’échec : toute empreinte incorrecte, ensemble de membres inattendu,
-valeur non finie, forme/comptage erroné, chevauchement de groupes, égalité
-départagée par approximation, métriques/probabilités hors tolérance, relecture
-du modèle incohérente, BA du canari > 0,10 ou stderr non examiné. Ne jamais «
-corriger » un échec en changeant les tolérances, en supprimant des plis, en
-augmentant les itérations, en changeant C, en échangeant les données ou en
-choisissant une autre validation. La CLI et chaque outil exigent un **nouveau
-dossier de sortie vide** ; les résultats existants ne sont jamais écrasés.
-`input_path`/`output_dir` se résolvent par rapport au répertoire courant du
-processus.
+La CLI et chaque outil exigent un nouveau dossier de sortie vide ; les résultats existants ne sont jamais écrasés, et `input_path`/`output_dir` se résolvent par rapport au répertoire courant du processus. Les conditions d’échec incluent toute empreinte incorrecte, ensemble de membres inattendu, valeur non finie ou forme/comptage erroné, chevauchement de groupes, égalité départagée par approximation, métriques ou probabilités hors tolérance, relecture du modèle incohérente, BA du canari > 0,10, ou avertissements stderr non examinés. Un échec ne doit pas être rendu vert en changeant les tolérances, en supprimant des plis, en augmentant les itérations, en changeant C, en échangeant les données ou en choisissant une autre validation.
 
-## 14. Limites des affirmations
+## 6. Références
 
-- Les enregistrements publics de huit participants ne soutiennent aucune
-  conclusion clinique, de population générale ou naturaliste ; ce cas n’est pas
-  une validation externe.
-- La référence indépendante partage les solveurs scikit-learn ; le canari est
-  une perturbation d’ingénierie unique, pas un test de permutation, pas une
-  estimation du taux de faux positifs, ni une preuve d’absence de fuite.
-- Les résultats établissent la conformité numérique et la reproductibilité du
-  flux testé dans l’environnement enregistré uniquement ; ils ne revendiquent
-  ni nouvel algorithme, ni performance de pointe, ni réduction de l’erreur des
-  utilisateurs.
+1. Barshan, B., & Altun, K. (2010). *Daily and Sports Activities* [Dataset]. UCI Machine Learning Repository. <https://doi.org/10.24432/C5C59F> (page : <https://archive.ics.uci.edu/dataset/256/daily+and+sports+activities> ; licence : <https://creativecommons.org/licenses/by/4.0/>)
+2. Altun, K., Barshan, B., & Tunçel, O. (2010). Comparative study on classifying human activities with miniature inertial and magnetic sensors. *Pattern Recognition*, 43(10), 3605–3620. <https://doi.org/10.1016/j.patcog.2010.04.019>
+3. scikit-learn developers. Common pitfalls and recommended practices (fuites de données). <https://scikit-learn.org/stable/common_pitfalls.html>
+4. scikit-learn developers. Nested versus non-nested cross-validation. <https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html>
+5. scikit-learn developers. Tuning the hyper-parameters of an estimator. <https://scikit-learn.org/stable/modules/grid_search.html>
+6. scikit-learn developers. Cross-validation: evaluating estimator performance (validation par groupes). <https://scikit-learn.org/stable/modules/cross_validation.html>
+7. Collins, G. S., et al. TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods. *BMJ*, 385, e078378. <https://www.bmj.com/content/385/bmj-2023-078378>
+
+## Annexe
+
+### A. Points clés du protocole figé
+
+- Version de protocole `psyml_dsa_group_nested_v1` ; figé le 2026-10-01 à 11:48:43 UTC ; première exécution réelle à 11:49:02.979300 UTC. La configuration a été figée avant la modélisation et n’a pas changé après consultation des scores.
+- Externe `GroupKFold(4, shuffle=False)` ; sélection interne et finale `StratifiedGroupKFold(3, shuffle=True)` avec les graines 20261001+pli et 20261001 ; candidats et règle de sélection en 2.6 ; 54 ajustements attendus.
+- SHA-256 du modèle de configuration figé : `a156dee0bde4e65f4e89ceef28320faa6931ded8dc9eccab62b514b2dba69941` (contient les chemins de l’époque, conservé pour la vérification forensique) ; l’exemple du dépôt conserve tous les champs scientifiques avec des chemins relatifs.
+
+### B. Empreintes et attentes figées
+
+| Objet | SHA-256 |
+| --- | --- |
+| ZIP brut | `f42ad7744ecf14151c9fa3a86dfb5b24de9d7cb7ffe956ef5de242983459c77e` |
+| CSV dérivé | `75a5fe87a58f4cfde777d914d674362b5148854a3c7064d8c686c0e25c3a047e` |
+| CSV de labels mélangés (canari) | `e02699c680cfaa6ec91477c79fff68d7229013d7cc9f7c2acb2ddc4b0d961d86` |
+| Prédictions principales de la reprise macOS | `36c39a34c9317d568c79f37de17c2b566d10f24db9de0625886f3bda83022b53` (identiques octet pour octet au résultat figé) |
+
+La configuration figée lisible par machine, les attentes de métriques, l’appartenance des plis et les tolérances sont dans `examples/public/dsa_group_nested_v1/expected/` (`case_summary.json` pour les métriques principales et les compteurs d’acceptation, `fold_membership_expected.json` pour les participants et la trace de sélection, `golden_hashes.json` pour les empreintes des artefacts figés).
+
+### C. Environnements
+
+Environnement de parité du cas : Python 3.12.14 ; NumPy 2.3.5 ; pandas 2.2.3 ; scikit-learn 1.8.0 ; SciPy 1.17.0 ; joblib 1.5.3 ; matplotlib 3.10.8 ; pyreadstat 1.3.6 ; `OPENBLAS_NUM_THREADS`, `OMP_NUM_THREADS` et `MKL_NUM_THREADS` à 1 ; pyarrow et SHAP non installés. C’est un venv isolé avec la source figée installée en `--no-deps` ; le `uv.lock` officiel n’a pas été reconstruit. La reprise macOS utilise les mêmes versions de parité ; sa configuration numpy/scipy et les relevés des deux environnements sont conservés dans l’archive de preuves locale ignorée par Git. Les résultats des tests du `.venv` local et de l’environnement officiel `uv.lock` sont en 3.6.
+
+### D. Comportement de l’outil d’acceptation et points d’échec
+
+- Le comparateur définit un **contrat de colonnes obligatoires fixe** par table d’acceptation et vérifie séparément les côtés production et référence : colonne manquante d’un côté, même colonne critique absente des deux côtés, écart du nombre de lignes ou colonne supplémentaire non enregistrée dans la référence échouent et signalent le nom de table et les colonnes manquantes ; chaque colonne de production doit aussi exister dans la référence et est comparée.
+- Règles numériques : tout ±Inf, NaN unilatéral, ou NaN dans une statistique qui doit être finie échoue ; seules une colonne de diagnostic vide autorisée (comme `error`) et les scores NaN d’un candidat `status=failed` sont admis ; une discordance de dtype échoue aussi. La colonne de diagnostic `inner_scores` propre à la référence n’est pas ignorée : sa longueur de plis, sa finitude et la moyenne égale au score du candidat sont vérifiées.
+- La validation du diagnostic et le recalcul direct des métriques vérifient d’abord leurs colonnes de dépendance réelles (`status/score/inner_scores`, `fold/accuracy/balanced_accuracy/f1_macro`) ; en cas d’incomplétude, le nom de table, les colonnes manquantes et la raison sont signalés sans interrompre le rapport, et les contrôles indépendants encore exécutables continuent.
+- Tolérances : métriques ≤1e-12 en absolu dans le même environnement ; prétraitement atol=rtol=1e-12 ; probabilités atol=1e-10, rtol=1e-8. Ces tolérances n’ont pas été ajustées pour l’écart inter-plateformes.
+- Les tests de régression sont dans `tests/test_public_dsa_case_contract.py` ; les sorties détaillées et les enregistrements d’échec sont archivés localement dans `docs/internal/completed/reports/2026-10-01-dsa-case-macos-reverification/` (ignoré par Git ; `checks/`, `diff/`, `logs/`, `environment/`, `handoff/`).
+
+### E. Écarts, avertissements et échecs conservés
+
+- L’écart inter-plateformes (`roc_auc_ovr_weighted` environ 2,03e-7 et probabilités hors pli jusqu’à environ 1,98e-5) est conservé et publié ; la cause n’est pas confirmée (3.5) et aucune tolérance ni base n’a été ajustée pour lui.
+- Correctifs du comparateur : le premier auxiliaire prenait la colonne de diagnostic de la référence pour une divergence et sérialisait `inf` dans le JSON, interrompant l’exécution ; des revues ultérieures ont trouvé « les colonnes obligatoires dépendent de la table de production » et « les exceptions de colonne manquante du diagnostic/du recalcul empêchent l’écriture du rapport », tous deux corrigés avec des tests de régression et des tests d’intégration de flux complet.
+- La première reprise portable du paquet de cas s’est terminée avec le code 1 au seuil strict de stderr, faute de dossier de cache de polices inscriptible ; seuls les chemins de cache des sous-processus ont été ajustés avant une reprise complète réussie. Ce relevé concerne la configuration de l’environnement du lanceur, pas la logique d’entraînement.
+- Aucun défaut n’a nécessité de modification du cœur numérique de PsyML.

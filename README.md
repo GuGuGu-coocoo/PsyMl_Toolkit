@@ -12,6 +12,7 @@
 
 **目录**
 
+- [已验证的公开数据案例（UCI DSA）](#已验证的公开数据案例uci-dsa)
 - [打开应用](#打开应用)
 - [测试数据与快速复现](#测试数据与快速复现)
 - [数据分析操作](#数据分析操作)
@@ -44,6 +45,16 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 支持分类与回归、23 个按任务划分的模型选项、9 种表格格式、6 种验证策略、多模型与多验证比较、训练集内部参数搜索、动态剩余时间、长任务终止、数据检查与结果解读、置换重要性、单样本 SHAP 解释、拟合系数，以及预测、图形、Methods 说明和复现报告导出。界面支持中文、英文和法文。
 
 自动报告提供中文和英文版本。导出图形的坐标轴、类别占位标签及底层错误信息使用英文，不随界面语言切换。
+
+### 已验证的公开数据案例（UCI DSA）
+
+我们用一份公开的人体活动数据检验本工具的流程：UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F)，8 位参与者、19 类活动、共 9,120 条五秒记录。该案例采用按参与者分组的嵌套交叉验证，用不导入 PsyML 的独立 scikit-learn 参考实现逐项复算，并加入分组隔离审计、固定外折扰动与打乱标签 canary 等工程负控。
+
+案例已在记录的 Linux 环境完成，并在 macOS 上重新核对；两者之间保留了小幅数值差异，原因尚未确认（见报告）。结果只说明该案例所测流程的数值符合性与可复现性：不代表工具包全部功能均已全面验证，Windows 未复跑完整案例，自动化 GUI 检查也不替代真实窗口与打包应用的人工检查。
+
+- 技术报告：[DSA 验证：数值复现与跨平台核验](docs/VALIDATION_DSA_ZH.md)
+- 复现说明：[可复算示例](examples/public/dsa_group_nested_v1/README.md)
+- 真实 CI：[最近一次三平台 Core CI 运行](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36880091260)
 
 ### 打开应用
 
@@ -297,7 +308,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 仓库截图和测试夹具使用随机合成数据，不包含参与者信息。公开示例采用 UCI 的 [Iris](https://doi.org/10.24432/C56C76) 和[混凝土抗压强度](https://doi.org/10.24432/C5PK67)数据；运行方法见[公开示例说明](examples/public/README.md)。请勿在 GitHub Issue 中上传真实研究数据或敏感信息。
 
-**公开行为数据数值验证。** 我们在 UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) 数据上，固定按参与者分组的嵌套交叉验证协议，并用独立 scikit-learn 工作流复算。在所记录的 Linux 环境和固定代码版本下，9,120 条折外预测逐行一致，主 balanced accuracy 为 0.5740（8 名参与者、19 类活动），切分、训练折预处理、选择及模型保存/加载检查均通过。此结果验证的是该案例的软件流程；不代表外部人群效度，也不替代 GUI、Windows 或全部依赖组合测试。见[验证范围与完整结果](docs/VALIDATION_DSA_ZH.md)及[可复算示例](examples/public/dsa_group_nested_v1/README.md)。
+**公开行为数据数值验证。** 指定案例（UCI DSA）的完整记录见[已验证的公开数据案例（UCI DSA）](#已验证的公开数据案例uci-dsa)，技术报告见 [VALIDATION_DSA_ZH.md](docs/VALIDATION_DSA_ZH.md)。
 
 除另行标注的第三方内容外，项目代码与文档采用 [Apache License 2.0](LICENSE)，允许使用、修改和分发，并包含明确的专利授权。第三方依赖与数据仍遵循各自许可证。
 
@@ -319,6 +330,7 @@ PsyML 不把任何默认参数称为“最优”。最优参数依赖数据、�
 
 **Contents**
 
+- [Verified public-data case (UCI DSA)](#verified-public-data-case-uci-dsa)
 - [Open the application](#open-the-application)
 - [Sample data and quick reproduction](#sample-data-and-quick-reproduction)
 - [Data analysis workflow](#data-analysis-workflow)
@@ -351,6 +363,16 @@ The current analysis core uses **scikit-learn 1.9.0** for classification and reg
 It supports classification and regression, 23 task-specific model choices, 9 tabular formats, 6 validation strategies, multi-model and multi-validation studies, training-only parameter search, dynamic time estimates, cancellation of long jobs, data checks and result interpretation, permutation importance, single-sample SHAP explanations, fitted coefficients, predictions, figures, Methods text and reproducibility reports. The GUI is available in Chinese, English and French.
 
 Automatic reports are available in Chinese and English. Exported plot axes, class placeholders and raw backend errors use English regardless of the interface language.
+
+### Verified public-data case (UCI DSA)
+
+We use one public human-activity dataset to check the workflow: UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) — 8 participants, 19 activities, 9,120 five-second records. The case runs a participant-grouped nested cross-validation, recomputes it point by point with an independent scikit-learn reference that does not import PsyML, and adds engineering controls: a group-isolation audit, fixed outer-fold perturbations and a shuffled-label canary.
+
+The case was completed in the recorded Linux environment and re-checked on macOS; a small numerical difference between the two is retained, with the cause not yet confirmed (see the report). The results cover the tested workflow of this case only: they do not verify every toolkit feature, Windows did not re-run the full case, and automated GUI checks do not replace human inspection of real windows and packaged applications.
+
+- Technical report: [DSA validation: numerical reproduction and cross-platform verification](docs/VALIDATION_DSA_EN.md)
+- Reproduction: [reproducible example](examples/public/dsa_group_nested_v1/README.md)
+- CI: [most recent three-platform Core CI run](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36880091260)
 
 ### Open the application
 
@@ -570,7 +592,7 @@ Nested family/parameter selection and training-only preprocessing reduce common 
 
 Screenshots and test fixtures use random synthetic data. Public examples use UCI’s [Iris](https://doi.org/10.24432/C56C76) and [Concrete Compressive Strength](https://doi.org/10.24432/C5PK67) datasets; see the [public example instructions](examples/public/README.md). Never attach real research data or sensitive participant information to a GitHub Issue.
 
-**Numerical validation on public activity data.** A prespecified participant-grouped nested cross-validation case on UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) was independently recomputed with scikit-learn. In the recorded Linux environment and pinned code version, all 9,120 out-of-fold class predictions agreed exactly; mean outer-fold balanced accuracy was 0.5740 across 8 participants and 19 activities. Split membership, training-fold preprocessing, selection and saved-model replay checks passed. This validates the tested workflow, not external-population validity, GUI behavior, Windows or every dependency combination. See the [validation scope and results](docs/VALIDATION_DSA_EN.md) and [reproducible example](examples/public/dsa_group_nested_v1/README.md).
+**Numerical validation on public activity data.** The full record for the specified case (UCI DSA) is in [Verified public-data case (UCI DSA)](#verified-public-data-case-uci-dsa); technical report: [VALIDATION_DSA_EN.md](docs/VALIDATION_DSA_EN.md).
 
 Except for separately identified third-party material, the project is licensed under the [Apache License 2.0](LICENSE), permitting use, modification and distribution and including an express patent grant. Dependencies and datasets retain their own licenses.
 
@@ -592,6 +614,7 @@ Researchers are welcome to report reproducible problems, methodological suggesti
 
 **Table des matières**
 
+- [Cas public vérifié (UCI DSA)](#cas-public-vérifié-uci-dsa)
 - [Ouvrir l’application](#ouvrir-lapplication)
 - [Données de test et reproduction rapide](#données-de-test-et-reproduction-rapide)
 - [Procédure d’analyse des données](#procédure-danalyse-des-données)
@@ -624,6 +647,16 @@ Le noyau d’analyse actuel utilise **scikit-learn 1.9.0** pour les estimateurs 
 Il prend en charge la classification et la régression, 23 choix de modèles selon la tâche, 9 formats tabulaires, 6 stratégies de validation, plusieurs modèles et validations par étude, la recherche de paramètres dans les données d’entraînement, l’estimation dynamique du temps restant, l’arrêt des tâches longues, le contrôle des données et l’interprétation des résultats, l’importance par permutation, l’explication SHAP d’un échantillon, les coefficients ajustés, ainsi que les prédictions, figures, méthodes et rapports de reproductibilité. L’interface existe en chinois, anglais et français.
 
 Les rapports automatiques sont disponibles en chinois et en anglais. Les axes des figures exportées, les libellés de classes et les erreurs brutes restent en anglais, quelle que soit la langue de l’interface.
+
+### Cas public vérifié (UCI DSA)
+
+Nous utilisons un jeu de données public d’activité humaine pour éprouver le flux de travail : UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) — 8 participants, 19 activités, 9 120 enregistrements de cinq secondes. Le cas applique une validation croisée imbriquée groupée par participant, la recalcule point par point avec une référence scikit-learn indépendante qui n’importe pas PsyML, et ajoute des contrôles d’ingénierie : audit d’isolement des groupes, perturbations ciblées du pli externe et canari de labels mélangés.
+
+Le cas a été exécuté dans l’environnement Linux documenté puis revérifié sous macOS ; un petit écart numérique entre les deux est conservé, sa cause n’étant pas confirmée (voir le rapport). Les résultats ne portent que sur le flux testé de ce cas : ils ne valident pas toutes les fonctions de l’outil, Windows n’a pas rejoué le cas complet, et les contrôles GUI automatisés ne remplacent pas l’inspection humaine des fenêtres réelles et des applications empaquetées.
+
+- Rapport technique : [validation DSA : reproduction numérique et vérification inter-plateformes](docs/VALIDATION_DSA_FR.md)
+- Reproduction : [exemple reproductible](examples/public/dsa_group_nested_v1/README.md)
+- CI : [dernière exécution Core CI sur trois plateformes](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36880091260)
 
 ### Ouvrir l’application
 
@@ -843,7 +876,7 @@ La sélection imbriquée des familles/paramètres et le prétraitement limité �
 
 Les captures et jeux de test sont synthétiques et aléatoires. Les exemples publics utilisent [Iris](https://doi.org/10.24432/C56C76) et [Concrete Compressive Strength](https://doi.org/10.24432/C5PK67) d’UCI ; voir les [instructions](examples/public/README.md). Ne joignez jamais de données de recherche réelles ou sensibles à une issue GitHub.
 
-**Validation numérique sur des données publiques d’activités.** Un protocole prédéfini de validation croisée imbriquée, groupée par participant, a été appliqué aux données UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F), puis recalculé avec un flux scikit-learn indépendant. Dans l’environnement Linux documenté et pour la version de code fixée, les 9 120 prédictions de classe hors pli concordent exactement ; la balanced accuracy moyenne des plis externes est de 0,5740, pour 8 participants et 19 activités. Les contrôles des partitions, du prétraitement ajusté dans les plis d’entraînement, de la sélection et du modèle enregistré ont réussi. Cette validation concerne le flux testé, pas sa validité dans d’autres populations, l’interface graphique, Windows ou toutes les combinaisons de dépendances. Voir la [portée et les résultats](docs/VALIDATION_DSA_FR.md) et l’[exemple reproductible](examples/public/dsa_group_nested_v1/README.md).
+**Validation numérique sur des données publiques d’activités.** Le relevé complet du cas spécifié (UCI DSA) se trouve dans [Cas public vérifié (UCI DSA)](#cas-public-vérifié-uci-dsa) ; rapport technique : [VALIDATION_DSA_FR.md](docs/VALIDATION_DSA_FR.md).
 
 Sauf éléments tiers signalés séparément, le projet est sous [licence Apache 2.0](LICENSE), qui autorise l’utilisation, la modification et la distribution et inclut une concession explicite de brevets. Les dépendances et données conservent leurs propres licences.
 
