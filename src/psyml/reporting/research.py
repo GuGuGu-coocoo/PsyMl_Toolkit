@@ -302,6 +302,88 @@ Check warnings, fold variability and systematic errors in held-out predictions a
 """
 
 
+_CONFUSION_BASE_SIZE = (6.0, 5.2)
+_CONFUSION_CELL_GROWTH = 0.34
+
+
+def _confusion_matrix_style(class_count: int) -> dict[str, Any]:
+    """Return figure size, tick style and annotation policy for a confusion matrix.
+
+    Large matrices get a bigger canvas, smaller ticks and rotated labels. Zero
+    cells stop carrying text annotations beyond the small-matrix range so that
+    every non-zero count stays visible without overlapping neighbouring cells.
+    """
+    if class_count < 1:
+        raise ValueError("A confusion matrix needs at least one class")
+    if class_count <= 8:
+        return {
+            "figure_size": _CONFUSION_BASE_SIZE,
+            "tick_fontsize": 10.0,
+            "annotation_fontsize": 9.0,
+            "rotation": 30.0,
+            "horizontal_alignment": "right",
+            "annotate_zeros": True,
+        }
+    span = class_count - 8
+    figure_size = (
+        _CONFUSION_BASE_SIZE[0] + _CONFUSION_CELL_GROWTH * span,
+        _CONFUSION_BASE_SIZE[1] + _CONFUSION_CELL_GROWTH * span,
+    )
+    if class_count <= 14:
+        return {
+            "figure_size": figure_size,
+            "tick_fontsize": 8.5,
+            "annotation_fontsize": 8.0,
+            "rotation": 45.0,
+            "horizontal_alignment": "right",
+            "annotate_zeros": True,
+        }
+    return {
+        "figure_size": figure_size,
+        "tick_fontsize": 7.0,
+        "annotation_fontsize": 6.5,
+        "rotation": 90.0,
+        "horizontal_alignment": "center",
+        "annotate_zeros": False,
+    }
+
+
+def _draw_confusion_matrix(
+    axis: Any,
+    values: Any,
+    labels: list[str],
+    style: dict[str, Any],
+) -> Any:
+    """Draw one count matrix with the axes, labels and annotations of ``style``."""
+    image = axis.imshow(values, cmap="Blues")
+    axis.set_xticks(
+        range(len(labels)),
+        labels=labels,
+        rotation=style["rotation"],
+        ha=style["horizontal_alignment"],
+    )
+    axis.set_yticks(range(len(labels)), labels=labels)
+    axis.tick_params(axis="both", labelsize=style["tick_fontsize"])
+    axis.set(xlabel="Predicted", ylabel="Observed", title="Confusion matrix")
+    maximum = values.max() if values.size else 0
+    for row in range(values.shape[0]):
+        for column in range(values.shape[1]):
+            value = values[row, column]
+            if value == 0 and not style["annotate_zeros"]:
+                continue
+            text_color = "white" if maximum and value > maximum / 2 else "black"
+            axis.text(
+                column,
+                row,
+                str(value),
+                ha="center",
+                va="center",
+                color=text_color,
+                fontsize=style["annotation_fontsize"],
+            )
+    return image
+
+
 def _write_figure(
     figures_dir: Path,
     config: ExperimentConfig,
@@ -355,23 +437,10 @@ def _write_figure(
     if confusion is None or "confusion_matrix" not in selected:
         return
     values = confusion.to_numpy()
-    figure, axis = plt.subplots(figsize=(6.0, 5.2))
-    image = axis.imshow(values, cmap="Blues")
     labels = [f"Class {index + 1}" for index in range(len(values))]
-    axis.set_xticks(range(len(labels)), labels=labels, rotation=30, ha="right")
-    axis.set_yticks(range(len(labels)), labels=labels)
-    axis.set(xlabel="Predicted", ylabel="Observed", title="Confusion matrix")
-    for row in range(values.shape[0]):
-        for column in range(values.shape[1]):
-            text_color = "white" if values[row, column] > values.max() / 2 else "black"
-            axis.text(
-                column,
-                row,
-                str(values[row, column]),
-                ha="center",
-                va="center",
-                color=text_color,
-            )
+    style = _confusion_matrix_style(len(values))
+    figure, axis = plt.subplots(figsize=style["figure_size"])
+    image = _draw_confusion_matrix(axis, values, labels, style)
     figure.colorbar(image, ax=axis)
     figure.tight_layout()
     figure.savefig(figures_dir / "confusion_matrix.png", dpi=160)
