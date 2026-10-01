@@ -1,0 +1,35 @@
+{
+  "provenance": "Environment of the original frozen case run (Linux); the repository's official uv.lock environment was not rebuilt for that case.",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "versions": {
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "scikit-learn": "1.8.0",
+    "scipy": "1.17.0",
+    "joblib": "1.5.3",
+    "matplotlib": "3.10.8",
+    "openpyxl": "3.1.5",
+    "pyarrow": null,
+    "pyreadstat": "1.3.6",
+    "xlrd": "2.0.1",
+    "pytest": "9.1.1",
+    "jsonschema": "4.26.0",
+    "ruff": null,
+    "xlwt": null,
+    "psyml-toolkit": "0.3.0",
+    "narwhals": "2.26.0"
+  },
+  "source_commit": "de33abfe52ccfee67f461a850edd00a14d2fbfaa",
+  "dependency_policy": "existing cloud environment, not official uv.lock",
+  "threads": {
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "not_installed": [
+    "pyarrow (case used CSV input only)",
+    "shap (not required by this case)"
+  ],
+  "note": "Case parity only. It is not a full repository installation and does not replace the officially locked environment."
+}

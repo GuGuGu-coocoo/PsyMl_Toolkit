@@ -1,0 +1,113 @@
+{
+  "case_id": "psyml_dsa_group_nested_v1",
+  "provenance": "Frozen baseline recorded by the original case run on Linux, commit de33abfe52ccfee67f461a850edd00a14d2fbfaa, before this repository integration; see README.md in this directory.",
+  "source_commit": "de33abfe52ccfee67f461a850edd00a14d2fbfaa",
+  "psyml_version": "0.3.0",
+  "dataset": {
+    "name": "UCI Daily and Sports Activities",
+    "uci_id": 256,
+    "doi": "10.24432/C5C59F",
+    "license": "CC BY 4.0",
+    "participants": 8,
+    "activities": 19,
+    "segments_per_participant_activity": 60,
+    "rows": 9120,
+    "source_shape_per_segment": [
+      125,
+      45
+    ],
+    "features": 12,
+    "feature_columns": [
+      "torso_acc_x_mean",
+      "torso_acc_x_std",
+      "torso_acc_y_mean",
+      "torso_acc_y_std",
+      "torso_acc_z_mean",
+      "torso_acc_z_std",
+      "torso_gyro_x_mean",
+      "torso_gyro_x_std",
+      "torso_gyro_y_mean",
+      "torso_gyro_y_std",
+      "torso_gyro_z_mean",
+      "torso_gyro_z_std"
+    ],
+    "feature_definition": "per-segment mean then population std (ddof=0) of torso acceleration x/y/z and torso angular rate x/y/z"
+  },
+  "hashes": {
+    "archive_sha256": "f42ad7744ecf14151c9fa3a86dfb5b24de9d7cb7ffe956ef5de242983459c77e",
+    "derived_csv_sha256": "75a5fe87a58f4cfde777d914d674362b5148854a3c7064d8c686c0e25c3a047e",
+    "frozen_config_template_sha256": "a156dee0bde4e65f4e89ceef28320faa6931ded8dc9eccab62b514b2dba69941",
+    "repository_config_science_sha256": "c349138853e9c2a6a42864c5754fd48f26190aa29354ba632fff28c0aa680c3f",
+    "shuffled_labels_csv_sha256": "e02699c680cfaa6ec91477c79fff68d7229013d7cc9f7c2acb2ddc4b0d961d86"
+  },
+  "protocol": {
+    "outer": "GroupKFold(n_splits=4, shuffle=False) over original row order",
+    "inner": "StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=20261001+outer_fold)",
+    "final": "StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=20261001) on all rows",
+    "selection": "unweighted mean of inner balanced accuracies; strict-greater replacement; first configuration order wins exact ties; no outer-driven selection",
+    "families": [
+      "dummy",
+      "logistic_regression"
+    ],
+    "expected_fits": 54
+  },
+  "baseline_metrics": {
+    "fold_balanced_accuracy": {
+      "1": 0.5394736842105263,
+      "2": 0.4986842105263158,
+      "3": 0.6644736842105264,
+      "4": 0.5934210526315788
+    },
+    "fold_f1_macro": {
+      "1": 0.5052223210820628,
+      "2": 0.47444818966231306,
+      "3": 0.6519085286727982,
+      "4": 0.5739708684615993
+    },
+    "selected_family": "logistic_regression",
+    "selected_overrides": {
+      "C": 1.0,
+      "class_weight": null,
+      "fit_intercept": true,
+      "max_iter": 2000,
+      "solver": "lbfgs",
+      "tol": 1e-08
+    },
+    "fold_mean_balanced_accuracy": 0.5740131578947368,
+    "fold_mean_f1_macro": 0.5513874769696934,
+    "fold_mean_accuracy": 0.5740131578947368,
+    "pooled_oof_macro_f1": 0.5702035749465654,
+    "pooled_oof_balanced_accuracy": 0.5740131578947368,
+    "dummy_balanced_accuracy": 0.05263157894736842
+  },
+  "placebo": {
+    "seed": 20261002,
+    "within_subject_shuffle": true,
+    "balanced_accuracy": 0.0532894736842105,
+    "alarm_threshold": 0.1
+  },
+  "acceptance_counts": {
+    "primary": 26,
+    "structural": 4,
+    "fold_controls": 7,
+    "placebo": 6,
+    "focused_synthetic_tests_passed": 107,
+    "prediction_format_tests_explicitly_deselected": 8
+  },
+  "tolerances": {
+    "metrics_absolute": 1e-12,
+    "preprocess_atol": 1e-12,
+    "preprocess_rtol": 1e-12,
+    "probability_atol": 1e-10,
+    "probability_rtol": 1e-08
+  },
+  "scope": {
+    "linux_case_environment_verified": true,
+    "gui_tested": false,
+    "windows_tested": false,
+    "macos_tested_in_case_package": false,
+    "official_uv_lock_environment_tested": false,
+    "figure_readability_issue": "The native 19-class confusion-matrix export is crowded at its default size (adjacent three-digit annotations and axis labels); numeric CSVs and metrics are unaffected. The issue is preserved, not fixed; an independent enlarged redraw was checked against all 361 CSV cells.",
+    "statement": "Software conformance and reproducibility evidence only; no claim about algorithmic novelty, other populations, clinical use or user error reduction."
+  }
+}

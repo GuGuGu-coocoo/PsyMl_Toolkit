@@ -1,0 +1,22 @@
+{
+  "provenance": "SHA-256 of the frozen case artifacts retained outside this repository (Linux run, commit de33abfe52ccfee67f461a850edd00a14d2fbfaa). Needed only for byte-level golden comparison; the files themselves are not committed.",
+  "primary": {
+    "predictions.csv": "36c39a34c9317d568c79f37de17c2b566d10f24db9de0625886f3bda83022b53",
+    "fold_metrics.csv": "8c5e3a56132763395dc27895c539ec9eacfe1075d7206796dc697f5f0002f782",
+    "selection_trace.csv": "aa28af6627faa0b73ad5189984461246dc24c3b50bc1fdd07a0d296d0f912196",
+    "parameter_search.csv": "485878a91da061f149d7cd38d3bac6d01e60ee96f18258001e0f83b57956c5c4",
+    "metrics.csv": "01535a218bada74da9967aa5d02e0a8b48384ccb400cd08febea860dd33e3b91",
+    "metrics_summary.csv": "ba60fe236d8d386610eeec34a7627e459518c9c216663fe00bd404e5eda7b1ff"
+  },
+  "reference": {
+    "predictions_with_probabilities.csv": "437209570c6fb4b0106a142a6cf67eb9f8f247c8c77a4c95e51ea2ccd164d23c",
+    "fold_metrics.csv": "8c5e3a56132763395dc27895c539ec9eacfe1075d7206796dc697f5f0002f782",
+    "parameter_search.csv": "435dae07f896bbdf5d07725238626289479ddaa97601e40a3566398221580ae6",
+    "dummy_oof.csv": "d21eb603bd5ad757a0409b163eb1bbf9b281f111777a0f0f24625075bc6d2a7e"
+  },
+  "observed": {
+    "observed_oof_probabilities.csv": "437209570c6fb4b0106a142a6cf67eb9f8f247c8c77a4c95e51ea2ccd164d23c"
+  },
+  "shuffled_labels_csv": "e02699c680cfaa6ec91477c79fff68d7229013d7cc9f7c2acb2ddc4b0d961d86",
+  "note": "Hashes identify the frozen files; they are not signatures or proof of provenance."
+}

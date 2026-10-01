@@ -1,0 +1,167 @@
+{
+  "provenance": "Extracted from a full re-run of the frozen case on macOS performed during the repository integration. It records a second platform only and does not replace the frozen Linux baseline in case_summary.json.",
+  "date": "2026-10-01",
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "python": "3.12.14 (main, Aug 12 2026, 13:57:54) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "versions": {
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "scikit-learn": "1.8.0",
+    "scipy": "1.17.0",
+    "joblib": "1.5.3",
+    "matplotlib": "3.10.8",
+    "pyreadstat": "1.3.6"
+  },
+  "psyml_version": "0.3.0",
+  "source_commit": "de33abfe52ccfee67f461a850edd00a14d2fbfaa",
+  "source_files_checked": 423,
+  "source_files_mismatched": [
+    "README.md",
+    "docs/TESTING.md",
+    "examples/public/README.md"
+  ],
+  "source_files_mismatched_classification": {
+    "code_or_lock": [],
+    "documentation_edited_by_this_integration": [
+      "README.md",
+      "docs/TESTING.md",
+      "examples/public/README.md"
+    ]
+  },
+  "warnings": {
+    "cli_primary_warnings_json": [
+      "Primary metrics evaluate the nested model-family and parameter selection procedure, not the final full-data model. Family leaderboard ranks are exploratory; choosing from their outer scores introduces selection bias. External validity requires appropriate independent data."
+    ],
+    "reference_warnings_json": [],
+    "observation_warnings_json": [],
+    "controls_warnings_json": [],
+    "stderr_empty_for_all_stages": true
+  },
+  "command_layout": {
+    "primary": "python -m psyml run --config <runtime config> --events",
+    "reference": "python -m tools.cases.reference_dsa --config <config> --output <dir>",
+    "observation": "python -m tools.cases.observe_psyml_dsa --config <config> --output <dir>",
+    "comparison": "python -m tools.cases.compare_dsa ... --golden <frozen primary>",
+    "controls": "python -m tools.cases.check_dsa_controls --config <config> --output <dir>",
+    "threads": {
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1"
+    }
+  },
+  "stage_exit_codes": {
+    "primary": 0,
+    "reference": 0,
+    "observation": 0,
+    "comparison": 1,
+    "controls": 0
+  },
+  "comparison": {
+    "passed": false,
+    "counts": {
+      "numerical": 26,
+      "structural": 4,
+      "extended": 2,
+      "golden": 2
+    },
+    "failures": [
+      {
+        "name": "golden_metrics_match",
+        "pass": false,
+        "detail": {
+          "max_abs_difference": 2.0305393111375025e-07,
+          "atol": 1e-12,
+          "scope": "frozen baseline recorded on Linux; cross-platform float differences must be reported, never hidden"
+        }
+      }
+    ]
+  },
+  "golden": {
+    "oof_predictions_byte_identical": true,
+    "primary_predictions_sha256": "36c39a34c9317d568c79f37de17c2b566d10f24db9de0625886f3bda83022b53",
+    "golden_primary_predictions_sha256": "36c39a34c9317d568c79f37de17c2b566d10f24db9de0625886f3bda83022b53",
+    "metric_columns_differing_from_golden": {
+      "metrics.csv:roc_auc_ovr_weighted": 1.0152696550136397e-07,
+      "fold_metrics.csv:roc_auc_ovr_weighted": 2.0305393111375025e-07,
+      "metrics_summary.csv:mean": 1.0152696550136397e-07,
+      "metrics_summary.csv:std": 9.56823841338772e-08,
+      "metrics_summary.csv:min": 2.0305393111375025e-07
+    },
+    "probability_difference_details": {
+      "max_abs_probability_difference": 1.9762588500393807e-05,
+      "mean_abs_probability_difference": 4.6470703207096175e-08,
+      "cells_above_1e-10": 97415,
+      "cells_above_1e-12": 125234,
+      "probability_cells_total": 173280,
+      "per_fold_max_abs_probability_difference": {
+        "1": 1.9762588500393807e-05,
+        "2": 8.69596213637358e-06,
+        "3": 6.55766752077902e-06,
+        "4": 5.2268850160297475e-06
+      },
+      "alignment_verified": "row sequences, fold/observed/predicted/model identity columns, probability column order (probability_1..19), final-model classes and byte-identical hard predictions were all checked",
+      "retained_locally": "full per-row/per-fold difference detail, logs and environment records are archived in the git-ignored local reports directory (not part of the commit)"
+    },
+    "interpretation": "Hard predictions, split membership, selection and label-based metrics are identical; only probability-derived ROC-AUC differs slightly. The difference is preserved and reported, never used to relax tolerances or replace the frozen baseline.",
+    "isolation_experiment": {
+      "final_model_coef_max_abs_difference": 3.07117397655432e-05,
+      "final_model_intercept_max_abs_difference": 7.081599236169467e-05,
+      "final_model_probability_max_abs_difference": 3.0315357958388134e-06,
+      "out_of_fold_probability_max_abs_difference": 1.9762588500393807e-05,
+      "metric_recomputed_on_macos_from_golden_probabilities_vs_golden_reported": {
+        "1": 0.0,
+        "2": -1.1102230246251565e-16,
+        "3": -1.1102230246251565e-16,
+        "4": -1.1102230246251565e-16
+      },
+      "metric_recomputed_on_macos_from_macos_probabilities_vs_macos_reported": {
+        "1": 0.0,
+        "2": 0.0,
+        "3": -1.1102230246251565e-16,
+        "4": -1.1102230246251565e-16
+      },
+      "macos_reported_minus_golden_reported_roc_auc_by_fold": {
+        "1": 2.0305393111375025e-07,
+        "2": 2.0305393100272795e-07,
+        "3": 0.0,
+        "4": 0.0
+      },
+      "conclusion": "Same probability inputs reproduce the same ROC-AUC on macOS (differences at the 1e-16 level), so the metric computation is not the source. The fold ROC-AUC difference follows the fitted probabilities: the final logistic models differ slightly (coefficients about 3e-5, intercepts about 7e-5) and out-of-fold probabilities differ by up to about 2e-5. Platform numerical-library paths are the standing hypothesis; no implementation-level root-cause experiment was performed, so the cause is reported as located but not fully confirmed."
+    }
+  },
+  "observed_values": {
+    "fold_balanced_accuracy": {
+      "1": 0.5394736842105263,
+      "2": 0.4986842105263158,
+      "3": 0.6644736842105264,
+      "4": 0.5934210526315788
+    },
+    "fold_mean_balanced_accuracy": 0.5740131578947368,
+    "fold_mean_f1_macro": 0.5513874769696934,
+    "selected_family": "logistic_regression",
+    "fit_count": 54,
+    "psyml_reference_probability_max_abs_difference": 0.0
+  },
+  "controls": {
+    "passed": true,
+    "check_count": 14,
+    "canary": {
+      "shuffled_csv_sha256": "e02699c680cfaa6ec91477c79fff68d7229013d7cc9f7c2acb2ddc4b0d961d86",
+      "frozen_shuffled_hash_match": true,
+      "input_csv_sha256": "75a5fe87a58f4cfde777d914d674362b5148854a3c7064d8c686c0e25c3a047e",
+      "frozen_input_hash_match": true,
+      "balanced_accuracy": 0.0532894736842105,
+      "alarm_threshold": 0.1,
+      "selected_family": "dummy",
+      "fit_count": 54,
+      "interpretation": "One engineering canary; not an inferential permutation test, not a false-positive-rate estimate and not proof that no leakage exists."
+    },
+    "feature_perturbation_prediction_change_count": 2122
+  },
+  "scope": {
+    "gui_tested": false,
+    "windows_tested": false,
+    "official_uv_lock_environment_tested": false,
+    "statement": "Cross-platform record: Linux freeze values are not overwritten. GUI, Windows and the official locked environment remain unverified for this case."
+  }
+}

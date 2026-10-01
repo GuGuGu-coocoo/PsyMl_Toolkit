@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "task": "classification",
+  "target_column": "activity",
+  "model_name": "dummy",
+  "input_path": "examples/public/data/dsa_torso_mean_std.csv",
+  "output_dir": "examples/public/results/dsa_group_nested_v1",
+  "group_column": "subject_id",
+  "feature_columns": [
+    "torso_acc_x_mean",
+    "torso_acc_x_std",
+    "torso_acc_y_mean",
+    "torso_acc_y_std",
+    "torso_acc_z_mean",
+    "torso_acc_z_std",
+    "torso_gyro_x_mean",
+    "torso_gyro_x_std",
+    "torso_gyro_y_mean",
+    "torso_gyro_y_std",
+    "torso_gyro_z_mean",
+    "torso_gyro_z_std"
+  ],
+  "test_size": 0.2,
+  "random_seed": 20261001,
+  "validation_strategy": "group_k_fold",
+  "validation_strategies": [
+    "group_k_fold"
+  ],
+  "primary_validation": "group_k_fold",
+  "n_splits": 4,
+  "inner_splits": 3,
+  "missing_strategy": "median",
+  "scaling": "standard",
+  "save_best_model": true,
+  "include_data_hash": true,
+  "model_names": [
+    "dummy",
+    "logistic_regression"
+  ],
+  "model_params": {},
+  "tuning_mode": "custom",
+  "selection_metric": "balanced_accuracy",
+  "parameter_grids": {
+    "dummy": {
+      "strategy": [
+        "prior"
+      ]
+    },
+    "logistic_regression": {
+      "C": [
+        0.1,
+        1.0
+      ],
+      "solver": [
+        "lbfgs"
+      ],
+      "max_iter": [
+        2000
+      ],
+      "tol": [
+        1e-08
+      ],
+      "class_weight": [
+        null
+      ],
+      "fit_intercept": [
+        true
+      ]
+    }
+  },
+  "max_candidates": 2,
+  "figure_types": [
+    "confusion_matrix",
+    "class_distribution"
+  ],
+  "selection_protocol": "nested_family_v1",
+  "permutation_importance": false,
+  "permutation_repeats": 10
+}
