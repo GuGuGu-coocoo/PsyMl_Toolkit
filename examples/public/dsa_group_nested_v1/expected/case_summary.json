@@ -106,8 +106,13 @@
     "gui_tested": false,
     "windows_tested": false,
     "macos_tested_in_case_package": false,
-    "official_uv_lock_environment_tested": false,
-    "figure_readability_issue": "The native 19-class confusion-matrix export is crowded at its default size (adjacent three-digit annotations and axis labels); numeric CSVs and metrics are unaffected. The issue is preserved, not fixed; an independent enlarged redraw was checked against all 361 CSV cells.",
+    "official_uv_lock_environment_tested": true,
+    "official_uv_lock_environment_tested_note": "The full case was re-run in the repository's official uv.lock environment on 2026-10-02; it reproduced the macOS parity outputs exactly and retained the same platform-associated difference against this frozen baseline. See reverification_uv_lock.json.",
+    "figure_readability_issue": "The native 19-class confusion-matrix export was crowded at its original default size (adjacent three-digit annotations and axis labels); numeric CSVs and metrics were unaffected. The original observation is retained here as history; the native plotting path was made class-count adaptive on 2026-10-02 and the export was re-checked.",
+    "reverifications": [
+      "reverification_macos.json",
+      "reverification_uv_lock.json"
+    ],
     "statement": "Software conformance and reproducibility evidence only; no claim about algorithmic novelty, other populations, clinical use or user error reduction."
   }
 }

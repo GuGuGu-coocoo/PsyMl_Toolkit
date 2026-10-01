@@ -1,0 +1,98 @@
+{
+  "provenance": "Re-run of the full DSA case inside the repository's official uv.lock environment (isolated project environment, `uv sync --locked --group dev`, uv.lock unmodified). Separate from the earlier case-parity and macOS runs; the frozen Linux baseline was recorded with different dependency versions (scikit-learn 1.8.0 vs 1.9.0).",
+  "date": "2026-10-02",
+  "environment": {
+    "python": "3.12.13 (main, Aug  5 2026, 15:33:41) [Clang 22.1.3 ]",
+    "platform": "macOS-27.0-arm64-arm-64bit",
+    "machine": "arm64",
+    "versions": {
+      "numpy": "2.5.2",
+      "pandas": "3.0.5",
+      "scikit-learn": "1.9.0",
+      "scipy": "1.18.1",
+      "joblib": "1.6.0",
+      "matplotlib": "3.11.1",
+      "pyarrow": "23.0.1",
+      "psyml-toolkit": "0.3.0"
+    },
+    "threads": {
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1"
+    },
+    "uv_lock_sha256": "9951e0701e2a0c7bd85614d3a0fd642b9407da6d98fa955bac97397626ebce56",
+    "uv_lock_check": [
+      "uv 0.12.2 (Homebrew 2026-08-05 aarch64-apple-darwin)",
+      "Resolved 66 packages in 22ms",
+      "uv lock check exit=0"
+    ]
+  },
+  "commands_and_exit_codes": [
+    "primary_cli exit=0",
+    "reference exit=0",
+    "observation exit=0",
+    "comparison exit=1",
+    "controls exit=0"
+  ],
+  "acceptance": {
+    "same_environment_checks": {
+      "counts": {
+        "numerical": 26,
+        "structural": 4,
+        "extended": 2,
+        "golden": 2
+      },
+      "passed_except_retained_golden_difference": true,
+      "golden_failures": [
+        {
+          "name": "golden_metrics_match",
+          "detail": {
+            "max_abs_difference": 2.0305393111375025e-07,
+            "atol": 1e-12,
+            "missing_required_columns": {},
+            "scope": "frozen baseline recorded on Linux; cross-platform float differences must be reported, never hidden"
+          }
+        }
+      ]
+    },
+    "controls": {
+      "passed": true,
+      "checks": 14,
+      "canary_balanced_accuracy": 0.0532894736842105,
+      "canary_frozen_hash_match": true
+    }
+  },
+  "equivalence_with_macos_parity_run": {
+    "primary_predictions_sha256": {
+      "uv_lock": "36c39a34c9317d568c79f37de17c2b566d10f24db9de0625886f3bda83022b53",
+      "macos_parity": "36c39a34c9317d568c79f37de17c2b566d10f24db9de0625886f3bda83022b53",
+      "frozen_linux": "36c39a34c9317d568c79f37de17c2b566d10f24db9de0625886f3bda83022b53"
+    },
+    "hard_predictions_identical_to_macos_parity": true,
+    "probability_max_abs_difference_vs_macos_parity": 0.0,
+    "final_model_coef_max_abs_difference_vs_macos_parity": 0.0,
+    "final_model_intercept_max_abs_difference_vs_macos_parity": 0.0,
+    "metric_tables_byte_identical_to_macos_parity": {
+      "metrics.csv": true,
+      "fold_metrics.csv": true,
+      "metrics_summary.csv": true,
+      "selection_trace.csv": true,
+      "parameter_search.csv": true
+    },
+    "interpretation": "On this case the official-lock dependency versions (scikit-learn 1.9.0, pandas 3.0.5, ...) reproduce the macOS 1.8.0/2.2.3 parity run exactly. The difference against the frozen Linux baseline is therefore the same platform-associated difference already recorded, not a new version-related one; its cause remains unconfirmed."
+  },
+  "difference_vs_frozen_linux_baseline": {
+    "probability_max_abs_difference": 1.9762588500393807e-05,
+    "final_model_coef_max_abs_difference": 3.07117397655432e-05,
+    "final_model_intercept_max_abs_difference": 7.081599236169467e-05,
+    "golden_oof_predictions_exact": true,
+    "golden_metrics_match_passed": false,
+    "retained": "Hard predictions and label-based metrics match the frozen baseline; only the probability-derived ROC-AUC differs (~2.03e-7), as previously recorded. Tolerances, protocol and baseline were not changed."
+  },
+  "scope": {
+    "not_external_validation": true,
+    "gui_tested": false,
+    "packaged_apps_tested": false,
+    "statement": "Software conformance inside one recorded locked environment; not external or clinical validation and not a claim of cross-platform numerical equivalence."
+  }
+}

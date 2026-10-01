@@ -13,6 +13,7 @@ fits the 9,120-row case.
 | `golden_hashes.json` | SHA-256 of the frozen case artifacts retained outside this repository, for byte-level golden comparison |
 | `environment.json` | Case-parity environment of the frozen run; not the official locked environment |
 | `reverification_macos.json` | Record of one later re-run on macOS (when present); additive evidence that never replaces the frozen baseline |
+| `reverification_uv_lock.json` | Record of the full case re-run inside the repository's official `uv.lock` environment (2026-10-02); additive evidence that never replaces the frozen baseline |
 
 ## How a rerun uses these values
 
@@ -39,4 +40,7 @@ fits the 9,120-row case.
   `**/results/`. Only small, reviewable expectations live here.
 - A failure at the same environment and pinned code must be investigated; a
   difference on another platform or dependency set must be reported as a new
-  result, never used to overwrite these values or relax the tolerances.
+  result, never used to overwrite these values or relax the tolerances. The
+  official-lock re-run reproduced the macOS re-run exactly and kept the same
+  platform-associated difference against the frozen baseline; both records are
+  additive.

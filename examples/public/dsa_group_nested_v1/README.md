@@ -73,7 +73,7 @@ uv run python tools/cases/check_dsa_controls.py \
 - 只有 8 名参与者，且来自同一采集协议；不能外推到其他人群、设备或自然生活场景，也不构成外部验证。
 - 独立参考与 PsyML 共用 scikit-learn 的估计器、切分器和指标实现，因此核对的是**工作流**而不是 sklearn 求解器本身。
 - canary 是单次工程扰动，不是置换检验，不估计假阳性率，也不证明不存在泄漏。
-- 原生 19 类混淆矩阵图在默认尺寸下标注拥挤（三位数相邻、横轴标签密集）；数值 CSV 与指标不受影响。该展示问题被原样保留、未在核心或 GUI 中修改。
+- 原生 19 类混淆矩阵图最初在默认布局下标注拥挤（三位数相邻、横轴标签密集）；2026-10-02 已在核心绘图路径（非 GUI）做按类别数自适应的最小修复，并通过回归测试与实际视觉检查；数值 CSV 与指标不受影响。
 - 本案例只维护文档与示例层：不改变核心训练逻辑、不修改 GUI、不升级版本号。
 
 ## English
@@ -116,6 +116,8 @@ Limits: only 8 participants on one acquisition protocol; no external validity.
 The independent reference shares scikit-learn estimators, splitters and metrics,
 so it validates the workflow rather than the solvers. The canary is one
 engineering perturbation, not a permutation test or a false-positive-rate
-estimate. The native 19-class confusion-matrix figure is crowded at its default
-size; numeric CSVs and metrics are unaffected and the display issue is
-preserved unchanged. This example changes documentation and examples only.
+estimate. The native 19-class confusion-matrix figure was crowded under its
+original default layout; on 2026-10-02 the core plotting path (not the GUI)
+received a class-count adaptive fix with regression tests and visual checks,
+leaving numeric CSVs and metrics unaffected. This example changes
+documentation and examples only.

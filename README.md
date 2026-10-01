@@ -50,7 +50,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 我们用一份公开的人体活动数据检验本工具的流程：UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F)，8 位参与者、19 类活动、共 9,120 条五秒记录。该案例采用按参与者分组的嵌套交叉验证，用不导入 PsyML 的独立 scikit-learn 参考实现逐项复算，并加入分组隔离审计、固定外折扰动与打乱标签 canary 等工程负控。
 
-案例已在记录的 Linux 环境完成，并在 macOS 上重新核对；两者之间保留了小幅数值差异，原因尚未确认（见报告）。结果只说明该案例所测流程的数值符合性与可复现性：不代表工具包全部功能均已全面验证，Windows 未复跑完整案例，自动化 GUI 检查也不替代真实窗口与打包应用的人工检查。
+案例已在记录的 Linux 环境完成，并在 macOS 与官方 `uv.lock` 环境中复跑核对；两次复跑彼此一致，与记录基线之间保留了小幅数值差异，原因尚未确认（见报告）。结果只说明该案例所测流程的数值符合性与可复现性：不代表工具包全部功能均已全面验证，Windows 未复跑完整案例，自动化 GUI 检查也不替代真实窗口与打包应用的人工检查。
 
 - 技术报告：[DSA 验证：数值复现与跨平台核验](docs/VALIDATION_DSA_ZH.md)
 - 复现说明：[可复算示例](examples/public/dsa_group_nested_v1/README.md)
@@ -368,7 +368,7 @@ Automatic reports are available in Chinese and English. Exported plot axes, clas
 
 We use one public human-activity dataset to check the workflow: UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) — 8 participants, 19 activities, 9,120 five-second records. The case runs a participant-grouped nested cross-validation, recomputes it point by point with an independent scikit-learn reference that does not import PsyML, and adds engineering controls: a group-isolation audit, fixed outer-fold perturbations and a shuffled-label canary.
 
-The case was completed in the recorded Linux environment and re-checked on macOS; a small numerical difference between the two is retained, with the cause not yet confirmed (see the report). The results cover the tested workflow of this case only: they do not verify every toolkit feature, Windows did not re-run the full case, and automated GUI checks do not replace human inspection of real windows and packaged applications.
+The case was completed in the recorded Linux environment and re-run on macOS and in the official `uv.lock` environment; the two re-runs agree with each other, and a small numerical difference against the recorded baseline is retained, with the cause not yet confirmed (see the report). The results cover the tested workflow of this case only: they do not verify every toolkit feature, Windows did not re-run the full case, and automated GUI checks do not replace human inspection of real windows and packaged applications.
 
 - Technical report: [DSA validation: numerical reproduction and cross-platform verification](docs/VALIDATION_DSA_EN.md)
 - Reproduction: [reproducible example](examples/public/dsa_group_nested_v1/README.md)
@@ -652,7 +652,7 @@ Les rapports automatiques sont disponibles en chinois et en anglais. Les axes de
 
 Nous utilisons un jeu de données public d’activité humaine pour éprouver le flux de travail : UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) — 8 participants, 19 activités, 9 120 enregistrements de cinq secondes. Le cas applique une validation croisée imbriquée groupée par participant, la recalcule point par point avec une référence scikit-learn indépendante qui n’importe pas PsyML, et ajoute des contrôles d’ingénierie : audit d’isolement des groupes, perturbations ciblées du pli externe et canari de labels mélangés.
 
-Le cas a été exécuté dans l’environnement Linux documenté puis revérifié sous macOS ; un petit écart numérique entre les deux est conservé, sa cause n’étant pas confirmée (voir le rapport). Les résultats ne portent que sur le flux testé de ce cas : ils ne valident pas toutes les fonctions de l’outil, Windows n’a pas rejoué le cas complet, et les contrôles GUI automatisés ne remplacent pas l’inspection humaine des fenêtres réelles et des applications empaquetées.
+Le cas a été exécuté dans l’environnement Linux documenté puis rejoué sous macOS et dans l’environnement officiel `uv.lock` ; les deux reprises concordent entre elles et un petit écart numérique par rapport à la base enregistrée est conservé, sa cause n’étant pas confirmée (voir le rapport). Les résultats ne portent que sur le flux testé de ce cas : ils ne valident pas toutes les fonctions de l’outil, Windows n’a pas rejoué le cas complet, et les contrôles GUI automatisés ne remplacent pas l’inspection humaine des fenêtres réelles et des applications empaquetées.
 
 - Rapport technique : [validation DSA : reproduction numérique et vérification inter-plateformes](docs/VALIDATION_DSA_FR.md)
 - Reproduction : [exemple reproductible](examples/public/dsa_group_nested_v1/README.md)
