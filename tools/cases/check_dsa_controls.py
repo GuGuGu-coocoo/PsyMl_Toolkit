@@ -331,6 +331,7 @@ def run_controls(
             diagnostics = compare_dsa.validate_reference_diagnostics(
                 pd.read_csv(reference_output / "parameter_search.csv"),
                 expected_inner_folds=int(config.inner_splits),
+                table_name="parameter_search",
             )
             passed = passed and diagnostics["passed"]
             detail["reference_diagnostics"] = diagnostics

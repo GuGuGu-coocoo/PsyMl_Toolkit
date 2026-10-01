@@ -34,6 +34,11 @@ from tools.cases import dsa_case
 
 PROBABILITY_COLUMNS = tuple(f"probability_{label}" for label in range(1, 20))
 REFERENCE_DIAGNOSTIC_COLUMNS = frozenset({"inner_scores"})
+# Columns the reference-only inner_scores diagnostic actually reads. A missing
+# entry fails the diagnostic explicitly instead of raising or passing vacuously.
+DIAGNOSTIC_REQUIRED_COLUMNS = ("status", "score", "inner_scores")
+# Production columns the direct confusion-count metric recomputation reads.
+DIRECT_METRIC_DEPENDENCY_COLUMNS = ("fold", "accuracy", "balanced_accuracy", "f1_macro")
 # Numeric columns that are legitimately empty when no problem occurred. Every
 # other NaN (outside an explicitly failed candidate row) fails the comparison.
 MAY_BE_EMPTY_NUMERIC_COLUMNS = frozenset({"error"})
@@ -234,16 +239,23 @@ def validate_reference_diagnostics(
     *,
     expected_inner_folds: int,
     numeric_atol: float = dsa_case.METRIC_ATOL,
+    table_name: str = "parameter_search",
 ) -> dict[str, Any]:
     """Validate the reference-only diagnostic column instead of skipping it.
 
-    ``inner_scores`` must be a JSON list of ``expected_inner_folds`` finite
-    numbers for every completed candidate, and its unweighted mean must equal
-    the reported candidate score.
+    The function checks its actual dependency columns first; when any of them
+    is absent it returns an explicit failure carrying the table name, the
+    missing columns and the reason, and never fills defaults or returns a
+    vacuous pass. Otherwise ``inner_scores`` must be a JSON list of
+    ``expected_inner_folds`` finite numbers for every completed candidate, and
+    its unweighted mean must equal the reported candidate score.
     """
-    detail: dict[str, Any] = {"checked_rows": 0, "problems": []}
-    if "inner_scores" not in table.columns:
-        detail["problems"].append("inner_scores column is missing")
+    detail: dict[str, Any] = {"table": table_name, "checked_rows": 0, "problems": []}
+    missing = [column for column in DIAGNOSTIC_REQUIRED_COLUMNS if column not in table.columns]
+    if missing:
+        detail["missing_required_columns"] = missing
+        detail["reason"] = "diagnostic validation requires these reference columns"
+        detail["problems"].append(f"missing required columns: {', '.join(missing)}")
         return {"passed": False, "detail": detail}
     for index, row in table.iterrows():
         if str(row.get("status")) != "completed":
@@ -546,7 +558,9 @@ def compare(
         passed = comparison["passed"]
         if name == "parameter_search":
             diagnostics = validate_reference_diagnostics(
-                right, expected_inner_folds=int(config["inner_splits"])
+                right,
+                expected_inner_folds=int(config["inner_splits"]),
+                table_name="parameter_search",
             )
             passed = passed and diagnostics["passed"]
             detail["reference_diagnostics"] = diagnostics
@@ -721,25 +735,46 @@ def compare(
             )
         pd.DataFrame(differences).to_csv(output / "paired_dummy_differences.csv", index=False)
 
-        math_ok = True
-        fold_metrics = pd.read_csv(primary / "fold_metrics.csv")
-        for fold, rows in primary_predictions.groupby("fold"):
-            direct = direct_metrics(rows["observed"].to_numpy(), rows["predicted"].to_numpy())
-            expected = fold_metrics[fold_metrics["fold"] == fold].iloc[0]
-            math_ok &= all(
-                abs(direct[name] - float(expected[name])) <= 1e-12 for name in direct
+        fold_metrics_frame = pd.read_csv(primary / "fold_metrics.csv")
+        math_dependencies_missing = [
+            column
+            for column in DIRECT_METRIC_DEPENDENCY_COLUMNS
+            if column not in fold_metrics_frame.columns
+        ]
+        if math_dependencies_missing:
+            check(
+                numerical,
+                "metrics_match_direct_confusion_count_definitions",
+                False,
+                {
+                    "table": "fold_metrics",
+                    "missing_required_columns": math_dependencies_missing,
+                    "reason": "direct metric recomputation requires these production columns",
+                    "atol": 1e-12,
+                },
             )
-        check(
-            numerical,
-            "metrics_match_direct_confusion_count_definitions",
-            math_ok,
-            {
-                "definitions": (
-                    "BA=mean class TP/(TP+FN); macroF1=mean 2TP/(2TP+FP+FN); accuracy=correct/N"
-                ),
-                "atol": 1e-12,
-            },
-        )
+        else:
+            math_ok = True
+            for fold, rows in primary_predictions.groupby("fold"):
+                direct = direct_metrics(
+                    rows["observed"].to_numpy(), rows["predicted"].to_numpy()
+                )
+                expected = fold_metrics_frame[fold_metrics_frame["fold"] == fold].iloc[0]
+                math_ok &= all(
+                    abs(direct[name] - float(expected[name])) <= 1e-12 for name in direct
+                )
+            check(
+                numerical,
+                "metrics_match_direct_confusion_count_definitions",
+                math_ok,
+                {
+                    "definitions": (
+                        "BA=mean class TP/(TP+FN); macroF1=mean 2TP/(2TP+FP+FN); "
+                        "accuracy=correct/N"
+                    ),
+                    "atol": 1e-12,
+                },
+            )
         primary_matrix = pd.read_csv(primary / "confusion_matrix.csv", index_col=0)
         check(
             numerical,

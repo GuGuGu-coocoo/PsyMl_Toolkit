@@ -172,6 +172,19 @@ failures cannot be masked (missing/unregistered columns, numeric drift,
 row-count mismatch), non-finite values are rejected (one-sided NaN, statistic
 NaN, Inf, dtype mismatch), and the reference diagnostic must be validated.
 
+The diagnostic validation (`inner_scores`) and the direct metric recomputation
+also check their actual dependency columns first (`status/score/inner_scores`
+and `fold/accuracy/balanced_accuracy/f1_macro`); a missing dependency is
+reported as a failure with the table name, the missing columns and the reason,
+without defaults, skipping, uncaught exceptions or aborting the report, so
+later executable independent checks (for example the confusion-matrix
+comparison when predictions are complete) still run. End-to-end compare()
+regression tests cover a reference-only and a both-sides missing
+`parameter_search` score and a production `fold_metrics` missing
+`balanced_accuracy` or `fold`, asserting that `checks.json` is written, the
+report carries the exact table name and missing columns, and the CLI exits
+non-zero.
+
 ## 6. Metric conventions
 
 - Primary: unweighted fold mean of outer-fold balanced accuracy for the

@@ -15,11 +15,17 @@ import json
 import warnings
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    confusion_matrix,
+    f1_score,
+)
 
 from tools.cases import check_dsa_controls, compare_dsa, dsa_case, prepare_dsa, reference_dsa
 
@@ -476,6 +482,289 @@ def test_metric_table_comparison_rejects_non_finite_values():
     result = compare_dsa.compare_metric_tables(base, text_score, table_name="parameter_search")
     assert not result["passed"]
     assert any("dtype mismatch" in problem for problem in result["non_finite_problems"])
+
+
+def _build_compare_fixture(
+    tmp_path: Path,
+    *,
+    reference_parameter_search_missing: tuple[str, ...] = (),
+    production_parameter_search_missing: tuple[str, ...] = (),
+    production_fold_metrics_missing: tuple[str, ...] = (),
+) -> tuple[Path, Path, Path, Path]:
+    """A small self-contained fixture driving the real compare() control flow."""
+    labels = list(range(1, 20))
+    observed = [1, 2, 3, 4]
+    predictions = pd.DataFrame(
+        {
+            "row_index": [0, 1, 2, 3],
+            "fold": [1, 1, 2, 2],
+            "observed": observed,
+            "predicted": observed,
+            "model": ["dummy"] * 4,
+        }
+    )
+    frame = pd.DataFrame(
+        {
+            "segment_id": ["a01_p1_s01", "a01_p1_s02", "a01_p2_s01", "a01_p2_s02"],
+            "subject_id": [1, 1, 2, 2],
+            "activity": observed,
+            "f1": [0.1, 0.2, 0.3, 0.4],
+            "f2": [0.5, 0.6, 0.7, 0.8],
+        }
+    )
+    input_csv = tmp_path / "input.csv"
+    frame.to_csv(input_csv, index=False)
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "task": "classification",
+                "target_column": "activity",
+                "model_name": "dummy",
+                "input_path": str(input_csv),
+                "output_dir": str(tmp_path / "unused"),
+                "group_column": "subject_id",
+                "feature_columns": ["f1", "f2"],
+                "random_seed": 20261001,
+                "validation_strategy": "group_k_fold",
+                "primary_validation": "group_k_fold",
+                "n_splits": 2,
+                "inner_splits": 2,
+                "missing_strategy": "median",
+                "scaling": "standard",
+                "selection_metric": "balanced_accuracy",
+                "tuning_mode": "custom",
+                "model_names": ["dummy", "logistic_regression"],
+                "parameter_grids": {
+                    "dummy": {"strategy": ["prior"]},
+                    "logistic_regression": {"C": [0.1, 1.0]},
+                },
+                "max_candidates": 2,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    probability_columns = [f"probability_{label}" for label in labels]
+    probabilities = np.zeros((len(predictions), len(labels)))
+    for row, label in enumerate(observed):
+        probabilities[row, label - 1] = 1.0
+    reference_predictions = predictions.copy()
+    for index, column in enumerate(probability_columns):
+        reference_predictions[column] = probabilities[:, index]
+
+    fold_metrics_full = pd.DataFrame(
+        {
+            "fold": [1, 2],
+            "model": ["dummy", "dummy"],
+            "validation": ["group_k_fold", "group_k_fold"],
+            "accuracy": [1.0, 1.0],
+            "balanced_accuracy": [1.0, 1.0],
+            "precision_weighted": [1.0, 1.0],
+            "recall_weighted": [1.0, 1.0],
+            "f1_weighted": [1.0, 1.0],
+            "precision_macro": [1.0, 1.0],
+            "recall_macro": [1.0, 1.0],
+            "f1_macro": [1.0, 1.0],
+            "roc_auc_ovr_weighted": [1.0, 1.0],
+        }
+    )
+    production_fold_metrics = fold_metrics_full.drop(
+        columns=list(production_fold_metrics_missing)
+    )
+    production_parameter_search = pd.DataFrame(
+        {
+            "model": ["dummy"],
+            "validation": ["group_k_fold"],
+            "outer_fold": [1],
+            "selection_scope": ["outer_training_fold"],
+            "candidate": [1],
+            "selection_metric": ["balanced_accuracy"],
+            "score": [1.0],
+            "parameters": ['{"strategy": "prior"}'],
+            "status": ["completed"],
+            "error": [float("nan")],
+        }
+    ).drop(columns=list(production_parameter_search_missing))
+    reference_parameter_search = production_parameter_search.copy()
+    reference_parameter_search["inner_scores"] = [json.dumps([1.0, 1.0])]
+    reference_parameter_search = reference_parameter_search.drop(
+        columns=[
+            column
+            for column in reference_parameter_search_missing
+            if column in reference_parameter_search.columns
+        ]
+    )
+    selection_trace = pd.DataFrame(
+        {
+            "validation": ["group_k_fold"],
+            "outer_fold": [1],
+            "selection_scope": ["outer_training_fold"],
+            "model": ["dummy"],
+            "parameters": ['{"strategy": "prior"}'],
+            "score": [1.0],
+        }
+    )
+    metrics_summary = pd.DataFrame(
+        {
+            "metric": ["balanced_accuracy"],
+            "mean": [1.0],
+            "std": [0.0],
+            "min": [1.0],
+            "max": [1.0],
+            "n_folds": [2],
+        }
+    )
+
+    primary = tmp_path / "primary"
+    observed_dir = tmp_path / "observed"
+    reference = tmp_path / "reference"
+    for directory in (primary, observed_dir / "run", reference):
+        directory.mkdir(parents=True, exist_ok=True)
+    predictions.to_csv(primary / "predictions.csv", index=False)
+    predictions.to_csv(observed_dir / "run" / "predictions.csv", index=False)
+    production_fold_metrics.to_csv(primary / "fold_metrics.csv", index=False)
+    production_fold_metrics.to_csv(observed_dir / "run" / "fold_metrics.csv", index=False)
+    production_parameter_search.to_csv(primary / "parameter_search.csv", index=False)
+    production_parameter_search.to_csv(
+        observed_dir / "run" / "parameter_search.csv", index=False
+    )
+    selection_trace.to_csv(primary / "selection_trace.csv", index=False)
+    selection_trace.to_csv(observed_dir / "run" / "selection_trace.csv", index=False)
+    metrics_summary.to_csv(primary / "metrics_summary.csv", index=False)
+    metrics_summary.to_csv(observed_dir / "run" / "metrics_summary.csv", index=False)
+    reference_predictions.to_csv(
+        reference / "predictions_with_probabilities.csv", index=False
+    )
+    reference_predictions.to_csv(observed_dir / "observed_oof_probabilities.csv", index=False)
+    fold_metrics_full.to_csv(reference / "fold_metrics.csv", index=False)
+    metrics_summary.to_csv(reference / "metrics_summary.csv", index=False)
+    selection_trace.to_csv(reference / "selection_trace.csv", index=False)
+    reference_parameter_search.to_csv(reference / "parameter_search.csv", index=False)
+    predictions.to_csv(reference / "dummy_oof.csv", index=False)
+    matrix = confusion_matrix(predictions["observed"], predictions["predicted"])
+    pd.DataFrame(matrix).to_csv(primary / "confusion_matrix.csv")
+    (reference / "fold_membership.json").write_text("{}", encoding="utf-8")
+    (observed_dir / "fold_membership.json").write_text("{}", encoding="utf-8")
+    (reference / "fit_audit.json").write_text("[]", encoding="utf-8")
+    (observed_dir / "fit_audit.json").write_text("[]", encoding="utf-8")
+    (primary / "result.json").write_text(
+        json.dumps({"model_export": {"model_path": "model/fake.joblib"}}),
+        encoding="utf-8",
+    )
+    return config_path, primary, reference, observed_dir
+
+
+def _stub_model_reads(monkeypatch) -> None:
+    """Isolate the unrelated model file reads so the fixture needs no joblib model."""
+    observed = [1, 2, 3, 4]
+    labels = list(range(1, 20))
+    probabilities = np.zeros((len(observed), len(labels)))
+    for row, label in enumerate(observed):
+        probabilities[row, label - 1] = 1.0
+    estimator = SimpleNamespace(
+        classes_=np.array(labels),
+        predict=lambda features: np.array(observed),
+        predict_proba=lambda features: probabilities.copy(),
+    )
+    loaded = SimpleNamespace(
+        metadata={"n_features": 2, "classes": labels, "model_name": "dummy"}
+    )
+    replay = pd.DataFrame({"predicted_class": np.array(observed)})
+    for index, label in enumerate(labels):
+        replay[f"probability_{label}"] = probabilities[:, index]
+    monkeypatch.setattr(compare_dsa.joblib, "load", lambda path: estimator)
+    monkeypatch.setattr(compare_dsa, "load_model", lambda path, trusted=False: loaded)
+    monkeypatch.setattr(
+        compare_dsa,
+        "predict_dataframe",
+        lambda loaded_model, frame, mapping=None: (replay.copy(), []),
+    )
+    monkeypatch.setattr(
+        compare_dsa,
+        "compatibility_check",
+        lambda loaded_model, frame, mapping=None: {"compatible": False, "reason": "stub"},
+    )
+
+
+@pytest.mark.parametrize("missing_on", ["reference", "both"])
+def test_compare_reports_missing_parameter_search_score_without_crashing(
+    tmp_path, monkeypatch, missing_on
+):
+    kwargs: dict = {}
+    if missing_on == "reference":
+        kwargs["reference_parameter_search_missing"] = ("score",)
+    else:
+        kwargs["production_parameter_search_missing"] = ("score",)
+        kwargs["reference_parameter_search_missing"] = ("score",)
+    config_path, primary, reference, observed = _build_compare_fixture(tmp_path, **kwargs)
+    _stub_model_reads(monkeypatch)
+    output = tmp_path / "comparison"
+    exit_code = compare_dsa.main(
+        [
+            "--config", str(config_path),
+            "--primary", str(primary),
+            "--reference", str(reference),
+            "--observed", str(observed),
+            "--output", str(output),
+        ]
+    )
+    # No uncaught KeyError: the run completed, wrote the report and exits non-zero.
+    assert exit_code == 1
+    assert (output / "checks.json").is_file()
+    payload = json.loads((output / "checks.json").read_text(encoding="utf-8"))
+    assert payload["passed"] is False
+    check = next(
+        item for item in payload["checks"] if item["name"] == "independent_parameter_search_match"
+    )
+    assert check["pass"] is False
+    assert check["detail"]["table"] == "parameter_search"
+    assert "score" in check["detail"]["reference_missing_required_columns"]
+    diagnostics = check["detail"]["reference_diagnostics"]
+    assert diagnostics["passed"] is False
+    assert diagnostics["detail"]["table"] == "parameter_search"
+    assert "score" in diagnostics["detail"]["missing_required_columns"]
+    if missing_on == "both":
+        assert "score" in check["detail"]["production_missing_required_columns"]
+
+
+@pytest.mark.parametrize("missing_column", ["balanced_accuracy", "fold"])
+def test_compare_reports_missing_fold_metrics_columns_but_keeps_confusion_check(
+    tmp_path, monkeypatch, missing_column
+):
+    config_path, primary, reference, observed = _build_compare_fixture(
+        tmp_path, production_fold_metrics_missing=(missing_column,)
+    )
+    _stub_model_reads(monkeypatch)
+    output = tmp_path / "comparison"
+    exit_code = compare_dsa.main(
+        [
+            "--config", str(config_path),
+            "--primary", str(primary),
+            "--reference", str(reference),
+            "--observed", str(observed),
+            "--output", str(output),
+        ]
+    )
+    assert exit_code == 1
+    assert (output / "checks.json").is_file()
+    payload = json.loads((output / "checks.json").read_text(encoding="utf-8"))
+    assert payload["passed"] is False
+    check = next(
+        item
+        for item in payload["checks"]
+        if item["name"] == "metrics_match_direct_confusion_count_definitions"
+    )
+    assert check["pass"] is False
+    assert check["detail"]["table"] == "fold_metrics"
+    assert check["detail"]["missing_required_columns"] == [missing_column]
+    # Predictions are complete, so the independent confusion-matrix check still runs.
+    matrix_check = next(
+        item for item in payload["checks"] if item["name"] == "pooled_oof_confusion_matrix_exact"
+    )
+    assert matrix_check["pass"] is True
+    assert "blocked_by_missing_required_columns" not in (matrix_check["detail"] or {})
 
 
 def test_reference_inner_scores_diagnostic_is_validated_not_skipped():

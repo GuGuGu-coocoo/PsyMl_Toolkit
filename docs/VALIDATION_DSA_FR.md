@@ -187,6 +187,20 @@ en erreur), aucun masquage (colonnes manquantes/non enregistrées, dérive
 numérique, nombre de lignes), rejet des valeurs non finies (NaN unilatéral, NaN
 de statistique, Inf, dtype) et validation du diagnostic de la référence.
 
+La validation du diagnostic (`inner_scores`) et le recalcul direct des métriques
+vérifient aussi d’abord leurs colonnes de dépendance réelles
+(`status/score/inner_scores` et `fold/accuracy/balanced_accuracy/f1_macro`) :
+une dépendance manquante est signalée comme échec avec le nom de table, les
+colonnes manquantes et la raison, sans valeur par défaut, sans saut, sans
+exception non rattrapée et sans interrompre le rapport, de sorte que les
+contrôles indépendants ultérieurs encore exécutables (par exemple la matrice
+de confusion lorsque les prédictions sont complètes) continuent. Les tests de
+flux complet `compare()` couvrent un `score` de `parameter_search` manquant
+côté référence puis des deux côtés, et un `fold_metrics` de production privé de
+`balanced_accuracy` ou de `fold` ; ils vérifient que `checks.json` est écrit,
+que le rapport porte le nom de table et les colonnes manquantes exacts et que
+la CLI sort en code non nul.
+
 ## 6. Conventions de métriques
 
 - Principal : moyenne non pondérée, sur les plis externes, de la balanced
