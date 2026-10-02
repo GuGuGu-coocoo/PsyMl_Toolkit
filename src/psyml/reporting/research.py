@@ -15,6 +15,7 @@ import pandas as pd
 
 from psyml.config import ExperimentConfig
 from psyml.data.provenance import SNAPSHOT_KEY
+from psyml.reporting.environment import numerical_environment, source_identity
 
 
 def _package_version(distribution: str) -> str:
@@ -67,6 +68,9 @@ def _manifest(
         "numpy": _package_version("numpy"),
         "pandas": _package_version("pandas"),
         "scikit-learn": _package_version("scikit-learn"),
+        "scipy": _package_version("scipy"),
+        "joblib": _package_version("joblib"),
+        "threadpoolctl": _package_version("threadpoolctl"),
     }
     loader_dependency = _loader_dependency(config)
     if loader_dependency is not None:
@@ -86,6 +90,8 @@ def _manifest(
             "machine": platform.machine(),
         },
         "dependencies": dependencies,
+        "code_identity": source_identity(),
+        "numerical_environment": numerical_environment(),
         "input_snapshot": {
             key: value for key, value in frame.attrs.get(SNAPSHOT_KEY, {}).items()
             if key not in {"sha256", "hash_basis"}
