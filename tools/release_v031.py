@@ -16,7 +16,7 @@ import subprocess
 from pathlib import Path
 from urllib.request import urlopen
 
-from verify_release_artifacts import PDF_NAMES, PLATFORM_SUFFIXES, ROOT, sha256_file
+from verify_release_artifacts import PLATFORM_SUFFIXES, ROOT, sha256_file
 
 from psyml import __version__
 
@@ -57,7 +57,7 @@ def verify(directory: Path, commit: str) -> None:
 
 
 def candidate(directory: Path, commit: str) -> None:
-    names = [*NATIVE_NAMES, *(f"docs/{name}" for name in PDF_NAMES)]
+    names = NATIVE_NAMES
     manifest = {name: sha256_file(directory / name) for name in names}
     (directory / "SHA256SUMS").write_text(
         "".join(f"{digest}  {name}\n" for name, digest in sorted(manifest.items())),
@@ -88,7 +88,7 @@ def verify_downloads(directory: Path, assets: list[dict]) -> None:
 
 
 def verify_candidate_document(document: dict, directory: Path, commit: str, run_id: int) -> None:
-    expected_names = {*NATIVE_NAMES, *(f"docs/{name}" for name in PDF_NAMES)}
+    expected_names = set(NATIVE_NAMES)
     expected_keys = {"version", "commit", "lock_sha256", "workflow_run_id", "assets", "public_assets"}
     if not isinstance(document, dict) or set(document) != expected_keys:
         raise SystemExit("Candidate manifest has unexpected fields")
@@ -99,7 +99,7 @@ def verify_candidate_document(document: dict, directory: Path, commit: str, run_
         raise SystemExit("Candidate provenance differs from release source or build run")
     assets = document["assets"]
     if not isinstance(assets, dict) or set(assets) != expected_names:
-        raise SystemExit("Candidate manifest must describe exactly the two ZIPs and two PDFs")
+        raise SystemExit("Candidate manifest must describe exactly the two native ZIPs")
     for name, digest in assets.items():
         if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
             raise SystemExit(f"Invalid candidate digest: {name}")

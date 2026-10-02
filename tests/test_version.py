@@ -220,9 +220,9 @@ def test_metadata_and_persistence_use_the_distribution_version():
         assert "psyml-toolkit" in text
 
 
-def test_native_presets_use_the_real_godot_architecture_option():
+def test_native_presets_use_the_official_godot_template_architectures():
     text = _export_presets_template()
-    assert 'binary_format/architecture="arm64"' in text
+    assert 'binary_format/architecture="universal"' in text
     assert 'binary_format/architecture="x86_64"' in text
     assert "application/architecture=" not in text
 

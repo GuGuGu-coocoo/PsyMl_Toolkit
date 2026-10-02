@@ -14,7 +14,6 @@ import re
 from pathlib import Path
 from urllib.parse import urljoin
 
-from pdf_text import font_safe_text, supported_glyphs
 from release_metadata import CURRENT_LABEL, default_label, notice_for_label
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
@@ -45,10 +44,12 @@ FORMULAS = [
 ]
 
 
-def checked_paragraph(text: str, style: ParagraphStyle) -> Paragraph:
-    """Fail instead of silently dropping symbols absent from the selected font."""
-    widths = pdfmetrics.getFont("PsyMLCJK").face.charWidths
-    return Paragraph(font_safe_text(text, widths), style)
+def supported_glyphs(text: str) -> str:
+    for old, new in {"📖": "", "ȳ": "y_mean", "ŷ": "y_hat", "−": "-", "ᵀ": "<super>T</super>",
+                     "ᵢ": "<sub>i</sub>", "ⱼ": "<sub>j</sub>",
+                     "–": "-", "—": "-", "‑": "-"}.items():
+        text = text.replace(old, new)
+    return text
 
 
 def inline(text: str, base: str) -> str:
@@ -83,17 +84,17 @@ def render(source: Path, text: str, target: Path, title: str,
     }
     base = f"https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/{base_ref}/"
     base += source.relative_to(ROOT).as_posix()
-    story = [checked_paragraph(title, heading[1]), checked_paragraph(f"PsyML Toolkit · {label}", body)]
-    story.append(checked_paragraph(
+    story = [Paragraph(title, heading[1]), Paragraph(f"PsyML Toolkit · {label}", body)]
+    story.append(Paragraph(
         "本文可离线阅读。蓝色链接指向对应仓库文件或外部资料，需要联网。"
         "软件操作均在图形界面中完成，无需输入命令。", small,
     ))
     notice = notice_for_label(label)
     if notice is not None:
-        story.append(checked_paragraph(notice, small))
+        story.append(Paragraph(notice, small))
     if source.name == "README_ZH.md":
-        story.append(checked_paragraph("打开应用并完成第一次分析", heading[2]))
-        story.append(checked_paragraph(
+        story.append(Paragraph("打开应用并完成第一次分析", heading[2]))
+        story.append(Paragraph(
             "1. 完整解压本版本的独立应用包。Mac 双击 PsyML Toolkit.app；Windows 双击 PsyML Toolkit.exe，"
             "保留旁边的 core 文件夹。<br/>"
             "2. 在第 1 页点击“导入配置…”，选择应用内 examples/quickstart/classification_config.json；"
@@ -123,7 +124,7 @@ def render(source: Path, text: str, target: Path, title: str,
             while i < len(lines) and lines[i].strip() != "$$":
                 i += 1
             i += 1
-            equation = checked_paragraph(supported_glyphs(FORMULAS[formula_index]), body)
+            equation = Paragraph(supported_glyphs(FORMULAS[formula_index]), body)
             formula_index += 1
             story.extend([Spacer(1, 5), equation, Spacer(1, 5)])
         elif line.startswith("```"):
@@ -132,7 +133,7 @@ def render(source: Path, text: str, target: Path, title: str,
                 code.append(html.escape(lines[i]))
                 i += 1
             i += 1
-            block = Table([[checked_paragraph("<br/>".join(code), small)]], colWidths=[WIDTH])
+            block = Table([[Paragraph("<br/>".join(code), small)]], colWidths=[WIDTH])
             block.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eef1f8")),
                 ("BOX", (0, 0), (-1, -1), .4, colors.HexColor("#d5dced")),
@@ -148,7 +149,7 @@ def render(source: Path, text: str, target: Path, title: str,
                 path = source.parent / raw
                 width, height = ImageReader(str(path)).getSize()
                 image = Image(str(path), width=WIDTH, height=WIDTH * height / width)
-                story.append(KeepTogether([image, checked_paragraph(caption, small), Spacer(1, 10)]))
+                story.append(KeepTogether([image, Paragraph(caption, small), Spacer(1, 10)]))
         elif line.startswith("|"):
             rows = [line]
             while i < len(lines) and lines[i].lstrip().startswith("|"):
@@ -158,7 +159,7 @@ def render(source: Path, text: str, target: Path, title: str,
             for row in rows:
                 if re.fullmatch(r"[| :\-]+", row):
                     continue
-                cells.append([checked_paragraph(inline(c.strip(), base), small)
+                cells.append([Paragraph(inline(c.strip(), base), small)
                               for c in row.strip("|").split("|")])
             count = len(cells[0])
             widths = {2: [175, 324], 3: [160, 165, 174]}.get(count, [WIDTH / count] * count)
@@ -174,9 +175,9 @@ def render(source: Path, text: str, target: Path, title: str,
             story.extend([table, Spacer(1, 10)])
         elif line.startswith("#"):
             level = min(len(line) - len(line.lstrip("#")), 6)
-            story.append(checked_paragraph(inline(line.lstrip("# "), base), heading[level]))
+            story.append(Paragraph(inline(line.lstrip("# "), base), heading[level]))
         else:
-            story.append(checked_paragraph(inline(line, base), body))
+            story.append(Paragraph(inline(line, base), body))
 
     def page(canvas, doc):
         canvas.saveState()
@@ -219,9 +220,7 @@ def main() -> None:
     render(guide, guide_text, args.output_dir / f"RESEARCHER_GUIDE_ZH{suffix}.pdf",
            "研究者完整使用指南", args.label, args.base_ref)
     manifest = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                for p in [Path(__file__), ROOT / "tools/pdf_text.py",
-                          ROOT / "tools/release_metadata.py", ROOT / "src/psyml/__init__.py",
-                          readme, guide, *sorted((ROOT / "docs/images/zh").glob("*.png"))]}
+                for p in [Path(__file__), readme, guide, *sorted((ROOT / "docs/images/zh").glob("*.png"))]}
     (args.output_dir / f"sources{suffix}.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("PSYML_RELEASE_PDFS_OK")
 

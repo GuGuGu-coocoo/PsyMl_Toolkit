@@ -57,32 +57,8 @@ jobs:
           compression-level: 0
           retention-days: 14
 
-  documents:
-    if: github.ref == 'refs/heads/release/v0.3.1'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
-        with:
-          python-version: '3.12.13'
-          enable-cache: true
-      - run: uv sync --locked --group dev --extra explain
-      - name: Install the distribution font
-        run: sudo apt-get update && sudo apt-get install -y fonts-wqy-zenhei
-      - name: Render current Chinese documentation
-        run: uv run --locked --with reportlab==4.4.9 python tools/build_release_pdfs.py --font /usr/share/fonts/truetype/wqy/wqy-zenhei.ttc --output-dir dist/docs
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: v0.3.1-documents
-          path: dist/docs/
-          if-no-files-found: error
-          retention-days: 14
-
   candidate:
-    needs: [quality, native, documents]
+    needs: [quality, native]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -102,10 +78,6 @@ jobs:
         with:
           name: v0.3.1-Windows
           path: dist/v0.3.1
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: v0.3.1-documents
-          path: dist/v0.3.1/docs
       - name: Assemble and verify exact release candidate
         run: uv run --locked python tools/release_v031.py candidate --directory dist/v0.3.1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

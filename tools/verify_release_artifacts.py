@@ -1,19 +1,8 @@
-"""Verify built release artifacts by inspecting the real files.
+"""Verify native release ZIPs, SHA-256 sidecars and source provenance.
 
-Structural verification of the platform ZIPs, their SHA-256 sidecars and, in
-``all`` mode, the Chinese distribution PDFs and the release checksum manifest.
-Entry names, sizes, ``BUILD.json`` fields, archive safety and hashes are read
-from the artifacts themselves; a success string in a log is never enough.
-
-Usage::
-
-    .venv/bin/python tools/verify_release_artifacts.py --directory dist/v0.3.1 --platform all
-
-``all`` requires both platform ZIPs, non-empty ``docs/README_ZH.pdf`` and
-``docs/RESEARCHER_GUIDE_ZH.pdf`` generated from the current sources, and a
-``SHA256SUMS`` (or ``SHA256SUMS.txt``) manifest listing the two ZIPs and the
-two PDFs with matching hashes. A single-platform run verifies only that ZIP and
-its sidecar, so F02 can gate the macOS build before the Windows artifact exists.
+The all-platform mode requires macOS-arm64 and Windows-x64 ZIPs plus their
+checksum manifest. It inspects all archive entries, actual executable headers,
+BUILD.json and the exact dependency lock. No document generation is required.
 """
 
 from __future__ import annotations
@@ -34,10 +23,6 @@ from psyml import __version__ as CORE_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORM_SUFFIXES = {"macOS": "macOS-arm64", "Windows": "Windows-x64"}
-PDF_NAMES = ("README_ZH.pdf", "RESEARCHER_GUIDE_ZH.pdf")
-PDF_SOURCES = ("README_ZH.md", "docs/RESEARCHER_GUIDE_ZH.md",
-               "tools/build_release_pdfs.py", "tools/pdf_text.py",
-               "tools/release_metadata.py", "src/psyml/__init__.py")
 MANIFEST_NAMES = ("SHA256SUMS", "SHA256SUMS.txt")
 SMOKE_MARKER = "PSYML_NATIVE_BUNDLE_OK"
 _HEX = re.compile(r"^[0-9a-f]{64}$")
@@ -404,43 +389,6 @@ def verify_platform(directory: Path, platform: str, version: str, commit: str) -
     return errors
 
 
-def verify_pdfs(directory: Path) -> list[str]:
-    """Require non-empty PDFs generated from the current sources."""
-    errors: list[str] = []
-    docs = directory / "docs"
-    for name in PDF_NAMES:
-        path = docs / name
-        if not path.is_file():
-            errors.append(f"missing distribution PDF: {path}")
-            continue
-        if path.stat().st_size <= 0:
-            errors.append(f"empty distribution PDF: {path}")
-        elif path.read_bytes()[:5] != b"%PDF-":
-            errors.append(f"not a PDF file: {path}")
-    sources = docs / "sources.json"
-    if not sources.is_file():
-        errors.append(f"missing PDF source manifest: {sources}")
-        return errors
-    try:
-        recorded = json.loads(sources.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        errors.append(f"unreadable {sources}: {error}")
-        return errors
-    if not isinstance(recorded, dict):
-        errors.append(f"{sources}: expected a JSON object of source hashes")
-        return errors
-    for relative in PDF_SOURCES:
-        if relative not in recorded:
-            errors.append(f"{sources}: no source hash recorded for {relative}")
-    for relative, expected in recorded.items():
-        source = ROOT / relative
-        if not source.is_file():
-            errors.append(f"{sources}: recorded source is missing: {relative}")
-        elif sha256_file(source) != expected:
-            errors.append(f"{sources}: recorded source changed: {relative}")
-    return errors
-
-
 def verify_manifest(directory: Path, expected: dict[str, str]) -> list[str]:
     """Verify the release checksum manifest lists every artifact with its hash."""
     errors: list[str] = []
@@ -508,22 +456,14 @@ def main() -> None:
         else:
             verified.append(f"PsyML-Toolkit-{args.version}-{suffix}.zip")
     if args.platform == "all":
-        errors.extend(f"[all] {message}" for message in verify_pdfs(directory))
         expected = {
             f"PsyML-Toolkit-{args.version}-{suffix}.zip": sha256_file(
                 directory / f"PsyML-Toolkit-{args.version}-{suffix}.zip")
             for suffix in PLATFORM_SUFFIXES.values()
             if (directory / f"PsyML-Toolkit-{args.version}-{suffix}.zip").is_file()
         }
-        for name in PDF_NAMES:
-            path = directory / "docs" / name
-            if path.is_file():
-                expected[f"docs/{name}"] = sha256_file(path)
-        if len(expected) != 4:
-            errors.append(
-                "[all] incomplete artifact set; the release candidate needs two platform "
-                "ZIPs and two distribution PDFs"
-            )
+        if len(expected) != 2:
+            errors.append("[all] incomplete artifact set; the release candidate needs both native ZIPs")
         errors.extend(f"[all] {message}" for message in verify_manifest(directory, expected))
     if errors:
         raise SystemExit("FAILED: release artifacts did not verify:\n- " + "\n- ".join(errors))
@@ -532,9 +472,6 @@ def main() -> None:
     for name in verified:
         print(f"verified {name} ({sha256_file(directory / name)})")
     if args.platform == "all":
-        for name in PDF_NAMES:
-            path = directory / "docs" / name
-            print(f"verified docs/{name} ({path.stat().st_size} bytes)")
         print("verified SHA256SUMS")
 
 

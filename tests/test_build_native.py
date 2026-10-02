@@ -1,4 +1,4 @@
-"""Build, PDF-label and release-artifact tooling regression tests.
+"""Build and native-release artifact tooling regression tests.
 
 The synthetic archives below are structurally valid stand-ins for the real
 platform packages, so the verifier is exercised against ZIP contents, hashes
@@ -142,19 +142,6 @@ def _write_package(directory: Path, platform: str, *, build_overrides: dict | No
     return archive
 
 
-def _write_pdfs(directory: Path) -> None:
-    docs = directory / "docs"
-    docs.mkdir(parents=True, exist_ok=True)
-    module = _load("verify_release_artifacts")
-    for name in module.PDF_NAMES:
-        (docs / name).write_bytes(b"%PDF-1.4\n% synthetic fixture\n%%EOF\n")
-    sources = {
-        relative: hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
-        for relative in module.PDF_SOURCES
-    }
-    (docs / "sources.json").write_text(json.dumps(sources, indent=2), encoding="utf-8")
-
-
 def _write_manifest(directory: Path) -> None:
     listed = {}
     for path in sorted(directory.rglob("*")):
@@ -177,54 +164,6 @@ def _run_verifier(directory: Path, platform: str) -> subprocess.CompletedProcess
     )
 
 
-def test_release_metadata_follows_the_single_core_version():
-    module = _load("release_metadata")
-    import psyml
-
-    assert module.CORE_VERSION == psyml.__version__
-    assert module.default_label() == "v" + psyml.__version__
-    assert module.notice_for_label(module.default_label()) is None
-    development = module.notice_for_label("v0.3.0.dev1")
-    assert development is not None and "开发版 QA 文档" in development
-    historical = module.notice_for_label("v0.2.0")
-    assert historical is not None and "历史版本文档" in historical
-    assert module.is_development_label("v0.3.0.dev0")
-    assert not module.is_development_label("v0.3.0")
-
-
-def test_pdf_builder_derives_its_label_from_the_core_version():
-    text = (TOOLS / "build_release_pdfs.py").read_text(encoding="utf-8")
-    assert "0.2.0" not in text
-    assert "from release_metadata import CURRENT_LABEL, default_label, notice_for_label" in text
-    assert "default=default_label()" in text
-    assert "notice_for_label(label)" in text
-    assert "releases/tag/{label}" in text
-
-
-def test_pdf_builder_preamble_matches_the_standalone_apps():
-    """The frozen README PDF must describe the real per-platform packages.
-
-    The old wording assumed a Windows-only researcher share kit with TestData/
-    and Documents/ folders, a bundled best_ridge.joblib and a save-as
-    prediction export; none of that exists in the standalone ZIPs.
-    """
-    text = (TOOLS / "build_release_pdfs.py").read_text(encoding="utf-8")
-    for obsolete in ["分享包", "TestData", "Documents", "另存", "predictions.parquet"]:
-        assert obsolete not in text
-    for required in [
-        "PsyML Toolkit.app",
-        "PsyML Toolkit.exe",
-        "examples/quickstart/classification_config.json",
-        "classification_predict.csv",
-        "regression_predict.csv",
-        "model_metadata.json",
-        "best_decision_tree.joblib",
-        "打开预测结果文件夹",
-        "predictions.csv",
-    ]:
-        assert required in text
-
-
 def test_build_native_and_workflow_keep_explain_and_all_three_smokes():
     build_native = (TOOLS / "build_native.py").read_text(encoding="utf-8")
     for package in ["shap", "numba", "llvmlite"]:
@@ -242,7 +181,6 @@ def test_build_native_and_workflow_keep_explain_and_all_three_smokes():
 def test_verify_release_artifacts_accepts_a_complete_candidate(fixture_dir):
     for platform in PLATFORM_SUFFIXES:
         _write_package(fixture_dir, platform)
-    _write_pdfs(fixture_dir)
     _write_manifest(fixture_dir)
     result = _run_verifier(fixture_dir, "all")
     assert result.returncode == 0, result.stdout + result.stderr
@@ -308,24 +246,12 @@ def test_verify_release_artifacts_rejects_a_missing_core_runtime(fixture_dir):
     assert any("missing bundled core runtime" in error for error in errors), errors
 
 
-def test_verify_release_artifacts_rejects_stale_pdf_sources(fixture_dir):
-    module = _load("verify_release_artifacts")
-    _write_pdfs(fixture_dir)
-    docs = fixture_dir / "docs"
-    sources = json.loads((docs / "sources.json").read_text(encoding="utf-8"))
-    sources["README.md"] = "0" * 64
-    (docs / "sources.json").write_text(json.dumps(sources), encoding="utf-8")
-    errors = module.verify_pdfs(fixture_dir)
-    assert any("recorded source changed: README.md" in error for error in errors), errors
-
-
-def test_verify_release_artifacts_all_mode_fails_without_the_pdf_set(fixture_dir):
+def test_verify_release_artifacts_all_mode_fails_without_the_checksum_manifest(fixture_dir):
     for platform in PLATFORM_SUFFIXES:
         _write_package(fixture_dir, platform)
     result = _run_verifier(fixture_dir, "all")
     assert result.returncode != 0
     combined = result.stdout + result.stderr
-    assert "missing distribution PDF" in combined
     assert "missing release checksum manifest" in combined
 
 
@@ -469,9 +395,7 @@ def test_developer_build_commands_keep_explain_smokes_and_current_destinations(l
     assert "uv run --locked --group build --extra explain python tools/build_native.py" in text
     for flag in ["--permutation-smoke", "--explain-smoke", "--coefficients-smoke"]:
         assert flag in text
-    assert "--output-dir dist/v0.3.1/docs" in text
-    assert "--output-dir output/pdf" in text
-    assert "--windows-zip dist/v0.3.1/PsyML-Toolkit-0.3.1-Windows-x64.zip" in text
+    assert "--output-dir dist/v0.3.1" in text
     assert "PsyML-Toolkit-Researcher-Share-v0.2.0.zip" not in text
     assert "`tools/licenses/`" in text and "`licenses/`" in text
 
@@ -589,18 +513,47 @@ def test_gui_export_imports_in_disposable_copy(fixture_dir):
     assert imported.read_bytes() == b"original import settings\r\n"
 
 
-@pytest.mark.parametrize("source", ["tools/build_release_pdfs.py", "tools/pdf_text.py",
-                                    "tools/release_metadata.py", "src/psyml/__init__.py"])
-@pytest.mark.parametrize("missing", [False, True])
-def test_release_requires_current_pdf_renderer_source_hashes(fixture_dir, source, missing):
-    module = _load("verify_release_artifacts")
-    _write_pdfs(fixture_dir)
-    manifest = fixture_dir / "docs/sources.json"
-    sources = json.loads(manifest.read_text(encoding="utf-8"))
-    if missing:
-        sources.pop(source)
+@pytest.mark.parametrize("architecture", ["universal", "arm64", "x86_64"])
+def test_macos_gui_is_thinned_before_signing_without_weakening_architecture_checks(
+        fixture_dir, monkeypatch, architecture):
+    monkeypatch.syspath_prepend(str(TOOLS))
+    module = _load("build_native")
+    import verify_release_artifacts
+
+    binary = fixture_dir / "PsyML Toolkit"
+    payloads = {"universal": _fat_executable(0x0100000C, 0x01000007),
+                "arm64": _mach_executable(), "x86_64": _mach_executable(0x01000007)}
+    binary.write_bytes(payloads[architecture])
+    binary.chmod(0o755)
+    calls = []
+    def run(*args):
+        calls.append(args)
+        assert args[:5] == ("lipo", binary, "-thin", "arm64", "-output")
+        args[5].write_bytes(_mach_executable())
+    monkeypatch.setattr(module, "run", run)
+    if architecture == "x86_64":
+        with pytest.raises(verify_release_artifacts.VerificationError, match="arm64 slice"):
+            module.thin_macos_gui(binary)
+        assert calls == []
+        assert binary.read_bytes() == payloads[architecture]
     else:
-        sources[source] = "f" * 64
-    manifest.write_text(json.dumps(sources), encoding="utf-8")
-    errors = module.verify_pdfs(fixture_dir)
-    assert any(source in error for error in errors), errors
+        module.thin_macos_gui(binary)
+        verify_release_artifacts.check_file_architecture(binary, "macOS-arm64")
+        assert len(calls) == (1 if architecture == "universal" else 0)
+        assert binary.stat().st_mode & 0o111
+        assert not binary.with_name(binary.name + ".arm64.tmp").exists()
+
+
+def test_release_metadata_follows_the_single_core_version():
+    module = _load("release_metadata")
+    import psyml
+
+    assert module.CORE_VERSION == psyml.__version__
+    assert module.default_label() == "v" + psyml.__version__
+    assert module.notice_for_label(module.default_label()) is None
+    development = module.notice_for_label("v0.3.0.dev1")
+    assert development is not None and "开发版 QA 文档" in development
+    historical = module.notice_for_label("v0.2.0")
+    assert historical is not None and "历史版本文档" in historical
+    assert module.is_development_label("v0.3.0.dev0")
+    assert not module.is_development_label("v0.3.0")

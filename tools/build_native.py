@@ -96,6 +96,27 @@ def prepare_gui_export(source: Path, destination: Path) -> Path:
     return destination
 
 
+def thin_macos_gui(binary: Path) -> None:
+    """Derive the native arm64 executable from Godot's official universal template."""
+    from verify_release_artifacts import (
+        VerificationError,
+        check_file_architecture,
+        executable_targets,
+    )
+
+    with binary.open("rb") as stream:
+        actual = executable_targets(stream, binary.stat().st_size)
+    if actual == {"macOS-arm64"}:
+        return
+    if actual != {"macOS-arm64", "macOS-x86_64"}:
+        raise VerificationError(f"Godot GUI template lacks the required arm64 slice: {actual}")
+    temporary = binary.with_name(binary.name + ".arm64.tmp")
+    run("lipo", binary, "-thin", "arm64", "-output", temporary)
+    temporary.chmod(binary.stat().st_mode)
+    check_file_architecture(temporary, "macOS-arm64")
+    temporary.replace(binary)
+
+
 def run(*args):
     subprocess.run([str(arg) for arg in args], cwd=ROOT, check=True)
 
@@ -184,6 +205,8 @@ def main():
         app = destination / "PsyML Toolkit.app"
         export_gui(args.godot, "macOS", app, project=export_project)
         binary_dir = app / "Contents/MacOS"
+        # Official Godot templates contain universal Mach-O; thin before signing.
+        thin_macos_gui(binary_dir / "PsyML Toolkit")
     else:
         binary_dir = destination
         export_gui(args.godot, "Windows", destination / "PsyML Toolkit.exe",

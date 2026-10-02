@@ -23,7 +23,7 @@ def release(monkeypatch):
 
 def test_candidate_records_source_and_exact_public_assets(release, tmp_path, monkeypatch):
     monkeypatch.setenv("GITHUB_RUN_ID", "42")
-    names = [*release.NATIVE_NAMES, *(f"docs/{n}" for n in release.PDF_NAMES)]
+    names = list(release.NATIVE_NAMES)
     for name in names:
         path = tmp_path / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -38,7 +38,7 @@ def test_candidate_records_source_and_exact_public_assets(release, tmp_path, mon
     assert recorded["workflow_run_id"] == "42"
     assert recorded["public_assets"] == list(release.NATIVE_NAMES)
     assert set(recorded["assets"]) == set(names)
-    assert len((tmp_path / "SHA256SUMS").read_text(encoding="utf-8").splitlines()) == 4
+    assert len((tmp_path / "SHA256SUMS").read_text(encoding="utf-8").splitlines()) == 2
 
 
 @pytest.mark.parametrize("name,value", [
@@ -130,7 +130,7 @@ def test_workflow_scopes_writes_to_publication_and_current_version():
     assert "branches: [release/v0.3.1, publish/v0.3.1]" in text
     assert text.count("contents: write") == 1
     assert "contents: write" not in text.split("  publish:")[0]
-    assert "needs: [quality, native, documents]" in text
+    assert "needs: [quality, native]" in text
     assert "uses: ./.github/workflows/ci.yml" in text
     assert '"draft=false"' in (ROOT / "tools/release_v031.py").read_text(encoding="utf-8")
     for flag in ("--permutation-smoke", "--explain-smoke", "--coefficients-smoke"):
@@ -139,19 +139,12 @@ def test_workflow_scopes_writes_to_publication_and_current_version():
     assert "secrets:" not in text
 
 
-def test_pdf_sources_use_split_chinese_readme_and_complete_guide():
-    builder = (ROOT / "tools/build_release_pdfs.py").read_text(encoding="utf-8")
-    assert 'readme = ROOT / "README_ZH.md"' in builder
-    assert 'guide = ROOT / "docs/RESEARCHER_GUIDE_ZH.md"' in builder
-    assert '.split(\'<a id="chinese"></a>\')' not in builder
-
-
 @pytest.mark.parametrize("mutation", ["extra_field", "extra_asset", "missing_asset", "path", "digest",
                                       "version", "commit", "run", "lock", "public_assets"])
 def test_candidate_manifest_rejects_mismatches(release, tmp_path, monkeypatch, mutation):
     monkeypatch.setenv("GITHUB_RUN_ID", "42")
     monkeypatch.setattr(release, "verify", lambda *args: None)
-    for name in [*release.NATIVE_NAMES, *(f"docs/{n}" for n in release.PDF_NAMES)]:
+    for name in list(release.NATIVE_NAMES):
         path = tmp_path / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"candidate")
@@ -193,7 +186,7 @@ def test_publish_order_and_fail_closed_before_publication(release, tmp_path, mon
     monkeypatch.setenv("GITHUB_RUN_ID", "42")
     ready = tmp_path / "ready"
     destination = tmp_path / "downloaded"
-    for name in [*release.NATIVE_NAMES, *(f"docs/{n}" for n in release.PDF_NAMES)]:
+    for name in list(release.NATIVE_NAMES):
         path = ready / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"candidate")
@@ -282,24 +275,10 @@ def test_publish_order_and_fail_closed_before_publication(release, tmp_path, mon
                           "publish", "get-id", "check-tag", "public-roundtrip"]
 
 
-def _pdf_text_module():
-    spec = importlib.util.spec_from_file_location("psyml_pdf_text", ROOT / "tools/pdf_text.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def test_pdf_math_symbols_have_readable_font_safe_equivalents():
-    module = _pdf_text_module()
-    result = module.supported_glyphs("MAE = Σ |yᵢ − ŷᵢ|; R² = 1 − Σ(yᵢ − ŷᵢ)² / Σ(yᵢ − ȳ)²")
-    assert "−" not in result and "ŷ" not in result
-    assert result.count("y_hat") == 2 and "y_mean" in result
-    assert "y<sub>i</sub> - y_hat<sub>i</sub>" in result
-
-
-def test_pdf_paragraph_rejects_missing_visible_font_glyphs():
-    module = _pdf_text_module()
-    widths = {ord(c): 10 for c in "y_hat -012<>sub/"}
-    assert module.font_safe_text("ŷ − 1", widths) == "y_hat - 1"
-    with pytest.raises(ValueError, match="font lacks visible characters"):
-        module.font_safe_text("missing ♞", widths)
+def test_release_workflow_has_no_document_generation_or_pdf_gate():
+    workflow = (ROOT / ".github/workflows/release-v0.3.1.yml").read_text(encoding="utf-8")
+    publisher = (ROOT / "tools/release_v031.py").read_text(encoding="utf-8")
+    for text in (workflow, publisher):
+        for forbidden in ("build_release_pdfs", "reportlab", "v0.3.1-documents", "PDF_NAMES"):
+            assert forbidden not in text
+    assert "  documents:" not in workflow
