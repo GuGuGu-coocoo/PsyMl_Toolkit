@@ -6,8 +6,10 @@ import json
 import math
 import numbers
 import time
+import warnings
 from collections.abc import Callable
-from dataclasses import dataclass, field, replace
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -81,6 +83,111 @@ class ExperimentResult:
     permutation_results: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     interpretation: dict[str, Any] = field(default_factory=dict)
     coefficient_report: dict[str, Any] = field(default_factory=dict)
+    fit_warnings: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class _FitWarningRecord:
+    """One optimizer/estimator warning merged by its full fit context."""
+
+    category: str
+    message: str
+    scope: str
+    model: str
+    validation: str
+    fold: int
+    parameters: dict[str, Any]
+    count: int = 1
+
+
+class _FitWarningCollector:
+    """Collect Python warnings raised while fitting, merged by context.
+
+    Warnings never fail a candidate on their own: they are recorded with their
+    category, message, family, candidate parameters, fold and fit scope so a
+    successful run can still show them in the report and the GUI.
+    """
+
+    def __init__(self) -> None:
+        self._records: dict[tuple[Any, ...], _FitWarningRecord] = {}
+
+    @contextmanager
+    def capture(
+        self,
+        *,
+        scope: str,
+        model: str,
+        validation: str,
+        fold: int,
+        parameters: dict[str, Any],
+    ):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            yield
+        for item in caught:
+            category = item.category.__name__
+            message = str(item.message).strip()
+            key = (
+                category,
+                message,
+                scope,
+                model,
+                validation,
+                fold,
+                json.dumps(parameters, ensure_ascii=False, sort_keys=True, default=str),
+            )
+            record = self._records.get(key)
+            if record is None:
+                self._records[key] = _FitWarningRecord(
+                    category=category,
+                    message=message,
+                    scope=scope,
+                    model=model,
+                    validation=validation,
+                    fold=fold,
+                    parameters=dict(parameters),
+                )
+            else:
+                record.count += 1
+
+    def records(self) -> list[dict[str, Any]]:
+        return [asdict(record) for record in self._records.values()]
+
+    def lines(self) -> list[str]:
+        rendered = []
+        for record in self._records.values():
+            if record.scope == "inner":
+                context = (
+                    "final inner selection"
+                    if record.fold == 0
+                    else f"inner selection, outer fold {record.fold}"
+                )
+            elif record.scope == "outer":
+                context = f"outer fold {record.fold}"
+            elif record.scope == "final":
+                context = "final full-data fit"
+            else:
+                context = record.scope
+            parameters = json.dumps(
+                record.parameters, ensure_ascii=False, sort_keys=True, default=str
+            )
+            repeat = f" (x{record.count})" if record.count > 1 else ""
+            summary = " ".join(record.message.split())
+            rendered.append(
+                f"[{context}][{record.model}][{record.validation}] "
+                f"{record.category}: {summary} | parameters={parameters}{repeat}"
+            )
+        return rendered
+
+
+@contextmanager
+def _capture_fit_warnings(collector: _FitWarningCollector | None, **context: Any):
+    """Null-safe wrapper so callers without a collector keep working."""
+    if collector is None:
+        yield
+        return
+    with collector.capture(**context):
+        yield
 
 
 @dataclass
@@ -530,6 +637,7 @@ def _choose_parameters(
     tracker: _ProgressTracker,
     tuning_rows: list[dict[str, Any]],
     train_groups: pd.Series | None = None,
+    fit_warnings: _FitWarningCollector | None = None,
 ) -> dict[str, Any]:
     metric = config.resolved_selection_metric()
     if len(work.candidates) == 1 and len(config.selected_models()) == 1:
@@ -551,8 +659,16 @@ def _choose_parameters(
                     train_y.iloc[inner_train],
                     train_groups.iloc[inner_train] if train_groups is not None else None,
                 )
-                model.fit(train_x.iloc[inner_train], train_y.iloc[inner_train])
-                predicted = model.predict(train_x.iloc[inner_test])
+                with _capture_fit_warnings(
+                    fit_warnings,
+                    scope="inner",
+                    model=work.model_name,
+                    validation=work.validation,
+                    fold=work.fold_number,
+                    parameters=candidate,
+                ):
+                    model.fit(train_x.iloc[inner_train], train_y.iloc[inner_train])
+                    predicted = model.predict(train_x.iloc[inner_test])
                 score = _selection_score(metric, train_y.iloc[inner_test], predicted)
                 if not math.isfinite(score):
                     raise ValueError(f"Non-finite inner selection metric: {metric}")
@@ -771,6 +887,7 @@ def _run_prioritized(
     source_frame = frame
     features, target, groups, dropped_rows = _prepare_data(config, frame)
     warnings = _risk_warnings(config, target, groups, dropped_rows)
+    fit_warnings = _FitWarningCollector()
     missing_targets = int(frame[config.target_column].isna().sum())
     if missing_targets:
         warnings.append(f"Dropped {missing_targets} rows with missing target values.")
@@ -809,6 +926,7 @@ def _run_prioritized(
                 tracker,
                 tuning_rows,
                 groups.iloc[work.train_index] if groups is not None else None,
+                fit_warnings=fit_warnings,
             )
             model = _build_pipeline(
                 config,
@@ -818,8 +936,16 @@ def _run_prioritized(
                 train_y,
                 groups.iloc[work.train_index] if groups is not None else None,
             )
-            model.fit(train_x, train_y)
-            predicted = model.predict(test_x)
+            with _capture_fit_warnings(
+                fit_warnings,
+                scope="outer",
+                model=work.model_name,
+                validation=work.validation,
+                fold=work.fold_number,
+                parameters=selected_params,
+            ):
+                model.fit(train_x, train_y)
+                predicted = model.predict(test_x)
             metrics = _fold_result(config, model, test_x, test_y, predicted)
             selection_value = metrics.get(config.resolved_selection_metric(), math.nan)
             if not math.isfinite(selection_value):
@@ -1168,7 +1294,8 @@ def _run_prioritized(
         )
         try:
             final_parameters[model_name] = _choose_parameters(
-                config, final_work, features, target, tracker, tuning_rows, groups
+                config, final_work, features, target, tracker, tuning_rows, groups,
+                fit_warnings=fit_warnings,
             )
         except ValueError as error:
             if not family_search:
@@ -1205,7 +1332,15 @@ def _run_prioritized(
     )
     interpretation_artifacts = write_interpretation_outputs(output_dir, interpretation)
     final_model = _build_pipeline(config, features, best["model"], best_params, target, groups)
-    final_model.fit(features, target)
+    with _capture_fit_warnings(
+        fit_warnings,
+        scope="final",
+        model=best["model"],
+        validation=best["validation"],
+        fold=0,
+        parameters=best_params,
+    ):
+        final_model.fit(features, target)
     actual_params = effective_parameters(final_model.named_steps["model"])
     tracker.advance(
         phase="finalizing",
@@ -1227,6 +1362,8 @@ def _run_prioritized(
         model_params=best_params,
     )
     output_dir = Path(config.output_dir)
+    fit_warning_records = fit_warnings.records()
+    warnings.extend(fit_warnings.lines())
     write_results(
         output_dir,
         config,
@@ -1352,6 +1489,7 @@ def _run_prioritized(
         executed_config,
         metrics,
         warnings,
+        fit_warnings=fit_warning_records,
         study_summary=study_summary,
         permutation_artifacts=permutation_artifacts,
         interpretation_artifacts=interpretation_artifacts,
@@ -1364,6 +1502,7 @@ def _run_prioritized(
         fold_metrics=fold_metrics,
         metric_summary=metric_summary,
         warnings=warnings,
+        fit_warnings=fit_warning_records,
         confusion_matrix=confusion,
         leaderboard=leaderboard,
         tuning_results=tuning_results,
@@ -1401,6 +1540,7 @@ def _run_independent_validations(
     results: dict[str, ExperimentResult] = {}
     entries: dict[str, dict[str, Any]] = {}
     summaries, warnings = [], []
+    fit_warnings: list[dict[str, Any]] = []
     started = time.monotonic()
 
     for index, validation in enumerate(validations):
@@ -1448,10 +1588,13 @@ def _run_independent_validations(
                 "error": "", "n_folds": len(child.fold_metrics), **child.metrics,
             })
             warnings.extend(f"[{validation}] {warning}" for warning in child.warnings)
+            fit_warnings.extend(child.fit_warnings)
         report({"progress": 1.0, "phase": "finalizing", "current_fold": 1})
 
     summary = pd.DataFrame(summaries)
-    write_independent_outputs(output_dir, config, summary, entries, warnings, results)
+    write_independent_outputs(
+        output_dir, config, summary, entries, warnings, results, fit_warnings=fit_warnings
+    )
     if not results:
         raise ValueError("Every independent validation failed; see validation_summary.csv: "
                          + " | ".join(warnings))
@@ -1466,5 +1609,5 @@ def _run_independent_validations(
     return ExperimentResult(
         metrics={}, predictions=pd.DataFrame(), model=None, fold_metrics=pd.DataFrame(),
         metric_summary=pd.DataFrame(), warnings=warnings, validation_summary=summary,
-        validation_results=results,
+        validation_results=results, fit_warnings=fit_warnings,
     )

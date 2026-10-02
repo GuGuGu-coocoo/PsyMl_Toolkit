@@ -49,6 +49,7 @@ def write_result_summary(
     config: ExperimentConfig,
     metrics: dict[str, float],
     warnings: list[str],
+    fit_warnings: list[dict] | None = None,
     study_summary: dict | None = None,
     permutation_artifacts: dict[str, str] | None = None,
     interpretation_artifacts: dict[str, str] | None = None,
@@ -61,6 +62,7 @@ def write_result_summary(
                 config,
                 metrics,
                 warnings,
+                fit_warnings=fit_warnings,
                 study_summary=study_summary,
                 permutation_artifacts=permutation_artifacts,
                 interpretation_artifacts=interpretation_artifacts,
@@ -107,6 +109,7 @@ def write_independent_outputs(
     entries: dict,
     warnings: list[str],
     results: dict,
+    fit_warnings: list[dict] | None = None,
 ) -> None:
     """Write an index of peer validations, never global metrics or a winning validation."""
     from psyml.models.persistence import INDEPENDENT_SAVING_MESSAGE
@@ -209,6 +212,7 @@ def write_independent_outputs(
         "schema_version": "1.0", "selection_protocol": config.selection_protocol,
         "status": "completed" if len(results) == len(entries) else "completed_with_errors",
         "task": config.task, "metrics": {}, "warnings": warnings, "artifacts": artifacts,
+        "fit_warnings": fit_warnings or [],
         "evaluation_scope": "independent_validations", "primary_validation": None,
         "selection_metric": config.resolved_selection_metric(), "validation_results": entries,
         "model_export": {"status": "independent_validations",

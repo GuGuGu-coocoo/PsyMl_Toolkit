@@ -12,6 +12,24 @@
     "task": {"enum": ["classification", "regression"]},
     "metrics": {"type": "object", "additionalProperties": {"type": "number"}},
     "warnings": {"type": "array", "items": {"type": "string"}},
+    "fit_warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["category", "message", "scope", "model", "validation", "fold", "parameters", "count"],
+        "additionalProperties": false,
+        "properties": {
+          "category": {"type": "string"},
+          "message": {"type": "string"},
+          "scope": {"enum": ["inner", "outer", "final"]},
+          "model": {"type": "string"},
+          "validation": {"type": "string"},
+          "fold": {"type": "integer", "minimum": 0},
+          "parameters": {"type": "object"},
+          "count": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
     "artifacts": {"type": "object", "additionalProperties": {"type": "string"}},
     "evaluation_scope": {"enum": ["nested_selection_procedure", "prespecified_family", "independent_validations"]},
     "best_model": {"type": "string"},

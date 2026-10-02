@@ -29,7 +29,7 @@ def _completed(returncode: int = 0, stdout: str = "", stderr: str = ""):
 
 
 def test_group_list_covers_every_headless_suite_with_unique_markers():
-    assert len(runner.GROUPS) == 13
+    assert len(runner.GROUPS) == 14
     listed = {script for _, script, _ in runner.GROUPS}
     on_disk = {
         path.name

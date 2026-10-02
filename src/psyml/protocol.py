@@ -72,6 +72,7 @@ def result_payload(
     metrics: dict[str, float],
     warnings: list[str],
     *,
+    fit_warnings: list[dict[str, Any]] | None = None,
     study_summary: dict[str, Any] | None = None,
     permutation_artifacts: dict[str, str] | None = None,
     interpretation_artifacts: dict[str, str] | None = None,
@@ -125,6 +126,7 @@ def result_payload(
         "task": config.task,
         "metrics": metrics,
         "warnings": warnings,
+        "fit_warnings": fit_warnings or [],
         "artifacts": artifacts,
     }
     if study_summary:
