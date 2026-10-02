@@ -10,23 +10,6 @@
 
 ## 中文
 
-### 先用两个公开案例核对结果
-
-两个案例分别检查分类和回归流程：同一份数据、同一份配置，PsyML 与独立编写的 scikit-learn 程序能否给出一致的结果。
-
-| 案例 | 下载数据与配置 | 已记录的主要结果 | 操作步骤与数字来源 |
-| --- | --- | --- | --- |
-| DSA 活动分类：根据身体传感器记录识别 19 种活动；8 名参与者、9,120 行 | [分析用 CSV（2.34 MB）](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv) · [配置 JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) | 平衡准确率 0.5740131578947368，四次测试得分的平均值 | [下载、导入与结果对照](docs/VALIDATION_DSA_ZH.md) |
-| California 房价回归：用 8 个地区特征预测 1990 年街区房价中位数；20,640 行 | [分析用 CSV（2.54 MB）](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv) · [原始 v1 配置 JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) | RMSE 0.5339815958325378，五次测试误差的平均值，单位为 10 万美元 | [下载、导入与结果对照](docs/CALIFORNIA_VALIDATION_ZH.md) |
-
-软件可在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 下载。**目前可下载的应用仍为 v0.3.0，尚无包含后续源码修复的新安装包。** 下述参考结果来自案例页注明的源码版本，不能据此认定现有下载包已通过相同验证。CSV 与配置的导入操作不需要代码；若要检验修复后的应用，请等待相应安装包。配置链接固定到提交 `a1450df`，每个案例均列出环境、结果文件和比较容差，保留跨平台差异。California 使用含 `verbose=0` 的原始 v1 配置；历史 v1.1 兼容配置在案例页单独说明。
-
-1. 下载所选案例的 CSV 和 JSON 配置，放在同一个本地文件夹。若浏览器直接显示文件内容，使用“另存为”，保留 `.csv` / `.json` 后缀。CSV 已完成与参考分析相同的数据转换，不用运行脚本。
-2. 打开 PsyML，在第 1 页点击“导入配置…”。若弹出数据选择窗口，选刚下载的 CSV；导入后核对案例页列出的行数、目标和预测变量。
-3. 在第 2 页选择本地结果文件夹，点击“运行分析”。完成后在第 3 页查看指标，并打开完整结果文件夹，对照案例页的数值表。
-
-[原始数据、转换脚本、许可和文件校验值](examples/public/downloads/README.md)都可查阅。只有希望自行检查数据转换的读者才需要运行脚本。
-
 **目录**
 
 - [两个公开案例](#先用两个公开案例核对结果)
@@ -53,6 +36,23 @@
 - [开发与参与](#开发与参与)
 - [批量预测命令行（通用）](#batch-prediction-cli--批量预测命令行--prédiction-en-ligne-de-commande)
 
+
+### 先用两个公开案例核对结果
+
+两个案例分别检查分类和回归流程：同一份数据、同一份配置，PsyML 与独立编写的 scikit-learn 程序能否给出一致的结果。
+
+| 案例 | 下载数据与配置 | 已记录的主要结果 | 操作步骤与数字来源 |
+| --- | --- | --- | --- |
+| DSA 活动分类：根据身体传感器记录识别 19 种活动；8 名参与者、9,120 行 | [分析用 CSV（2.34 MB）](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv) · [配置 JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) | 平衡准确率 0.5740131578947368，四次测试得分的平均值 | [下载、导入与结果对照](docs/VALIDATION_DSA_ZH.md) |
+| California 房价回归：用 8 个地区特征预测 1990 年街区房价中位数；20,640 行 | [分析用 CSV（2.54 MB）](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv) · [原始 v1 配置 JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) | RMSE 0.5339815958325378，五次测试误差的平均值，单位为 10 万美元 | [下载、导入与结果对照](docs/CALIFORNIA_VALIDATION_ZH.md) |
+
+软件可在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 下载。**目前可下载的应用仍为 v0.3.0，尚无包含后续源码修复的新安装包。** 下述参考结果来自案例页注明的源码版本，不能据此认定现有下载包已通过相同验证。CSV 与配置的导入操作不需要代码；若要检验修复后的应用，请等待相应安装包。配置链接固定到提交 `a1450df`，每个案例均列出环境、结果文件和比较容差，保留跨平台差异。California 使用含 `verbose=0` 的原始 v1 配置；历史 v1.1 兼容配置在案例页单独说明。
+
+1. 下载所选案例的 CSV 和 JSON 配置，放在同一个本地文件夹。若浏览器直接显示文件内容，使用“另存为”，保留 `.csv` / `.json` 后缀。CSV 已完成与参考分析相同的数据转换，不用运行脚本。
+2. 打开 PsyML，在第 1 页点击“导入配置…”。若弹出数据选择窗口，选刚下载的 CSV；导入后核对案例页列出的行数、目标和预测变量。
+3. 在第 2 页选择本地结果文件夹，点击“运行分析”。完成后在第 3 页查看指标，并打开完整结果文件夹，对照案例页的数值表。
+
+[原始数据、转换脚本、许可和文件校验值](examples/public/downloads/README.md)都可查阅。只有希望自行检查数据转换的读者才需要运行脚本。
 
 [研究者参考：模型、指标、结果与术语](docs/RESEARCHER_GUIDE_ZH.md) — 中文术语附英文名称，包含简短公式、阅读示例与解释边界。其他版本：[English](docs/RESEARCHER_GUIDE_EN.md) · [Français](docs/RESEARCHER_GUIDE_FR.md)
 
@@ -342,23 +342,6 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 ## English
 
-### Check results with two public examples
-
-These cases check classification and regression: do PsyML and a separately written scikit-learn program produce matching results from the same data and settings?
-
-| Case | Data and configuration downloads | Recorded primary result | Steps and number sources |
-| --- | --- | --- | --- |
-| DSA activity classification: identify 19 activities from body sensors; 8 participants, 9,120 rows | [Analysis CSV (2.34 MB)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv) · [Configuration JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) | Balanced accuracy 0.5740131578947368, averaged over four test folds | [Download, import and compare](docs/VALIDATION_DSA_EN.md) |
-| California housing regression: predict 1990 block-group median house value from 8 area features; 20,640 rows | [Analysis CSV (2.54 MB)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv) · [Original v1 configuration JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) | RMSE 0.5339815958325378, averaged over five test folds, in units of USD 100,000 | [Download, import and compare](docs/CALIFORNIA_VALIDATION_EN.md) |
-
-Download the application from [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). **The available application is still v0.3.0; a new installer containing the later source fixes is not available.** The reference results come from the source revisions identified on each case page and do not certify the existing bundles. Importing CSV and configuration requires no code; checking the repaired application requires its corresponding installer when available. Configuration links are pinned to commit `a1450df`. Each case lists its environment, output files, tolerances and retained platform differences. California uses the original v1 configuration with `verbose=0`; the historical v1.1 compatibility configuration is documented separately.
-
-1. Download the case's CSV and JSON configuration into one local folder. If the browser shows file contents, use Save as and keep the `.csv` / `.json` extensions. The CSV is already prepared using the reference transformation; no script is needed.
-2. Open PsyML and choose “Import configuration…” on page 1. If asked to locate the data, select the downloaded CSV; check the row count, target and predictors against the case page.
-3. On page 2 choose a local results folder and click “Run analysis”. On page 3 read the metrics and open the complete results folder to compare them with the case's table.
-
-[Original data, conversion scripts, licences and checksums](examples/public/downloads/README.md) are available for inspection. Running a script is only needed if you want to repeat the data conversion yourself.
-
 **Contents**
 
 - [Open the application](#open-the-application)
@@ -384,6 +367,23 @@ Download the application from [Releases](https://github.com/GuGuGu-coocoo/PsyMl_
 - [Development and participation](#development-and-participation)
 - [Batch prediction CLI (shared)](#batch-prediction-cli--批量预测命令行--prédiction-en-ligne-de-commande)
 
+
+### Check results with two public examples
+
+These cases check classification and regression: do PsyML and a separately written scikit-learn program produce matching results from the same data and settings?
+
+| Case | Data and configuration downloads | Recorded primary result | Steps and number sources |
+| --- | --- | --- | --- |
+| DSA activity classification: identify 19 activities from body sensors; 8 participants, 9,120 rows | [Analysis CSV (2.34 MB)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv) · [Configuration JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) | Balanced accuracy 0.5740131578947368, averaged over four test folds | [Download, import and compare](docs/VALIDATION_DSA_EN.md) |
+| California housing regression: predict 1990 block-group median house value from 8 area features; 20,640 rows | [Analysis CSV (2.54 MB)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv) · [Original v1 configuration JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) | RMSE 0.5339815958325378, averaged over five test folds, in units of USD 100,000 | [Download, import and compare](docs/CALIFORNIA_VALIDATION_EN.md) |
+
+Download the application from [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). **The available application is still v0.3.0; a new installer containing the later source fixes is not available.** The reference results come from the source revisions identified on each case page and do not certify the existing bundles. Importing CSV and configuration requires no code; checking the repaired application requires its corresponding installer when available. Configuration links are pinned to commit `a1450df`. Each case lists its environment, output files, tolerances and retained platform differences. California uses the original v1 configuration with `verbose=0`; the historical v1.1 compatibility configuration is documented separately.
+
+1. Download the case's CSV and JSON configuration into one local folder. If the browser shows file contents, use Save as and keep the `.csv` / `.json` extensions. The CSV is already prepared using the reference transformation; no script is needed.
+2. Open PsyML and choose “Import configuration…” on page 1. If asked to locate the data, select the downloaded CSV; check the row count, target and predictors against the case page.
+3. On page 2 choose a local results folder and click “Run analysis”. On page 3 read the metrics and open the complete results folder to compare them with the case's table.
+
+[Original data, conversion scripts, licences and checksums](examples/public/downloads/README.md) are available for inspection. Running a script is only needed if you want to repeat the data conversion yourself.
 
 [Researcher reference: models, metrics, results and terminology](docs/RESEARCHER_GUIDE_EN.md) — Short formulas, worked examples and interpretation limits. Other versions: [中文](docs/RESEARCHER_GUIDE_ZH.md) · [Français](docs/RESEARCHER_GUIDE_FR.md)
 
@@ -639,23 +639,6 @@ Researchers are welcome to report reproducible problems, methodological suggesti
 
 ## Français
 
-### Vérifier les résultats avec deux exemples publics
-
-Ces cas vérifient la classification et la régression : PsyML et un programme scikit-learn écrit séparément donnent-ils des résultats concordants avec les mêmes données et réglages ?
-
-| Cas | Télécharger les données et la configuration | Résultat principal enregistré | Étapes et origine des chiffres |
-| --- | --- | --- | --- |
-| DSA : reconnaître 19 activités à partir de capteurs corporels ; 8 participants, 9 120 lignes | [CSV pour l’analyse (2,34 Mo)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv) · [Configuration JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) | Exactitude équilibrée 0.5740131578947368, moyenne de quatre plis de test | [Télécharger, importer et comparer](docs/VALIDATION_DSA_FR.md) |
-| California Housing : prédire la valeur médiane des logements par zone en 1990 avec 8 variables ; 20 640 lignes | [CSV pour l’analyse (2,54 Mo)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv) · [Configuration originale v1 JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) | RMSE 0.5339815958325378, moyenne de cinq plis de test, en unités de 100 000 USD | [Télécharger, importer et comparer](docs/CALIFORNIA_VALIDATION_FR.md) |
-
-L’application se télécharge dans [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). **La version disponible reste v0.3.0 ; aucun nouvel installateur contenant les correctifs source ultérieurs n’est encore disponible.** Les résultats de référence correspondent aux révisions source précisées dans chaque cas et ne certifient pas les paquets actuels. L’import du CSV et de la configuration ne nécessite aucun code ; vérifier l’application corrigée nécessite son installateur lorsqu’il sera disponible. Les configurations pointent vers le commit `a1450df`. Chaque cas indique environnement, fichiers de résultats, tolérances et écarts conservés entre plateformes. California utilise la configuration originale v1 avec `verbose=0` ; la variante historique v1.1 est présentée séparément.
-
-1. Téléchargez le CSV et la configuration JSON dans un même dossier local. Si le navigateur affiche le contenu, utilisez « Enregistrer sous » en gardant les extensions `.csv` / `.json`. Le CSV est déjà préparé avec la transformation de référence ; aucun script n’est nécessaire.
-2. Ouvrez PsyML et cliquez sur « Importer une configuration… » à la page 1. Si un dialogue demande les données, choisissez le CSV téléchargé ; vérifiez le nombre de lignes, la cible et les prédicteurs indiqués dans le cas.
-3. À la page 2, choisissez un dossier local de résultats et cliquez sur « Exécuter l’analyse ». À la page 3, consultez les métriques et ouvrez le dossier complet pour les comparer au tableau du cas.
-
-Les [données originales, scripts de conversion, licences et empreintes](examples/public/downloads/README.md) sont consultables. Exécuter un script n’est nécessaire que pour refaire la conversion des données.
-
 **Table des matières**
 
 - [Ouvrir l’application](#ouvrir-lapplication)
@@ -681,6 +664,23 @@ Les [données originales, scripts de conversion, licences et empreintes](example
 - [Développement et participation](#développement-et-participation)
 - [Prédiction en ligne de commande (commun)](#batch-prediction-cli--批量预测命令行--prédiction-en-ligne-de-commande)
 
+
+### Vérifier les résultats avec deux exemples publics
+
+Ces cas vérifient la classification et la régression : PsyML et un programme scikit-learn écrit séparément donnent-ils des résultats concordants avec les mêmes données et réglages ?
+
+| Cas | Télécharger les données et la configuration | Résultat principal enregistré | Étapes et origine des chiffres |
+| --- | --- | --- | --- |
+| DSA : reconnaître 19 activités à partir de capteurs corporels ; 8 participants, 9 120 lignes | [CSV pour l’analyse (2,34 Mo)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv) · [Configuration JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) | Exactitude équilibrée 0.5740131578947368, moyenne de quatre plis de test | [Télécharger, importer et comparer](docs/VALIDATION_DSA_FR.md) |
+| California Housing : prédire la valeur médiane des logements par zone en 1990 avec 8 variables ; 20 640 lignes | [CSV pour l’analyse (2,54 Mo)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv) · [Configuration originale v1 JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) | RMSE 0.5339815958325378, moyenne de cinq plis de test, en unités de 100 000 USD | [Télécharger, importer et comparer](docs/CALIFORNIA_VALIDATION_FR.md) |
+
+L’application se télécharge dans [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). **La version disponible reste v0.3.0 ; aucun nouvel installateur contenant les correctifs source ultérieurs n’est encore disponible.** Les résultats de référence correspondent aux révisions source précisées dans chaque cas et ne certifient pas les paquets actuels. L’import du CSV et de la configuration ne nécessite aucun code ; vérifier l’application corrigée nécessite son installateur lorsqu’il sera disponible. Les configurations pointent vers le commit `a1450df`. Chaque cas indique environnement, fichiers de résultats, tolérances et écarts conservés entre plateformes. California utilise la configuration originale v1 avec `verbose=0` ; la variante historique v1.1 est présentée séparément.
+
+1. Téléchargez le CSV et la configuration JSON dans un même dossier local. Si le navigateur affiche le contenu, utilisez « Enregistrer sous » en gardant les extensions `.csv` / `.json`. Le CSV est déjà préparé avec la transformation de référence ; aucun script n’est nécessaire.
+2. Ouvrez PsyML et cliquez sur « Importer une configuration… » à la page 1. Si un dialogue demande les données, choisissez le CSV téléchargé ; vérifiez le nombre de lignes, la cible et les prédicteurs indiqués dans le cas.
+3. À la page 2, choisissez un dossier local de résultats et cliquez sur « Exécuter l’analyse ». À la page 3, consultez les métriques et ouvrez le dossier complet pour les comparer au tableau du cas.
+
+Les [données originales, scripts de conversion, licences et empreintes](examples/public/downloads/README.md) sont consultables. Exécuter un script n’est nécessaire que pour refaire la conversion des données.
 
 [Guide de référence : modèles, métriques, résultats et terminologie](docs/RESEARCHER_GUIDE_FR.md) — Formules courtes, exemples et limites d’interprétation. Autres versions : [中文](docs/RESEARCHER_GUIDE_ZH.md) · [English](docs/RESEARCHER_GUIDE_EN.md)
 
