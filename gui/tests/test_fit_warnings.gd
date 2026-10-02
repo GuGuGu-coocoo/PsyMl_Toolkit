@@ -30,6 +30,8 @@ func run() -> void:
 	var main = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
+	# Test setup is independent of the host desktop Documents directory.
+	main.output_edit.text = TestPaths.temp_dir().path_join("psyml test output")
 	var data := CoreBridge.quickstart_directory().path_join("classification_train.csv")
 	var stamp := str(Time.get_ticks_msec())
 	var output_dir := TestPaths.temp_dir().path_join("psyml_fit_warnings_" + stamp)

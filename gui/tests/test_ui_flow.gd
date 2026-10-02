@@ -70,6 +70,8 @@ func _run_test() -> void:
 			break
 	main._populate_parameter_editor()
 	assert(main.feature_list.multi_selected.get_connections().size() > 0)
+	# CI/headless hosts may not provide a system Documents directory.
+	main.output_edit.text = TestPaths.temp_dir().path_join("psyml ui configuration")
 	var comparative_config = main._build_config()
 	assert(comparative_config.model_names.size() == 2)
 	assert(comparative_config.validation_strategies.size() == 2)

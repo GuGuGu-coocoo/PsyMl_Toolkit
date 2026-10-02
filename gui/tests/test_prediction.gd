@@ -224,6 +224,8 @@ func _run() -> void:
 	var main = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
+	# Test setup is independent of the host desktop Documents directory.
+	main.output_edit.text = TestPaths.temp_dir().path_join("psyml test output")
 	var page = main.prediction_page
 	# Open actions are verified against the exact target they hand to the OS
 	# without launching a file manager from the test.

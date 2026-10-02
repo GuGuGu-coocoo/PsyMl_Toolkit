@@ -56,6 +56,8 @@ func _run_test() -> void:
 	var main = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
+	# Test setup is independent of the host desktop Documents directory.
+	main.output_edit.text = TestPaths.temp_dir().path_join("psyml test output")
 	var fixture := ProjectSettings.globalize_path("res://../examples/synthetic/classification.csv")
 	main._on_file_selected(fixture)
 	var deadline := Time.get_ticks_msec() + 15000

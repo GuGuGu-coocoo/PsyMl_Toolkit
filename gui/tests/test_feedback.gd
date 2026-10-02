@@ -103,6 +103,8 @@ func _run_test() -> void:
 	var main = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
+	# The test must not depend on a desktop Documents directory.
+	main.output_edit.text = TestPaths.temp_dir().path_join("psyml feedback configuration")
 	assert(main.tabs.is_tab_hidden(1))
 	var fixture := ProjectSettings.globalize_path("res://../examples/synthetic/classification.csv")
 	main._on_file_selected(fixture)

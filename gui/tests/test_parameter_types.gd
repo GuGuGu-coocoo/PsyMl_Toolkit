@@ -40,6 +40,8 @@ func run() -> void:
 	var main = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
+	# Test setup is independent of the host desktop Documents directory.
+	main.output_edit.text = TestPaths.temp_dir().path_join("psyml test output")
 	var example := CoreBridge.quickstart_directory().path_join("classification_config.json")
 	check(main.configuration_io.import_file(example), "Import example failed")
 	main.configuration_io.fixed_parameters.text = (
