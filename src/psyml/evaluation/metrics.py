@@ -1,5 +1,7 @@
 """Metrics calculated only from held-out predictions."""
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from sklearn.metrics import (
@@ -72,7 +74,26 @@ def regression_metrics(observed, predicted) -> dict[str, float]:
     """Calculate regression metrics from held-out predictions."""
     mse = mean_squared_error(observed, predicted)
     return {
-        "r2": float(r2_score(observed, predicted)),
+        "r2": finite_r2_score(observed, predicted),
         "mae": float(mean_absolute_error(observed, predicted)),
         "rmse": float(np.sqrt(mse)),
     }
+
+
+class ConstantTargetWarning(UserWarning):
+    """The finite R² convention is being used on a zero-variance partition."""
+
+
+def finite_r2_score(observed, predicted) -> float:
+    """Keep sklearn's finite convention, but disclose it in every scoring scope."""
+    values = np.asarray(observed)
+    if values.size >= 2 and np.all(values == values.flat[0]):
+        warnings.warn(
+            "R² uses the sklearn force_finite=True convention on a constant-target "
+            "scoring partition: 1 for perfect predictions, 0 otherwise. These values "
+            "are retained in summaries and R²-based selection; they are not the usual "
+            "explained-variance interpretation.",
+            ConstantTargetWarning,
+            stacklevel=2,
+        )
+    return float(r2_score(observed, predicted, force_finite=True))

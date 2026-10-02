@@ -20,7 +20,6 @@ from sklearn.metrics import (
     f1_score,
     mean_absolute_error,
     mean_squared_error,
-    r2_score,
 )
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 from sklearn.pipeline import Pipeline
@@ -31,6 +30,7 @@ from psyml.data.io import load_dataframe, validate_dataset
 from psyml.evaluation.metrics import (
     classification_confusion_matrix,
     classification_metrics,
+    finite_r2_score,
     regression_metrics,
 )
 from psyml.evaluation.permutation import (
@@ -518,7 +518,7 @@ def _selection_score(metric: str, observed: pd.Series, predicted: Any) -> float:
     if metric == "accuracy":
         return float(accuracy_score(observed, predicted))
     if metric == "r2":
-        return float(r2_score(observed, predicted))
+        return finite_r2_score(observed, predicted)
     if metric == "mae":
         return float(mean_absolute_error(observed, predicted))
     return float(math.sqrt(mean_squared_error(observed, predicted)))
@@ -672,7 +672,7 @@ def _choose_parameters(
                 ):
                     model.fit(train_x.iloc[inner_train], train_y.iloc[inner_train])
                     predicted = model.predict(train_x.iloc[inner_test])
-                score = _selection_score(metric, train_y.iloc[inner_test], predicted)
+                    score = _selection_score(metric, train_y.iloc[inner_test], predicted)
                 if not math.isfinite(score):
                     raise ValueError(f"Non-finite inner selection metric: {metric}")
                 scores.append(score)
@@ -949,7 +949,7 @@ def _run_prioritized(
             ):
                 model.fit(train_x, train_y)
                 predicted = model.predict(test_x)
-            metrics = _fold_result(config, model, test_x, test_y, predicted)
+                metrics = _fold_result(config, model, test_x, test_y, predicted)
             selection_value = metrics.get(config.resolved_selection_metric(), math.nan)
             if not math.isfinite(selection_value):
                 raise ValueError(
