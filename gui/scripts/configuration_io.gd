@@ -261,20 +261,29 @@ func enrich(config: Dictionary) -> Dictionary:
 	return config
 
 
+func _show_save_error(message: String) -> void:
+	# Saving starts on page 1; keep the actionable error beside that control.
+	notice.text = main.tr("ERROR") % message
+	notice.add_theme_color_override("font_color", Color("a12c35"))
+	main._show_error(message)
+
+
 func save_file(path: String) -> bool:
 	var config: Dictionary = main._build_config()
 	if config.has("error"):
-		main._show_error(config.error)
+		_show_save_error(config.error)
 		return false
 	# Relative data paths make adjacent data/config files transferable together.
 	if path.get_base_dir() == str(config.input_path).get_base_dir():
 		config.input_path = str(config.input_path).get_file()
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
-		main._show_error(main.tr("CONFIG_SAVE_FAILED"))
+		_show_save_error(main.tr("CONFIG_SAVE_FAILED"))
 		return false
 	file.store_string(JSON.stringify(config, "  "))
 	file.close()
+	notice.text = main.tr("CONFIG_IO_HELP")
+	notice.remove_theme_color_override("font_color")
 	return true
 
 

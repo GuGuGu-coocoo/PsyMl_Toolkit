@@ -47,6 +47,20 @@ func run() -> void:
 		main._on_language_selected(language)
 		actual = main._build_config()
 		check(JSON.parse_string(JSON.stringify(actual.parameter_grids)) == JSON.parse_string(JSON.stringify(imported.parameter_grids)), "Locale changed grid")
+	var selected_output: String = main.output_edit.text
+	for language in [1, 2, 0]:
+		main._on_language_selected(language)
+		main.tabs.current_tab = 0
+		main.output_edit.text = "relative/results"
+		check(not main.configuration_io.save_file(temp), "Relative output accepted")
+		check(main.tabs.current_tab == 0, "Save error moved away from triggering page")
+		check(main.configuration_io.notice.text.contains(main.tr("SELECT_OUTPUT")), "Output error hidden on page 1")
+		main.output_edit.text = selected_output
+		check(not main.configuration_io.save_file(TestPaths.temp_dir()), "Directory accepted as save file")
+		check(main.configuration_io.notice.text.contains(main.tr("CONFIG_SAVE_FAILED")), "Write error hidden on page 1")
+		check(main.configuration_io.save_file(temp), "Save retry failed")
+		check(main.configuration_io.notice.text == main.tr("CONFIG_IO_HELP"), "Stale error after successful save")
+		check(main.output_edit.text == selected_output, "Save retry changed output root")
 	check(main.configuration_io.save_file(temp), "Save failed")
 	check(main.configuration_io.import_file(temp), "Reimport failed")
 	check(main.configuration_io.import_file(ProjectSettings.globalize_path("res://../examples/synthetic/regression_config.json")), "Regression import failed")
