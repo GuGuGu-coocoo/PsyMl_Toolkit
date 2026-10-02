@@ -14,27 +14,34 @@ Save the CSV and JSON in one local folder. If the browser displays file contents
 
 The available application is still v0.3.0; an installer with the later source fixes is not yet available. The historical reference uses the source environment named on this page and does not certify the existing bundles. Checking the repaired application requires its corresponding installer. Available platforms are listed in [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases).
 
-1. Open PsyML and click “Import configuration…” on page 1. Select `california_config.json`. If asked for the data, select the downloaded `california_housing.csv`; check the resulting path and use “Browse…” to select it again if needed.
+1. Open PsyML and click “Import configuration…” on page 1. Select `california_config.json`. If “Configured data not found — select the data file” appears, select `california_housing.csv` in that import dialog. Check the resulting data path. The import restores all configuration settings after reading the preview.
 2. Check: 20,640 rows; regression; target `MedHouseVal`; eight predictors; no group; 5 outer K-fold splits and 3 inner splits; seed `20261002`; RMSE selection; Dummy, Ridge and Random Forest candidates. The data section below lists all predictor names.
 3. On “2 Review & run”, choose a local results folder and click “Run analysis”. Keep the configured candidates, parameters and seed when comparing with the reference.
 4. On “3 Results”, read RMSE and open the complete results folder. Retain `config.json`, `metrics.csv`, `metrics_summary.csv`, `fold_metrics.csv`, predictions and environment records.
+
+After importing, do not select the CSV again with the ordinary “Browse…” button: reloading data resets variable roles and validation selections. If you already used Browse, reimport the original JSON. If the data-location dialog appears, select the case CSV there, then recheck the target, group, predictors and validation settings.
 
 Each of five outer tests holds out 4,128 rows. The remaining data are split three ways to compare models and parameters before testing the selected setting. This is nested validation. Each row's test prediction comes from a model that did not train on that row; together these are out-of-fold (OOF) predictions.
 
 ## Numbers, configuration and output files
 
-These values come from the original v1 independent reference; actual GUI exports from the repaired source were compared with it on 2026-10-02. Every row uses the same [california_config.json](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) and `california_housing.csv`; separate configurations are not needed.
+The same original v1 configuration has records from two environments. The macOS source-GUI run on 2026-10-02 used scikit-learn 1.9.0. Its maintainer-reported primary RMSE matches that environment's independent reference, and the comparator log reports 271/271 checks passed. The Linux scikit-learn 1.8.0 reference remains in the next column. Both use `california_config.json` and `california_housing.csv`; results from different environments are recorded separately.
 
-| Reference value | Meaning | Where to compare |
-| --- | --- | --- |
-| 0.5339815958325378 | Primary: average RMSE over five outer tests. Root mean squared error is lower when predictions are closer, in units of USD 100,000 | `rmse` in this run's `metrics.csv`; [reference summary](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `rmse/mean` |
-| 0.01850680156369903 | Standard deviation of the five RMSEs, describing variation between tests; not a confidence interval | `metrics_summary.csv`; [same reference table](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `rmse/std` |
-| 0.3610547401259507 | Average of five mean absolute errors (MAE), in the same units | `mae` in `metrics.csv`; [same reference table](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `mae/mean` |
-| 0.7856663784093894 | Mean test R², measuring fit relative to variation in the target; it does not mean “78.6% accuracy” | `r2` in `metrics.csv`; [same reference table](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `r2/mean` |
-| 0.5343022051161513 | RMSE recomputed by the independent reference from all 20,640 test predictions together. This scalar is not directly exported in `metrics.csv`; it differs from the fold mean | [Pooled reference table](../examples/public/california_random_nested_v1/expected/historical_pooled_metrics.csv), `procedure/rmse` |
-| 1.153954483920011 / 0.7273658464149191 | Mean outer RMSE for Dummy / Ridge in the same configuration. Dummy predicts the training target mean; Ridge is regularized linear regression | `model_comparison.csv`; [family/fold reference table](../examples/public/california_random_nested_v1/expected/historical_family_fold_metrics.csv) |
+The [macOS environment, reference metrics and comparison summary](MACOS_SKLEARN_1_9_VALIDATION_RECORD.json) are based on the maintainer's real-machine report and console logs. Values and counts come from those records; screenshots and complete GUI exports are not included in the public summary.
 
-All five tests and the final full-data choice selected Random Forest. The fold RMSEs and other metrics below also use this configuration. The final model trains on all rows; predicting those rows with it does not provide an independent test score.
+| Metric | macOS / scikit-learn 1.9.0 independent reference | Linux / scikit-learn 1.8.0 reference | Where to look in your output |
+| --- | ---: | ---: | --- |
+| Mean RMSE across five outer tests, primary | 0.5339708864410444 | 0.5339815958325378 | `rmse` in `metrics.csv` |
+| Between-fold RMSE standard deviation, ddof=0 | 0.018514866644239496 | 0.01850680156369903 | `rmse/std` in `metrics_summary.csv` |
+| Mean MAE across five outer tests | 0.3610492052309331 | 0.3610547401259507 | `mae` in `metrics.csv` |
+| Mean R² across five outer tests | 0.7856750901682014 | 0.7856663784093894 | `r2` in `metrics.csv` |
+| RMSE recomputed from all test predictions together | 0.5342917815702284 | 0.5343022051161513 | Independent reference `pooled_oof.rmse`; not directly exported in `metrics.csv` |
+
+RMSE is root mean squared error and MAE is mean absolute error. Both are lower when predictions are closer and use units of USD 100,000. R² measures fit relative to target variation, not percentage accuracy. Fold standard deviation describes variation across the five tests, not a confidence interval. Recomputing RMSE from pooled predictions differs from averaging the five fold scores.
+
+The macOS values are under `california.reference_metrics` in the new record. The [Linux mean/standard-deviation table](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv) and [pooled reference table](../examples/public/california_random_nested_v1/expected/historical_pooled_metrics.csv) retain their original values. Historical Linux mean outer RMSEs for Dummy / Ridge are 1.153954483920011 / 0.7273658464149191 in the [family/fold reference table](../examples/public/california_random_nested_v1/expected/historical_family_fold_metrics.csv); check `model_comparison.csv` in your own output. The macOS summary does not report those two family means. Dummy predicts the training target mean; Ridge is regularized linear regression.
+
+Both references selected Random Forest in every outer test and the final full-data selection. The final model trains on all rows; predicting those rows with it does not supply another independent test score. Match the environment before comparing with its reference at the predefined tolerance; do not alter settings to match a different environment's score.
 
 ## Recorded original v1 verification
 

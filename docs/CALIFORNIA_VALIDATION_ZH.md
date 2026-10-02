@@ -1,6 +1,6 @@
 # California Housing 回归：下载数据、运行配置、核对结果
 
-[English](CALIFORNIA_VALIDATION_EN.md) · [Français](CALIFORNIA_VALIDATION_FR.md) · [返回 README](../README.md)
+[English](CALIFORNIA_VALIDATION_EN.md) · [Français](CALIFORNIA_VALIDATION_FR.md) · [返回 README](../README_ZH.md)
 
 这个案例用收入、房龄等 8 个地区特征，预测 1990 年加州人口普查中 20,640 个街区组的房价中位数。这里检查的是 PsyML 与独立 scikit-learn 程序的计算是否一致；这些旧数据不能用来判断今天的房价。
 
@@ -14,27 +14,34 @@
 
 目前可下载的应用仍为 v0.3.0，尚无包含后续源码修复的新安装包。历史参考对应本页注明的源码环境，不能作为现有下载包的验收结果；若要验证修复后的应用，需要相应安装包。软件可下载平台见 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases)。
 
-1. 打开 PsyML，在第 1 页点击“导入配置…”，选择 `california_config.json`。若弹出数据选择窗口，选择刚下载的 `california_housing.csv`；随后核对数据路径，必要时用“浏览…”重选。
+1. 打开 PsyML，在第 1 页点击“导入配置…”，选择 `california_config.json`。若出现“找不到配置中的数据，请重新选择数据文件”，在这个导入弹窗中选 `california_housing.csv`。成功后核对实际数据路径；软件会在读取预览后恢复配置中的全部设置。
 2. 核对：20,640 行；回归；目标 `MedHouseVal`；8 个预测变量；不分组；外层 K 折 5 折、内层 3 折；随机种子 `20261002`；以 RMSE 选择；候选模型为 Dummy、Ridge、Random Forest。完整变量名列在下文的数据说明中。
 3. 在“2 检查与运行”选择本地结果文件夹，点击“运行分析”。不要改候选参数或为了接近参考值更换随机种子。
 4. 完成后到“3 结果”查看 RMSE，点击“打开完整结果文件夹”。保留 `config.json`、`metrics.csv`、`metrics_summary.csv`、`fold_metrics.csv`、预测和环境记录。
+
+导入配置后，不要再用普通“浏览…”按钮重选 CSV：重新读取数据会重置变量角色和验证选择。如果已经这样操作，请重新导入原始 JSON；若出现上述数据定位弹窗，在弹窗中选案例 CSV，然后重新核对目标、分组、预测变量和验证设置。
 
 五个外层测试每次留出 4,128 行；剩余数据内部再分三次比较模型和参数，选择误差较低的设置。这叫嵌套验证。每行的测试预测都来自没有用该行训练的模型，合起来称为折外预测（OOF）。
 
 ## 数字、配置和结果文件
 
-下面是原始 v1 独立参考程序的数值；2026-10-02 修复后源码的真实 GUI 导出已与其逐项核对。每一行都使用同一个 [california_config.json](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) 和 `california_housing.csv`，不需要分别运行不同配置。
+同一份原始 v1 配置已有两种环境的记录。2026-10-02 的 macOS 源码 GUI 运行使用 scikit-learn 1.9.0；维护者报告的主要 RMSE 与本环境独立参考相同，比较器日志汇总为 271/271。Linux 的 scikit-learn 1.8.0 参考保留在右列。两列均使用上面的 `california_config.json` 和 `california_housing.csv`，环境不同的结果分别记录。
 
-| 参考值 | 含义 | 在哪里核对 |
-| --- | --- | --- |
-| 0.5339815958325378 | 主要结果：五个外层测试 RMSE 的平均值。RMSE 是均方根误差，越低越好，单位为 10 万美元 | 本次 `metrics.csv` 的 `rmse`；[参考均值表](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv)，`rmse/mean` |
-| 0.01850680156369903 | 五个 RMSE 的标准差，描述测试之间的波动；不是置信区间 | 本次 `metrics_summary.csv`；[同一参考表](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv)，`rmse/std` |
-| 0.3610547401259507 | 五个测试的平均绝对误差（MAE）均值，单位同上 | 本次 `metrics.csv` 的 `mae`；[同一参考表](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv)，`mae/mean` |
-| 0.7856663784093894 | 五个测试的 R² 均值；衡量预测相对目标波动的拟合程度，不是“准确率 78.6%” | 本次 `metrics.csv` 的 `r2`；[同一参考表](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv)，`r2/mean` |
-| 0.5343022051161513 | 独立参考合并 20,640 条测试预测后重算的 RMSE；`metrics.csv` 不直接提供这一项，与五折平均值不同 | [合并预测参考表](../examples/public/california_random_nested_v1/expected/historical_pooled_metrics.csv)，`procedure/rmse` |
-| 1.153954483920011 / 0.7273658464149191 | 同一配置中的 Dummy / Ridge 各自的外层 RMSE 均值；Dummy 只预测训练数据目标均值，Ridge 是带正则化的线性回归 | 本次 `model_comparison.csv`；[逐模型、逐折参考表](../examples/public/california_random_nested_v1/expected/historical_family_fold_metrics.csv) |
+[macOS 环境、参考数值与比较汇总](MACOS_SKLEARN_1_9_VALIDATION_RECORD.json)的依据是维护者实机运行报告和控制台日志。数值与检查计数取自这些记录；公开摘要不包含截图或完整 GUI 导出。
 
-五个外层测试和最终全数据训练均选中 Random Forest。逐折 RMSE 和其他指标见下文“实际结果”，也都属于这份配置。最终模型在全部数据上训练；用它预测原数据不能再算一次独立测试成绩。
+| 指标 | macOS / scikit-learn 1.9.0 独立参考 | Linux / scikit-learn 1.8.0 参考 | 在自己的导出中查看 |
+| --- | ---: | ---: | --- |
+| 五个外层测试 RMSE 均值，主要结果 | 0.5339708864410444 | 0.5339815958325378 | `metrics.csv` 的 `rmse` |
+| RMSE 折间标准差，ddof=0 | 0.018514866644239496 | 0.01850680156369903 | `metrics_summary.csv` 的 `rmse/std` |
+| 五个外层测试 MAE 均值 | 0.3610492052309331 | 0.3610547401259507 | `metrics.csv` 的 `mae` |
+| 五个外层测试 R² 均值 | 0.7856750901682014 | 0.7856663784093894 | `metrics.csv` 的 `r2` |
+| 合并全部测试预测后重算的 RMSE | 0.5342917815702284 | 0.5343022051161513 | 独立参考的 `pooled_oof.rmse`；`metrics.csv` 不直接提供此项 |
+
+RMSE 是均方根误差，MAE 是平均绝对误差，两者越低越好，单位均为 10 万美元。R² 衡量相对目标波动的拟合程度，不是百分比准确率。折间标准差描述五次测试的波动，不是置信区间。合并预测后重算 RMSE，与先算每折再平均不同。
+
+macOS 列的字段对应新记录中的 `california.reference_metrics`。[Linux 参考均值与标准差表](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv)及[合并预测参考表](../examples/public/california_random_nested_v1/expected/historical_pooled_metrics.csv)保留原值。Linux 历史参考的 Dummy / Ridge 外层 RMSE 均值为 1.153954483920011 / 0.7273658464149191，见[逐模型、逐折参考表](../examples/public/california_random_nested_v1/expected/historical_family_fold_metrics.csv)；自己的结果可看 `model_comparison.csv`。macOS 运行摘要没有列出这两个家族的外层均值。Dummy 只预测训练数据的目标均值，Ridge 是带正则化的线性回归。
+
+两套参考都在五个外层测试和最终全数据选择中选中 Random Forest。最终模型在全部数据上训练；用它预测原数据不能再算一次独立测试成绩。比较时先匹配环境，再按同一环境的参考和预先规定的容差核对，不用修改配置去追平另一个环境的分数。
 
 ## 已记录的原始 v1 验证
 

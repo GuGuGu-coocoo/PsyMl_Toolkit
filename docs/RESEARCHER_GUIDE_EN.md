@@ -1,8 +1,8 @@
 # Researcher reference: models, metrics, results and terminology
 
-This guide describes the behavior of the source checkout **0.3.0** (single version source) with the features and improvements added after v0.2.0 (permutation importance, data checks and result interpretation, single-sample SHAP, fitted coefficients, plus interface and output-flow improvements). Standalone packages and distribution PDFs follow their own version: check the assets listed on the Releases page. The v0.2.0 and earlier packages and their PDFs do not contain these features or fixes, so their interface and output layout may differ from a source checkout. There is one maintained version source: the `__version__` constant in `src/psyml/__init__.py`. `pyproject.toml` reads it through dynamic metadata, the standalone `BUILD.json` is generated from the same constant by `tools/build_native.py`, and the interface shows the same value (the official `0.3.0` unchanged, a `0.3.0.dev0` development release as `0.3.0-dev`). Check `analysis_manifest.json` in each analysis output for runtime and dependency versions, and do not infer the download package's contents from this guide's title.
+This reference covers the current source behavior. Each run records its actual versions in `analysis_manifest.json`; see the [homepage](../README.md) for the distinction between source and application downloads.
 
-[Back to the English README](../README.md#english) · [中文](RESEARCHER_GUIDE_ZH.md) · **English** · [Français](RESEARCHER_GUIDE_FR.md)
+[Back to the English README](../README.md) · [中文](RESEARCHER_GUIDE_ZH.md) · **English** · [Français](RESEARCHER_GUIDE_FR.md)
 
 This guide explains concepts used by the current PsyML Toolkit implementation. Consult it while configuring an analysis or interpreting outputs. Code names match configuration keys and CSV fields. The guide is readable offline; external references require internet access. Short formulas support understanding, not manual calculation. If your Markdown reader does not render mathematics, use the accompanying plain-language explanations.
 
@@ -10,6 +10,7 @@ Suitability depends on the research question, data structure and validation desi
 
 ## Navigation
 
+- [Application walkthrough](#gui-workflow)
 - [1. Data and preprocessing](#data)
 - [2. Supported models](#models)
 - [3. Classification and regression metrics](#metrics)
@@ -18,6 +19,56 @@ Suitability depends on the research question, data structure and validation desi
 - [6. Parameter and terminology reference](#glossary)
 - [7. Common misconceptions and review order](#checklist)
 - [8. Implementation and further reading](#references)
+
+<a id="gui-workflow"></a>
+
+## Application walkthrough
+
+### 1. Open the app and import data
+
+Extract the complete [application download](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). On Mac, open `PsyML Toolkit.app`; on Windows, open `PsyML Toolkit.exe` with the `core` folder beside it. See [opening and source-installation notes](DEVELOPMENT_EN.md#open-the-application) for platform details. Screenshots use synthetic data to illustrate the interface.
+
+Start with a classification or regression configuration from the [quickstart](../examples/quickstart/README.md#english). For public validation, use the full configuration and CSV from [DSA](VALIDATION_DSA_EN.md) or [California](CALIFORNIA_VALIDATION_EN.md).
+
+On page 1, choose “Import configuration…” and select the JSON. If “Configured data not found — select the data file” appears, select its CSV in that dialog. After import, check the actual path, target, group, predictors and validation. Do not use the ordinary “Browse…” button afterward: it resets roles and validation selections. If you already did, reimport the original configuration, select the CSV if the import dialog requests it, and recheck the settings.
+
+For a new analysis of your own data, use “Browse…” first, read the preview, then set variable roles. Supported formats are CSV, TSV, XLSX, XLS, SPSS SAV, Stata DTA, SAS7BDAT, XPT and Parquet. Check dimensions, types, missing values, headers and encoding. Exclude identifiers and information unavailable at prediction time from predictors. [Data and preprocessing](#data) explains missing values, encoding and repeated observations.
+
+![Data and variable roles](images/en/01-data.png)
+
+### 2. Choose analysis settings
+
+Select classification or regression, the target, predictors and a group column when needed. Repeated participants require grouped validation; filling in a group column alone does not make ordinary K-fold isolate participants. Set missing-value handling, scaling, candidate models and parameter choices on this page. [Validation and tuning](#validation) explains the designs and distinguishes model selection from the final fit.
+
+Choose a primary validation or request independent outputs for several methods. Without a primary method, select a validation on the results page after the run. Do not choose a design after seeing its score. Parameters can use defaults, quick search or a custom grid; enter custom values as JSON arrays such as `[0.1, 1.0, 10.0]`. Candidate limits and inner-fold counts affect workload. Consult [models](#models), [metrics](#metrics) and [parameter terms](#glossary) for details.
+
+![Models, validation and parameter settings](images/en/02-settings.png)
+
+### 3. Review and run
+
+On “2 Review & run”, choose a local results root. Check the input path, variable roles, primary validation, candidates, parameter grids, metric, seed and planned task count, then click “Run analysis”. Each run gets a new `training/run_*/` folder.
+
+The interface shows the stage, model, validation, outer fold and completed tasks; estimated time changes as task timings become available. Use “Stop analysis” when needed, and do not use incomplete output as research results. After the last counted task, “Finalizing and writing results…” remains visible until all files are written; only then does the results page open.
+
+![Review and run](images/en/03-review.png)
+
+### 4. Read the results
+
+On “3 Results”, select the validation to inspect, then review warnings, differences from Dummy, fold variability and prediction errors. The final full-data model and exploratory family ranking are separate outputs; the ranking does not choose a validation design. “Open complete result folder” opens this run's metrics, predictions, figures, Methods and reproduction reports. [Output files and interpretation](#results) explains their meanings and limits.
+
+![Results after choosing a validation](images/en/05-selected-result.png)
+
+### 5. Save a model and predict new data
+
+Keep “Save best model” enabled before training. The fitted model is written to `model/best_<model>.joblib`; keep `model_metadata.json` beside it. Independent validation outputs without a global primary method have no global final model. Load only trusted models: joblib/pickle files can execute code.
+
+On “4 Model & Prediction”, load this run's model and new data. Required-variable checks run automatically. Column order may differ and extra columns are retained; missing features, invalid numbers or missing values without imputation block prediction. For an older model without feature names, confirm the manual mapping in training order. After successful checks, click “Run prediction”, then “Open prediction results folder” to inspect `prediction/run_*/predictions.csv`. [Model and prediction reference](#results) explains columns, metadata and evaluation limits.
+
+![Model details and prediction data](images/en/09-prediction.png)
+
+The [results chapter](#results) also covers SHAP, permutation importance and fitted coefficients. Page 4 shares the training results root but creates a separate `run_*` directory per operation. Changing the root affects later runs only; completed files remain. Use “Copy full error” when reporting a problem; selectable text also supports right-click copying.
+
+More screenshots: [configuration import](images/en/06-import-config.png) · [reproduction review](images/en/07-reproduce-run.png) · [reproduced result](images/en/08-reproduced-result.png) · [save-model switch](images/en/11-save-model.png) · [prediction result](images/en/10-prediction-results.png) · [fitted coefficients](images/en/12-coefficients.png).
 
 <a id="data"></a>
 
@@ -365,22 +416,18 @@ For general principles, consult scikit-learn's [metrics](https://scikit-learn.or
 
 ## Reproduce from a configuration
 
-Start user testing in [examples/quickstart/](../examples/quickstart/README.md): each task has a configuration, 48 training rows and 10 new prediction rows, all synthetic. Follow the [README analysis workflow](../README.md#english); model saving and prediction are integrated as step 9.
+Start user testing in [examples/quickstart/](../examples/quickstart/README.md): each task has a configuration, 48 training rows and 10 new prediction rows, all synthetic. Follow the [application walkthrough](#gui-workflow); model saving and prediction are covered in step 5.
 
 On page 1, **Import configuration…** opens a bundled example, a result folder’s `config.json`, or `best_parameters_configure.json`; no terminal is required. Relink the corresponding data if its path is unavailable; required columns are checked. Review variables, validation and parameters, then choose a local output folder and run on page 2. Each run creates a new `training/run_*` subfolder instead of reusing the imported output path. **Save configuration…** saves current settings. Rerunning fixed best parameters neither reproduces the original search nor provides independent validation.
 
-## Source-checkout checks
-
-A standalone package and a source checkout can contain different fixes. The five points below help you check behaviour in a source checkout.
-
-1. Start the interface from the source checkout root (on macOS you can double-click `Launch PsyML.command`); dependency installation is in the [developer guide](DEVELOPMENT_EN.md). Standalone packages do not include the developer test environment. Import the classification or regression configuration from `examples/quickstart/` and run it once.
-2. **Version label:** a small label under the application name should show the current version number `0.3.0`. A source run's single source is `__version__` in `src/psyml/__init__.py` (`pyproject.toml` is dynamic); a standalone package reads its bundled `BUILD.json`, generated from that same constant, and a `0.3.0.dev0` development release displays as `0.3.0-dev` while the official `0.3.0` displays unchanged.
-3. **Output folders and legacy results:** a new page-2 training run appears under `training/run_*` in the chosen result root; page-4 prediction, SHAP and coefficients land in new `run_*` directories under `prediction/`, `explanation/` and `coefficients/` in the shared root, never overwriting existing files and never writing to the hidden application-data folder. Legacy `run_*` training folders directly under the result root still open in place, and their contents are not rewritten.
-4. **Page 4 result actions:** all three blocks provide **Open results folder** (prediction: **Open prediction results folder**, which opens the run folder rather than the CSV) and **Open waterfall image**. Prediction output is a directly openable `predictions.csv`.
-5. **Scroll ownership and finalising status:** when a gesture starts on the page it keeps scrolling the page past a nested small table, and only a gesture that starts on the table scrolls that table; a pause of about 250 ms starts a new gesture that may choose a different layer (the lock only affects wheel/swipe scrolling). During final result writing the status should read "Finalizing and writing results…" with the progress bar not yet full; the result page opens only after `completed`. Use **Copy full error** when reporting a problem.
-
-### Input and execution provenance
+## Input and execution provenance
 
 The analysis reads a private temporary snapshot and hashes the exact bytes parsed; the temporary copy is removed after loading. Later changes or removal of the source are reported without replacing the input hash. Independent validations reuse the same snapshot. `analysis_manifest.json` records source/build commit and dirty state, lock-file identity, SciPy/joblib/threadpoolctl versions, loaded numerical backends and thread settings; unavailable identities are marked unknown. Fixed `model_params` require a single model; use per-model custom grids for multiple families.
 
 R² retains scikit-learn’s `force_finite=True` convention: a constant-target scoring partition receives 1 for perfect predictions and 0 otherwise. These values remain in summaries and R²-based selection, with a contextual `ConstantTargetWarning`; they do not have the usual explained-variance interpretation. MAE/RMSE retain their usual error interpretation.
+
+## Configuration and privacy
+
+The [configuration schema](../src/psyml/schemas/analysis_config.schema.json) documents `test_size`, `random_seed`, `model_params`, `parameter_grids` and `include_data_hash`. Permutation importance uses `permutation_importance` (default `false`) and `permutation_repeats` (1–100, default `10`); omitted fields in old configurations leave it off. Disabling fingerprints does not anonymize exports, which may still contain outcomes and predictions. There is no positive-class/threshold selector or dedicated time-series validation.
+
+Screenshots and bundled test fixtures use synthetic data; public sources are in the [case directory](../examples/public/README.md). Report problems with a minimal public example, without private research material or sensitive participant data in GitHub Issues. For research reporting, consult [TRIPOD+AI](https://www.bmj.com/content/385/bmj-2023-078378) alongside the reporting standards of your field.

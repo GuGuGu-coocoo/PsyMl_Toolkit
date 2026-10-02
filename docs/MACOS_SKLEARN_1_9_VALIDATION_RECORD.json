@@ -1,0 +1,203 @@
+{
+  "record_id": "macos_sklearn_1_9_validation_20261002",
+  "record_type": "maintainer_report_and_console_summary",
+  "run_date": "2026-10-02",
+  "evidence_basis": {
+    "maintainer_report": "REGRESSION_REPORT.md",
+    "console_summaries": [
+      "compare_gui.log",
+      "reference_cli.log",
+      "compare_dsa.log",
+      "reference_observed_cli.log"
+    ],
+    "independent_rerun_for_this_record": false,
+    "full_artifacts_included": false,
+    "note": "Metrics and check counts below are transcribed from the listed console summaries. GUI actions, Windows results and runtime identity are reported in the maintainer's real-machine report. Screenshots, GUI-saved configurations, models, full comparator JSON and numerical exports are not included in this compact record."
+  },
+  "reported_source": {
+    "commit": "a1450dfc374b8a39109c41f2548fdc0dbcad23c1",
+    "tree": "2273167e281f859775abe698175dbe2eb4844550",
+    "working_tree_modified": false
+  },
+  "reported_macos_environment": {
+    "os": "macOS 27.0 / Darwin 27.0.0",
+    "architecture": "arm64",
+    "cpu": "Apple M2 Pro",
+    "python": "3.12.13",
+    "godot": "4.7.2",
+    "numpy": "2.5.2",
+    "scipy": "1.18.1",
+    "scikit-learn": "1.9.0",
+    "pandas": "3.0.5",
+    "joblib": "1.6.0",
+    "blas": "Accelerate",
+    "openmp": "libomp, 12 threads reported",
+    "estimator_n_jobs": 1,
+    "thread_note": "n_jobs=1 is an estimator setting, not a claim that every numerical library was single-threaded."
+  },
+  "california": {
+    "configuration": "examples/public/california_random_nested_v1/california_config.json",
+    "configuration_variant": "original v1, explicit integer verbose=0",
+    "input": "examples/public/downloads/california_housing.csv",
+    "input_sha256": "157b6c0d3acd6d93a50c411d0cd4130d8c719ce5eb17b61f1c45300f2af6fc85",
+    "public_config_sha256": "fc90c8384f55ab301debca93cb285f5fa047b6fe94e64464014558f28798e8f8",
+    "scientific_config_sha256": "cf110e6d4e7cc308ea1fd9cd6a7d277069dbb2268512f85785e204e2597e7da3",
+    "historical_config_sha256": "6545958eadc8a20ed56e267f37ad2a6925ae18d95c2455ac18ca80fae8d935ce",
+    "rows": 20640,
+    "features": 8,
+    "environment_change_explicit": true,
+    "reference_fit_counts": {
+      "inner": 90,
+      "outer_family": 15,
+      "final": 1,
+      "total": 106
+    },
+    "reference_metrics": {
+      "fold_mean": {
+        "r2": 0.7856750901682014,
+        "mae": 0.3610492052309331,
+        "rmse": 0.5339708864410444
+      },
+      "between_fold_sd_ddof0": {
+        "r2": 0.011682923604161066,
+        "mae": 0.009063197034054674,
+        "rmse": 0.018514866644239496
+      },
+      "pooled_oof": {
+        "scope": "procedure",
+        "n_rows": 20640,
+        "r2": 0.7856125241112182,
+        "mae": 0.36104920523093315,
+        "rmse": 0.5342917815702284
+      }
+    },
+    "reference_selected_family": "random_forest, all five outer folds and final full-data selection",
+    "reported_gui_metrics": {
+      "rmse": 0.5339708864410444
+    },
+    "reported_gui_runs": 1,
+    "comparison_summary": {
+      "status": "passed_observed_scope",
+      "n_checks": 271,
+      "n_passed": 271,
+      "n_failed": 0,
+      "tolerance": {
+        "atol": 1e-10,
+        "rtol": 1e-10
+      }
+    },
+    "historical_linux_sklearn_1_8": {
+      "fold_mean_rmse": 0.5339815958325378,
+      "record": "docs/CALIFORNIA_REPAIRED_V1_RECORD.json"
+    },
+    "scope_note": "106 is the reference fit count and reported GUI plan. The provided GUI summaries do not contain a production per-fit call trace. The current-environment value is a separate record and does not replace the frozen Linux result."
+  },
+  "dsa": {
+    "configuration": "examples/public/configs/dsa_group_nested_v1.json",
+    "input": "examples/public/downloads/dsa_torso_mean_std.csv",
+    "rows": 9120,
+    "features": 12,
+    "participants": 8,
+    "classes": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "reference_metrics": {
+      "fold_mean": {
+        "accuracy": 0.5740131578947368,
+        "balanced_accuracy": 0.5740131578947368,
+        "precision_weighted": 0.6083744057513963,
+        "recall_weighted": 0.5740131578947368,
+        "f1_weighted": 0.5513874769696933,
+        "precision_macro": 0.6083744057513963,
+        "recall_macro": 0.5740131578947368,
+        "f1_macro": 0.5513874769696934,
+        "roc_auc_ovr_weighted": 0.9406080449967511
+      },
+      "pooled_oof": {
+        "accuracy": 0.5740131578947368,
+        "balanced_accuracy": 0.5740131578947368,
+        "precision_weighted": 0.5757898218029359,
+        "recall_weighted": 0.5740131578947368,
+        "f1_weighted": 0.5702035749465653,
+        "precision_macro": 0.575789821802936,
+        "recall_macro": 0.5740131578947368,
+        "f1_macro": 0.5702035749465654,
+        "roc_auc_ovr_weighted": 0.9340864984364846
+      }
+    },
+    "reference_fit_count": 54,
+    "observed_fit_count": 54,
+    "observed_unique_split_calls": 6,
+    "selected_family": "logistic_regression",
+    "selected_overrides": {
+      "C": 1.0,
+      "class_weight": null,
+      "fit_intercept": true,
+      "max_iter": 2000,
+      "solver": "lbfgs",
+      "tol": 1e-08
+    },
+    "reported_gui_metrics": {
+      "balanced_accuracy": 0.5740131578947368
+    },
+    "reported_gui_runs": 1,
+    "comparison_summary": {
+      "passed": true,
+      "counts": {
+        "numerical": 26,
+        "structural": 4,
+        "extended": 2,
+        "golden": 0
+      },
+      "failures": []
+    },
+    "historical_record": "examples/public/dsa_group_nested_v1/expected/case_summary.json",
+    "scope_note": "The numerical, structural and extended checks compare the current-environment runs. No frozen Linux golden directory was supplied to this comparison (golden=0). The existing cross-platform ROC-AUC/probability differences remain separate historical records."
+  },
+  "reported_macos_gui_coverage": [
+    "Configuration import/save/reimport and parameter-type preservation",
+    "California and DSA main run, one each",
+    "Trusted model loading and ten-row prediction with reordered feature columns",
+    "Missing-feature negative controls",
+    "DSA 19-class distribution and confusion-matrix display"
+  ],
+  "reported_targeted_tests": {
+    "macos": 204,
+    "windows": 109
+  },
+  "reported_windows_scope": {
+    "os": "Windows 10.0.26200.9457",
+    "architecture": "AMD64",
+    "python": "3.12.13",
+    "access": "SSH",
+    "targeted_test_count": 109,
+    "cli_smoke": [
+      "run",
+      "model-info --trust-model",
+      "predict"
+    ],
+    "frozen_california_byte_preservation_with_autocrlf": true,
+    "gui_run": false,
+    "full_california_dsa_training": false,
+    "packaged_application": false
+  },
+  "historical_files_replaced": false
+}

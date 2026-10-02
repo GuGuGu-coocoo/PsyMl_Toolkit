@@ -1,6 +1,6 @@
 # Régression California Housing : télécharger, exécuter et comparer
 
-[中文](CALIFORNIA_VALIDATION_ZH.md) · [English](CALIFORNIA_VALIDATION_EN.md) · [README](../README.md)
+[中文](CALIFORNIA_VALIDATION_ZH.md) · [English](CALIFORNIA_VALIDATION_EN.md) · [README](../README_FR.md)
 
 Ce cas prédit la valeur médiane des logements de 20 640 zones de recensement californiennes en 1990 à partir de huit variables, dont le revenu et l’âge des logements. Il vérifie l’accord entre PsyML et un programme scikit-learn écrit séparément. Ces données historiques ne permettent pas d’établir les prix actuels.
 
@@ -14,27 +14,34 @@ Enregistrez le CSV et le JSON dans un même dossier local. Si le navigateur affi
 
 L’application disponible reste v0.3.0 ; aucun installateur contenant les correctifs source ultérieurs n’est encore disponible. La référence historique utilise l’environnement source indiqué sur cette page et ne certifie pas les paquets existants. Vérifier l’application corrigée nécessite son installateur. Les plateformes proposées figurent dans [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases).
 
-1. Ouvrez PsyML et cliquez sur « Importer une configuration… » à la page 1. Choisissez `california_config.json`. Si le logiciel demande les données, sélectionnez `california_housing.csv` ; vérifiez le chemin et utilisez « Parcourir… » pour le choisir à nouveau si nécessaire.
+1. Ouvrez PsyML et cliquez sur « Importer une configuration… » à la page 1. Choisissez `california_config.json`. Si « Données introuvables — sélectionnez le fichier de données » apparaît, choisissez `california_housing.csv` dans ce dialogue d’import. Vérifiez le chemin obtenu. L’import rétablit tous les réglages de la configuration après lecture de l’aperçu.
 2. Vérifiez : 20 640 lignes ; régression ; cible `MedHouseVal` ; huit prédicteurs ; aucun groupe ; 5 plis K-fold externes et 3 internes ; graine `20261002` ; sélection selon le RMSE ; candidats Dummy, Ridge et Random Forest. Tous les noms de variables figurent plus bas.
 3. À la page 2, choisissez un dossier local et cliquez sur « Exécuter l’analyse ». Conservez les candidats, paramètres et graine du fichier pour comparer avec la référence.
 4. À la page 3, consultez le RMSE et ouvrez le dossier complet. Conservez `config.json`, `metrics.csv`, `metrics_summary.csv`, `fold_metrics.csv`, les prédictions et les versions de l’environnement.
+
+Après l’import, ne choisissez pas à nouveau le CSV avec le bouton ordinaire « Parcourir… » : relire les données réinitialise les rôles des variables et le choix des validations. Si vous l’avez déjà fait, réimportez le JSON original. Si le dialogue de localisation apparaît, choisissez le CSV du cas dans ce dialogue, puis revérifiez cible, groupe, prédicteurs et validation.
 
 Chacun des cinq tests externes met à l’écart 4 128 lignes. Les données restantes sont divisées en trois pour comparer modèles et paramètres avant de tester le réglage retenu. C’est la validation imbriquée. La prédiction de test de chaque ligne provient d’un modèle entraîné sans cette ligne ; leur ensemble constitue les prédictions hors pli (OOF).
 
 ## Chiffres, configuration et fichiers de résultats
 
-Ces valeurs proviennent de la référence indépendante originale v1 ; les exports réels de l’interface corrigée lui ont été comparés le 2026-10-02. Toutes les lignes utilisent le même [california_config.json](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) et `california_housing.csv` ; il n’y a pas de configuration distincte à télécharger pour chaque métrique.
+La même configuration originale v1 possède des résultats dans deux environnements. L’exécution de l’interface source sur macOS le 2026-10-02 utilisait scikit-learn 1.9.0. Le RMSE principal rapporté par le mainteneur correspond à la référence indépendante de cet environnement ; le journal du comparateur indique 271/271 contrôles réussis. La référence Linux avec scikit-learn 1.8.0 reste dans la colonne voisine. Les deux utilisent `california_config.json` et `california_housing.csv` ; les environnements restent distingués.
 
-| Valeur de référence | Sens | Où comparer |
-| --- | --- | --- |
-| 0.5339815958325378 | Résultat principal : moyenne des RMSE des cinq tests externes. La racine de l’erreur quadratique moyenne diminue lorsque les prédictions se rapprochent des valeurs observées, en unités de 100 000 USD | `rmse` dans `metrics.csv` ; [table de référence](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `rmse/mean` |
-| 0.01850680156369903 | Écart-type des cinq RMSE, décrivant leur dispersion ; ce n’est pas un intervalle de confiance | `metrics_summary.csv` ; [même référence](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `rmse/std` |
-| 0.3610547401259507 | Moyenne des cinq erreurs absolues moyennes (MAE), dans les mêmes unités | `mae` dans `metrics.csv` ; [même référence](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `mae/mean` |
-| 0.7856663784093894 | Moyenne des R² de test, qui mesure l’ajustement relativement à la variation de la cible ; ce n’est pas « 78,6 % d’exactitude » | `r2` dans `metrics.csv` ; [même référence](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `r2/mean` |
-| 0.5343022051161513 | RMSE recalculé par la référence indépendante sur les 20 640 prédictions réunies. Il n’est pas directement exporté dans `metrics.csv` et diffère de la moyenne par pli | [Table des prédictions réunies](../examples/public/california_random_nested_v1/expected/historical_pooled_metrics.csv), `procedure/rmse` |
-| 1.153954483920011 / 0.7273658464149191 | Moyennes des RMSE externes de Dummy / Ridge dans la même configuration. Dummy prédit la moyenne d’entraînement ; Ridge est une régression linéaire régularisée | `model_comparison.csv` ; [référence par modèle et pli](../examples/public/california_random_nested_v1/expected/historical_family_fold_metrics.csv) |
+Le [relevé macOS : environnement, métriques et comparaison](MACOS_SKLEARN_1_9_VALIDATION_RECORD.json) repose sur le rapport du mainteneur sur machine réelle et les journaux de console. Les valeurs et nombres de contrôles proviennent de ces documents ; le résumé public ne contient ni captures ni exports GUI complets.
 
-Les cinq tests externes et le choix final ont retenu Random Forest. Les RMSE par pli et les autres métriques plus bas utilisent aussi cette configuration. Le modèle final apprend sur toutes les lignes ; ses prédictions sur ces mêmes lignes ne donnent pas un nouveau score de test indépendant.
+| Métrique | Référence indépendante macOS / scikit-learn 1.9.0 | Référence Linux / scikit-learn 1.8.0 | Où consulter votre résultat |
+| --- | ---: | ---: | --- |
+| RMSE moyen des cinq tests externes, principal | 0.5339708864410444 | 0.5339815958325378 | `rmse` dans `metrics.csv` |
+| Écart-type des RMSE entre plis, ddof=0 | 0.018514866644239496 | 0.01850680156369903 | `rmse/std` dans `metrics_summary.csv` |
+| MAE moyenne des cinq tests externes | 0.3610492052309331 | 0.3610547401259507 | `mae` dans `metrics.csv` |
+| R² moyen des cinq tests externes | 0.7856750901682014 | 0.7856663784093894 | `r2` dans `metrics.csv` |
+| RMSE recalculé sur toutes les prédictions de test réunies | 0.5342917815702284 | 0.5343022051161513 | `pooled_oof.rmse` de la référence indépendante ; pas d’export direct dans `metrics.csv` |
+
+Le RMSE est la racine de l’erreur quadratique moyenne ; la MAE est l’erreur absolue moyenne. Les deux diminuent lorsque les prédictions se rapprochent des observations et s’expriment en unités de 100 000 USD. Le R² mesure l’ajustement relativement à la variation de la cible, pas un pourcentage d’exactitude. L’écart-type décrit la dispersion des cinq tests, sans être un intervalle de confiance. Recalculer le RMSE sur les prédictions réunies diffère de la moyenne des cinq scores.
+
+Les valeurs macOS figurent sous `california.reference_metrics` dans le nouveau relevé. La [table Linux des moyennes et écarts-types](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv) et la [table de référence regroupée](../examples/public/california_random_nested_v1/expected/historical_pooled_metrics.csv) conservent leurs valeurs originales. Les RMSE externes moyens historiques Linux de Dummy / Ridge sont 1.153954483920011 / 0.7273658464149191 dans la [table par modèle et pli](../examples/public/california_random_nested_v1/expected/historical_family_fold_metrics.csv) ; consultez `model_comparison.csv` dans votre sortie. Le résumé macOS ne donne pas ces deux moyennes par famille. Dummy prédit la moyenne d’entraînement ; Ridge est une régression linéaire régularisée.
+
+Les deux références ont retenu Random Forest dans chaque test externe et pour le choix final sur toutes les données. Le modèle final apprend sur toutes les lignes ; les prédire à nouveau ne donne pas un autre score indépendant. Faites correspondre l’environnement avant d’appliquer la tolérance prédéfinie à sa référence ; ne modifiez pas les réglages pour retrouver le score d’un autre environnement.
 
 ## Vérification enregistrée de la configuration originale v1
 

@@ -4,7 +4,7 @@
 
 ## 中文
 
-下载下面的 CSV 和案例页提供的 JSON 配置，即可在 PsyML 界面中导入。CSV 已完成参考分析所用的数据转换，普通复现不需要运行脚本。可下载软件与已验证源码的版本区别见 [README](../../../README.md)。
+下载下面的 CSV 和案例页提供的 JSON 配置，即可在 PsyML 界面中导入。CSV 已完成参考分析所用的数据转换，普通复现不需要运行脚本。可下载软件与已验证源码的版本区别见 [README](../../../README_ZH.md)。
 
 | 案例 | 可直接导入的 CSV | 原始数据 | 转换脚本与说明 |
 | --- | --- | --- | --- |
@@ -40,7 +40,7 @@ The scripts and their helper modules are in the repository. Use the whole reposi
 
 ## Français
 
-Téléchargez un CSV ci-dessus et la configuration JSON de sa page de cas, puis importez-les dans PsyML. Le CSV contient déjà la transformation de référence ; exécuter un script reste facultatif. Le [README](../../../README.md) distingue les applications téléchargeables des révisions source testées.
+Téléchargez un CSV ci-dessus et la configuration JSON de sa page de cas, puis importez-les dans PsyML. Le CSV contient déjà la transformation de référence ; exécuter un script reste facultatif. Le [README](../../../README_FR.md) distingue les applications téléchargeables des révisions source testées.
 
 - DSA : [CSV préparé](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv) · [ZIP officiel](https://archive.ics.uci.edu/static/public/256/daily%2Band%2Bsports%2Bactivities.zip) · [script de conversion](../../../tools/cases/prepare_dsa.py) · [reconstruction facultative](../dsa_group_nested_v1/README.md)
 - California : [CSV préparé](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv) · [TGZ officiel](https://ndownloader.figshare.com/files/5976036) · [script de conversion](../../../tools/cases/prepare_california.py) · [reconstruction facultative](../california_random_nested_v1/README.md)

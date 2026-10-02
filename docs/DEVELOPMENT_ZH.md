@@ -1,6 +1,6 @@
 # 开发者指南
 
-[README](../README.md#chinese) · [English](DEVELOPMENT_EN.md) · [Français](DEVELOPMENT_FR.md)
+[README](../README_ZH.md) · [English](DEVELOPMENT_EN.md) · [Français](DEVELOPMENT_FR.md)
 
 本文面向修改代码、参与维护或构建应用的开发者。研究者直接使用 GUI，无需安装开发工具或执行本文命令。当前代码版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量（`pyproject.toml` 通过 hatch 的 dynamic 读取同一值；当前源码为正式版本 `0.3.0`，界面原样显示；开发版 `0.3.0.dev0` 显示为 `0.3.0-dev`）。独立包与分发 PDF 的可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准；v0.2.0 及更早的下载包不含源码检出的新功能与第二轮修复。
 
@@ -167,3 +167,38 @@ uv run python tools/package_researcher_share.py --windows-zip dist/v0.3.0/PsyML-
 分享脚本读取当前核心版本，在仓库根目录生成 `PsyML-Toolkit-Researcher-Share-v0.3.0.zip`，不调用发布接口；另行确认后才生成，并保持为本地直接分享材料，不加入 Release 附件。Windows/ 为程序，TestData/ 为训练、配置及预测资料，Documents/ 为两份中文 PDF，“从这里开始.txt”解释文件夹并引导 Mac 用户到 GitHub。输出目录已存在时先移走或备份；文档更新后重新生成两个输出位置的 PDF。
 
 版本升级时只在 `src/psyml/__init__.py` 修改 `__version__`（`pyproject.toml` 为 dynamic，自动读取；`gui/export_presets.cfg` 保持占位符，数值由 `tools/build_native.py` 在导出时派生），并核对 uv.lock、`tools/build_native.py`、`tools/NATIVE_START_HERE.txt`、PDF 构建器中的版本与链接，以及三语发布说明（`docs/RELEASE_NOTES_<版本>.md`）。检查 BUILD.json 的提交、初始工作区状态和构建生成的差异，用 `tools/verify_release_artifacts.py` 复核 ZIP 内容与本地校验值。界面包内检查覆盖分类/回归训练、模型保存与加载、各 10 行新数据预测（写入本次运行目录的 `predictions.csv`）以及“打开预测结果文件夹”恰指向该运行目录；不替代实际窗口检查。核心 CLI `export-table` 与多格式读写仍保留，不属于该包内检查范围。每项独立功能完成后单独 commit 并立即 push，不累积后一起推送。
+
+
+## 打开应用
+
+请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。v0.3.0 独立应用 ZIP（`macOS-arm64`、`Windows-x64`）从同一提交构建，实际可下载的附件与平台以 [v0.3.0 Release](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.3.0) 页面为准；更早的正式版本仍保留在同一 Releases 页面。应用包包含运行环境；GitHub 自动生成的 Source code 压缩包仅含源码，开发安装见[开发者指南](../docs/DEVELOPMENT_ZH.md)。
+
+**源码检出与下载包。** 本源码检出为正式版本 **0.3.0**（单一版本源），包含 v0.2.0 之后新增的功能与改进（置换重要性、数据检查与结果解读、单样本 SHAP、拟合系数，以及界面与输出流程改进）。下载包与分发 PDF 按各版本自身提供，请以 Releases 页面列出的附件和所用版本内的说明与界面为准；v0.2.0 及更早的下载包不含这些功能与修复，界面、输出布局和截图仍为旧版。版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic），独立包 `BUILD.json` 由 `tools/build_native.py` 用同一常量生成。源码版在 macOS 可在项目根目录双击 `Launch PsyML.command` 启动（依赖安装见[开发者指南](../docs/DEVELOPMENT_ZH.md)）。
+
+- **macOS（Apple 芯片）**：完整解压对应应用包，双击 `PsyML Toolkit.app`。
+- **Windows（Intel/AMD x64）**：完整解压对应应用包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
+- 应用内含 Python、分析依赖和界面运行时；使用时无需命令行、额外安装或联网下载。用户测试资料统一在 `examples/quickstart/`，通过 GUI 的“导入配置…”开始。
+- 软件名下方以小字显示当前版本：独立包读取包内 `BUILD.json`，源码版读取 `src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic，读取同一常量）；当前正式版本 `0.3.0` 原样显示，开发发布 `0.3.0.dev0` 显示为 `0.3.0-dev`，版本值不硬编码。
+- 应用尚未使用商业开发者证书签名/公证。首次打开时系统可能显示安全确认；macOS 可在“系统设置 → 隐私与安全性”确认打开，Windows 可核对来源后在安全提示中确认。请遵守所在机构的电脑管理要求。
+
+## 源码版行为核对
+
+独立应用包与源码检出可能包含不同的修复；以下 5 点帮助你在源码版核对行为。
+
+1. 在源码检出根目录启动界面（macOS 可双击 `Launch PsyML.command`），依赖安装见[开发者指南](DEVELOPMENT_ZH.md)；独立应用包不包含开发测试环境。导入 `examples/quickstart/` 的分类或回归配置并运行一次。
+2. **版本小字**：软件名下方应以小字显示当前版本号 `0.3.0`。源码版唯一来源是 `src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic），独立包读取包内由同一常量生成的 `BUILD.json`；开发版 `0.3.0.dev0` 界面显示为 `0.3.0-dev`，正式版本 `0.3.0` 原样显示。
+3. **输出目录与旧结果**：第 2 页新训练结果显示在所选结果根目录的 `training/run_*` 下；第 4 页预测、SHAP 与系数分别落在与第 2 页共享根目录下 `prediction/`、`explanation/`、`coefficients/` 的 `run_*` 新目录，不覆盖已有文件，也不写入隐藏的应用数据目录。旧版本直接放在结果根目录的 `run_*` 目录仍能原位打开、内容不被改写。
+4. **第 4 页结果入口**：三块都提供“打开结果文件夹”（预测为“打开预测结果文件夹”，直接打开本次运行目录而不是 CSV）与“打开瀑布图”；预测产物是可直接打开的 `predictions.csv`。
+5. **滚动控制与收尾状态**：在长页面与嵌套小表格之间滚动时，从整页起手经过小表格仍继续滚动整页，从小表格起手才滚动该表格，停顿约 250 毫秒后再滚动才重新选择控制层（锁定只作用于滚轮/滑动）；运行收尾阶段应显示“正在整理并写出结果…”且进度条未满，完成后才进入结果页。记录问题时使用“复制完整报错”。
+
+本指南描述源码检出 **0.3.0**（单一版本源）的行为，其中包含 v0.2.0 之后新增的功能与改进（置换重要性、数据检查与结果解读、单样本 SHAP、拟合系数，以及界面与输出流程改进）。独立包与分发 PDF 的版本与可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准；v0.2.0 及更早的独立包与分发 PDF 不包含这些功能与修复，界面与输出布局可能与源码检出不同。版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量；`pyproject.toml` 通过 dynamic 读取它，独立包的 `BUILD.json` 由 `tools/build_native.py` 用同一常量生成，界面小字显示同一值（正式版本 `0.3.0` 原样显示，开发版 `0.3.0.dev0` 显示为 `0.3.0-dev`）。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准，不要用本指南标题推断下载包内容。
+
+## 批量预测命令行
+
+```bash
+psyml predict --model output/model/best_ridge.joblib --input new_data.xlsx --output predictions.xlsx --trust-model
+```
+
+仅加载可信来源的 PsyML 模型；joblib/pickle 加载可以执行代码，`--trust-model` 表示确认来源。加 `--check-only` 可先检查，省略 `--output`。按训练顺序自动选取预测变量，缺列、非法数值与无法填补的缺失值会阻止预测。所有原始列（含目标）与行序保留；回归追加 `predicted_value`，分类追加 `predicted_class` 及模型原生概率。重名时给新增列加数字后缀。没有变量名的旧模型用重复 `--feature` 明确列顺序。支持原有 9 种输入格式；可写 CSV、TSV、XLSX、SAV、DTA、XPT、Parquet。XLS/SAS7BDAT 只能读取，另存为 XLSX；统计格式无法表示某些列名或数据类型时明确报错，可另存 XLSX/Parquet。CLI 输出格式由 `--output` 扩展名决定，默认不覆盖文件。
+
+机器学习核心由项目作者编写，Godot 图形界面在 AI 辅助下开发。AI 辅助不替代人工代码审查与科研判断。

@@ -1,6 +1,6 @@
 # Classification DSA : télécharger, exécuter et comparer
 
-[中文](VALIDATION_DSA_ZH.md) · [English](VALIDATION_DSA_EN.md) · [README](../README.md)
+[中文](VALIDATION_DSA_ZH.md) · [English](VALIDATION_DSA_EN.md) · [README](../README_FR.md)
 
 Ce cas reconnaît 19 activités, comme marcher ou s’asseoir, à partir de capteurs corporels. Il contient 9 120 enregistrements de cinq secondes provenant de 8 participants. La question est de savoir si PsyML garde ensemble les enregistrements de chaque personne lors de l’entraînement et du test, et obtient les mêmes résultats qu’un programme scikit-learn écrit séparément.
 
@@ -17,11 +17,13 @@ Le CSV contient, pour chaque segment, la moyenne et l’écart-type de six canau
 
 ### Importer dans PsyML
 
-1. Ouvrez PsyML. Le [README](../README.md) précise les téléchargements et versions : les paquets v0.3.0 disponibles ne contiennent pas les correctifs source ultérieurs, et aucun nouvel installateur n’est encore disponible. Cette référence historique ne certifie pas ces paquets.
-2. À la page 1, cliquez sur « Importer une configuration… » et choisissez `dsa_group_nested_v1.json`. Si le logiciel demande les données, sélectionnez le CSV téléchargé. Vérifiez le chemin importé ; utilisez « Parcourir… » pour le choisir à nouveau si nécessaire. Aucune modification du JSON n’est nécessaire.
+1. Ouvrez PsyML. Le [README](../README_FR.md) précise les téléchargements et versions : les paquets v0.3.0 disponibles ne contiennent pas les correctifs source ultérieurs, et aucun nouvel installateur n’est encore disponible. Cette référence historique ne certifie pas ces paquets.
+2. À la page 1, cliquez sur « Importer une configuration… » et choisissez `dsa_group_nested_v1.json`. Si « Données introuvables — sélectionnez le fichier de données » apparaît, choisissez `dsa_torso_mean_std.csv` dans ce dialogue d’import. Vérifiez le chemin obtenu. L’import rétablit tous les réglages de la configuration après lecture de l’aperçu ; aucune modification du JSON n’est nécessaire.
 3. Vérifiez : 9 120 lignes ; classification ; cible `activity` ; groupe `subject_id` ; 12 prédicteurs commençant par `torso_` ; K-fold groupé, 4 plis externes, 3 internes ; graine `20261001` ; Dummy et Logistic Regression. Les colonnes `segment_id` et `subject_id` ne doivent pas être des prédicteurs.
 4. À la page 2, choisissez un dossier local et cliquez sur « Exécuter l’analyse ». L’import seul ne lance rien. PsyML crée un nouveau sous-dossier de résultats.
 5. À la page 3, consultez l’exactitude équilibrée et ouvrez le dossier complet. Conservez `config.json`, les métriques, les prédictions et les versions de l’environnement de cette exécution.
+
+Après l’import, ne choisissez pas à nouveau le CSV avec le bouton ordinaire « Parcourir… » : relire les données réinitialise les rôles des variables et le choix des validations. Si vous l’avez déjà fait, réimportez le JSON original. Si le dialogue de localisation apparaît, choisissez le CSV du cas dans ce dialogue, puis revérifiez cible, groupe, prédicteurs et validation.
 
 Quatre plis externes signifient quatre tests, chacun mettant deux participants à l’écart de l’entraînement. Les trois plis internes comparent les réglages chez les participants restants avant de tester le réglage choisi. Ce processus à deux niveaux est la validation imbriquée.
 
@@ -40,6 +42,19 @@ Ces valeurs ont été enregistrées lors du cas Linux initial du 2026-10-01. Sau
 | 0.0532894736842105 | Exactitude équilibrée après mélange des étiquettes au sein de chaque participant ; une analyse ordinaire dans l’interface ne produit pas ce contrôle | [Outil de contrôle séparé](../tools/cases/check_dsa_controls.py), même configuration et graine `20261002` ; `placebo.balanced_accuracy` |
 
 Le macro-F1 moyenne les scores F1 des classes ; le F1 tient compte des activités manquées et mal identifiées. Les quatre tests externes et le choix final sur toutes les données ont retenu Logistic Regression, `C=1.0`. Les scores par pli et les choix de la section 3 proviennent de cette même configuration complète.
+
+### Relevé macOS / scikit-learn 1.9.0 du 2026-10-02
+
+Les mêmes `dsa_group_nested_v1.json` et `dsa_torso_mean_std.csv` ont servi à une exécution principale dans l’interface source macOS. Le mainteneur rapporte une exactitude équilibrée de 0.5740131578947368. Les résumés de référence indépendante et d’observation concordent dans cet environnement ; les journaux indiquent la réussite de 26 contrôles numériques, 4 structurels et 2 d’export. Aucun dossier complet de référence Linux figée n’a été fourni pour une comparaison fichier par fichier ; le compteur `golden` vaut 0.
+
+| Métrique | Référence indépendante dans cet environnement | Votre sortie ou champ du relevé |
+| --- | ---: | --- |
+| Exactitude équilibrée moyenne des quatre tests externes | 0.5740131578947368 | `balanced_accuracy` dans `metrics.csv` |
+| Macro-F1 moyen des quatre tests externes | 0.5513874769696934 | `f1_macro` dans `metrics.csv` |
+| Macro-F1 des prédictions de test réunies | 0.5702035749465654 | `pooled_oof.f1_macro` de la référence indépendante |
+| ROC-AUC OvR pondérée moyenne des quatre tests externes | 0.9406080449967511 | `roc_auc_ovr_weighted` dans `metrics.csv` |
+
+La dernière métrique calcule une ROC-AUC pour chaque classe contre les autres, puis pondère selon l’effectif des classes. Le [relevé de l’environnement et de la comparaison](MACOS_SKLEARN_1_9_VALIDATION_RECORD.json) repose sur le rapport du mainteneur et les journaux de console ; les valeurs figurent sous `dsa.reference_metrics`. Référence et observation enregistrent chacune 54 ajustements, avec choix final de Logistic Regression, `C=1.0`. Les anciens écarts inter-plateformes de probabilités/ROC-AUC et les contrôles Dummy et d’étiquettes mélangées restent des relevés historiques distincts, sans être présentés comme répétés ici.
 
 ### Comparer une nouvelle exécution
 

@@ -89,11 +89,7 @@ Do not replace historical results with a new-environment result.
 
 ## Actual GUI procedure and complete comparison
 
-1. Import the public configuration, then explicitly select the prepared
-   `examples/public/data/california_housing.csv` on page 1. GUI relative input
-   paths can resolve against the configuration directory, unlike the CLI's
-   working directory. Alternatively save a local copy with absolute paths;
-   only these two path fields may change.
+1. Import the original v1 `california_config.json`. If “Configured data not found — select the data file” appears, choose `california_housing.csv` in that import-time dialog. Confirm the resulting data path. The importer restores the configured roles and validation settings after reading the preview. Do not select the CSV afterward with the ordinary “Browse…” button, which resets roles and validation selections. If you already did, reimport the original configuration, locate the CSV in the import dialog if prompted, and recheck all settings. Only input/output paths may change.
 2. Confirm the nine columns, target and eight predictors; regression; no group;
    median/standard; outer 5 / inner 3; seed 20261002; RMSE; all three families.
 3. On page 2 choose an explicit valid absolute output root. Save configuration,

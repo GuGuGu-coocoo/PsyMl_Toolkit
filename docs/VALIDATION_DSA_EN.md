@@ -18,10 +18,12 @@ The CSV contains each segment's mean and standard deviation for six torso sensor
 ### Import into PsyML
 
 1. Open PsyML. See the [README](../README.md) for downloads and versions: the available v0.3.0 bundles lack later source fixes, and a new installer is not yet available. This historical reference does not certify those bundles.
-2. On “1 Data & analysis setup”, click “Import configuration…” and select `dsa_group_nested_v1.json`. If asked for the data, select the downloaded `dsa_torso_mean_std.csv`. Check the imported data path; use “Browse…” if you need to select it again. No JSON editing is required.
+2. On “1 Data & analysis setup”, click “Import configuration…” and select `dsa_group_nested_v1.json`. If “Configured data not found — select the data file” appears, select `dsa_torso_mean_std.csv` in that import dialog. Check the resulting data path. The import restores all configuration settings after reading the preview; no JSON editing is required.
 3. Check: 9,120 rows; classification; target `activity`; group `subject_id`; 12 predictors starting with `torso_`; grouped K-fold, 4 outer folds, 3 inner folds; seed `20261001`; Dummy and Logistic Regression. Keep `segment_id` and `subject_id` out of the predictors.
 4. On “2 Review & run”, choose a local results folder and click “Run analysis”. Importing alone does not start a run. PsyML creates a new results subfolder.
 5. On “3 Results”, read balanced accuracy and choose “Open complete result folder”. Keep `config.json`, metrics, predictions and environment records for this run.
+
+After importing, do not select the CSV again with the ordinary “Browse…” button: reloading data resets variable roles and validation selections. If you already used Browse, reimport the original JSON. If the data-location dialog appears, select the case CSV there, then recheck the target, group, predictors and validation settings.
 
 Four outer folds means four tests, each holding out two participants from training. Three inner folds compare candidate settings among the remaining participants before testing the selected setting. This two-stage process is nested validation.
 
@@ -40,6 +42,19 @@ These are recorded values from the original Linux case on 2026-10-01. All rows e
 | 0.0532894736842105 | Balanced accuracy after shuffling activity labels within each participant; an ordinary GUI run does not produce this check | [Separate control tool](../tools/cases/check_dsa_controls.py), same configuration and shuffle seed `20261002`; `placebo.balanced_accuracy` |
 
 Macro-F1 averages the F1 scores of individual classes; F1 accounts for both missed and incorrect identifications. All four outer tests and the final full-data selection chose Logistic Regression with `C=1.0`. The fold scores and selection records in section 3 use this same full configuration, not additional configuration files.
+
+### macOS / scikit-learn 1.9.0 record, 2026-10-02
+
+The same `dsa_group_nested_v1.json` and `dsa_torso_mean_std.csv` were used for one main run in the macOS source GUI. The maintainer reported balanced accuracy of 0.5740131578947368. The independent-reference and observation summaries agree within this environment; comparator logs show 26 numerical, 4 structural and 2 export checks passed. No frozen Linux full-result directory was supplied for file-by-file comparison, so `golden` is 0.
+
+| Metric | Independent reference in this environment | Your output or record field |
+| --- | ---: | --- |
+| Mean balanced accuracy across four outer tests | 0.5740131578947368 | `balanced_accuracy` in `metrics.csv` |
+| Mean macro-F1 across four outer tests | 0.5513874769696934 | `f1_macro` in `metrics.csv` |
+| Macro-F1 from pooled test predictions | 0.5702035749465654 | Independent reference `pooled_oof.f1_macro` |
+| Mean weighted OvR ROC-AUC across four outer tests | 0.9406080449967511 | `roc_auc_ovr_weighted` in `metrics.csv` |
+
+The last metric computes ROC-AUC for each class against the rest, then weights by class size. The [environment and comparison record](MACOS_SKLEARN_1_9_VALIDATION_RECORD.json) is based on the maintainer's real-machine report and console logs; values are under `dsa.reference_metrics`. Reference and observation runs each recorded 54 fits, with final selection Logistic Regression, `C=1.0`. Earlier platform differences in probabilities/ROC-AUC and the old Dummy and shuffled-label checks remain separate historical records, not checks rerun here.
 
 ### Comparing a new run
 

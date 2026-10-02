@@ -2,7 +2,7 @@
 
 ## 中文
 
-历史发行记录，仅描述 [v0.1.0](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.1.0) 附件。该版本的安装步骤见[对应版本 README](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/v0.1.0/README.md#chinese)；当前使用说明见[主 README](../README.md#chinese)。
+历史发行记录，仅描述 [v0.1.0](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.1.0) 附件。该版本的安装步骤见[对应版本 README](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/v0.1.0/README.md#chinese)；当前使用说明见[主 README](../README_ZH.md)。
 
 首个正式发布版本。PsyML Toolkit 提供本地分类与回归分析，包含 12 个分类、11 个回归模型选项、9 种表格格式和 6 种验证策略。
 
@@ -21,7 +21,7 @@ ZIP 含源码、GUI、测试、合成数据/配置，以及 `docs/pdf/README_ZH.
 
 ## English
 
-Historical notes for the [v0.1.0 assets](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.1.0) only. Use the [versioned README](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/v0.1.0/README.md#english) for that release’s setup, or the [main README](../README.md#english) for current usage.
+Historical notes for the [v0.1.0 assets](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.1.0) only. Use the [versioned README](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/v0.1.0/README.md#english) for that release’s setup, or the [main README](../README.md) for current usage.
 
 First release of PsyML Toolkit: local classification and regression with 12 classification and 11 regression model options, 9 tabular formats and 6 validation strategies.
 
@@ -40,7 +40,7 @@ Quick reproduction: `uv run psyml run --config examples/synthetic/classification
 
 ## Français
 
-Notes historiques concernant uniquement les [fichiers de v0.1.0](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.1.0). Consultez le [README de cette version](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/v0.1.0/README.md#french) pour son installation, ou le [README principal](../README.md#french) pour l’utilisation actuelle.
+Notes historiques concernant uniquement les [fichiers de v0.1.0](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.1.0). Consultez le [README de cette version](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/blob/v0.1.0/README.md#french) pour son installation, ou le [README principal](../README_FR.md) pour l’utilisation actuelle.
 
 Première version de PsyML Toolkit : classification et régression locales, avec 12 choix de modèles de classification, 11 de régression, 9 formats tabulaires et 6 stratégies de validation.
 

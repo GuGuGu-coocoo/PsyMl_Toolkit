@@ -1,8 +1,8 @@
 # Guide de référence : modèles, métriques, résultats et terminologie
 
-Ce guide décrit le comportement des sources **0.3.0** (source unique), avec les fonctions et améliorations ajoutées après v0.2.0 (importance par permutation, contrôle des données et interprétation, SHAP d’un échantillon, coefficients ajustés, ainsi que des améliorations d’interface et de flux de sortie). Les paquets autonomes et PDF de distribution suivent leur propre version : voir les fichiers listés sur la page Releases ; les paquets v0.2.0 et antérieurs et leurs PDF ne contiennent ni ces fonctions ni ces correctifs : l’interface et la disposition des sorties peuvent donc différer des sources. La version n’a qu’une seule source maintenue : la constante `__version__` de `src/psyml/__init__.py`. `pyproject.toml` la lit via les métadonnées dynamiques, le `BUILD.json` autonome est généré par `tools/build_native.py` à partir de la même constante, et l’interface affiche la même valeur (version officielle `0.3.0` telle quelle, version de développement `0.3.0.dev0` affichée `0.3.0-dev`). Consultez `analysis_manifest.json` dans chaque sortie d’analyse pour les versions d’exécution et de dépendances, et ne déduisez pas le contenu du paquet téléchargé du titre de ce guide.
+Cette référence décrit le comportement des sources actuelles. Chaque exécution consigne ses versions dans `analysis_manifest.json` ; la [page d’accueil](../README_FR.md) distingue sources et applications téléchargeables.
 
-[Retour au README français](../README.md#french) · [中文](RESEARCHER_GUIDE_ZH.md) · [English](RESEARCHER_GUIDE_EN.md) · **Français**
+[Retour au README français](../README_FR.md) · [中文](RESEARCHER_GUIDE_ZH.md) · [English](RESEARCHER_GUIDE_EN.md) · **Français**
 
 Ce guide explique les concepts utilisés dans l’implémentation actuelle de PsyML Toolkit. Consultez-le pour configurer une analyse ou interpréter ses résultats. Les noms de code correspondent aux clés de configuration et aux colonnes CSV. Le texte se lit hors ligne ; les références externes nécessitent une connexion. Les formules courtes servent à comprendre, sans exiger de calcul manuel. Si votre lecteur Markdown ne les affiche pas, utilisez les explications qui les accompagnent.
 
@@ -10,6 +10,7 @@ La pertinence d’un modèle dépend de la question de recherche, de la structur
 
 ## Navigation
 
+- [Parcours dans l’application](#gui-workflow)
 - [1. Données et prétraitement](#data)
 - [2. Modèles disponibles](#models)
 - [3. Métriques de classification et de régression](#metrics)
@@ -18,6 +19,56 @@ La pertinence d’un modèle dépend de la question de recherche, de la structur
 - [6. Paramètres et terminologie](#glossary)
 - [7. Interprétations erronées et ordre de vérification](#checklist)
 - [8. Implémentation et lectures complémentaires](#references)
+
+<a id="gui-workflow"></a>
+
+## Parcours dans l’application
+
+### 1. Ouvrir l’application et importer les données
+
+Décompressez entièrement l’[application téléchargée](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). Sur Mac, ouvrez `PsyML Toolkit.app` ; sous Windows, `PsyML Toolkit.exe` en gardant le dossier `core` voisin. Les [notes de lancement et d’installation des sources](DEVELOPMENT_FR.md#ouvrir-lapplication) précisent les plateformes. Les captures utilisent des données synthétiques pour illustrer l’interface.
+
+Commencez par une configuration de classification ou de régression du [démarrage rapide](../examples/quickstart/README.md#français). Pour les cas publics, utilisez la configuration complète et le CSV [DSA](VALIDATION_DSA_FR.md) ou [California](CALIFORNIA_VALIDATION_FR.md).
+
+À la page 1, cliquez sur « Importer une configuration… » et choisissez le JSON. Si « Données introuvables — sélectionnez le fichier de données » apparaît, choisissez le CSV dans ce dialogue. Vérifiez ensuite chemin, cible, groupe, prédicteurs et validation. N’utilisez pas le bouton ordinaire « Parcourir… » après l’import : il réinitialise les rôles et les validations. Si vous l’avez déjà fait, réimportez la configuration d’origine, choisissez le CSV si le dialogue d’import le demande et revérifiez les réglages.
+
+Pour une nouvelle analyse de vos propres données, utilisez d’abord « Parcourir… », consultez l’aperçu puis définissez les rôles. Formats acceptés : CSV, TSV, XLSX, XLS, SPSS SAV, Stata DTA, SAS7BDAT, XPT et Parquet. Vérifiez dimensions, types, valeurs manquantes, en-têtes et encodage. Écartez les identifiants et les informations indisponibles au moment de prédire. [Données et prétraitement](#data) explique valeurs manquantes, encodage et observations répétées.
+
+![Données et rôles des variables](images/fr/01-data.png)
+
+### 2. Choisir les réglages
+
+Choisissez classification ou régression, cible, prédicteurs et groupe si nécessaire. Des observations répétées d’un participant nécessitent une validation groupée ; renseigner un groupe ne rend pas le K-fold ordinaire indépendant des participants. Réglez valeurs manquantes, mise à l’échelle, modèles candidats et paramètres sur cette page. [Validation et réglage](#validation) explique les plans et distingue sélection et ajustement final.
+
+Choisissez une validation principale ou des sorties indépendantes pour plusieurs méthodes. Sans méthode principale, sélectionnez une validation dans les résultats après l’exécution. Ne choisissez pas le plan après avoir vu les scores. Les paramètres utilisent les valeurs par défaut, la recherche rapide ou une grille personnalisée ; les valeurs personnalisées sont des tableaux JSON comme `[0.1, 1.0, 10.0]`. Limites de candidats et nombre de plis internes déterminent la charge. Consultez [modèles](#models), [métriques](#metrics) et [paramètres](#glossary).
+
+![Modèles, validation et paramètres](images/fr/02-settings.png)
+
+### 3. Vérifier et exécuter
+
+À la page 2, choisissez un dossier local de résultats. Vérifiez chemin, rôles, validation principale, candidats, grilles, métrique, graine et nombre de tâches prévu, puis cliquez sur « Exécuter l’analyse ». Chaque exécution crée un nouveau dossier `training/run_*/`.
+
+L’interface indique étape, modèle, validation, pli externe et tâches terminées ; l’estimation de durée évolue avec les temps observés. Vous pouvez arrêter l’analyse ; les sorties incomplètes ne sont pas des résultats de recherche valides. Après la dernière tâche comptée, la phase de finalisation et d’écriture reste affichée jusqu’à l’enregistrement de tous les fichiers ; les résultats s’ouvrent ensuite.
+
+![Vérification et exécution](images/fr/03-review.png)
+
+### 4. Lire les résultats
+
+À la page 3, choisissez la validation à consulter, puis examinez avertissements, écarts à Dummy, variabilité entre plis et erreurs de prédiction. Le modèle final sur toutes les données et le classement exploratoire sont distincts ; le classement ne choisit pas la validation. Ouvrez le dossier complet pour consulter métriques, prédictions, figures, méthodes et rapport de reproduction. [Fichiers et interprétation](#results) explique leur sens et leurs limites.
+
+![Résultats après choix de la validation](images/fr/05-selected-result.png)
+
+### 5. Enregistrer un modèle et prédire
+
+Gardez l’enregistrement du meilleur modèle activé avant l’entraînement. Le modèle ajusté est écrit dans `model/best_<modèle>.joblib` ; conservez `model_metadata.json` à côté. Les validations indépendantes sans méthode principale globale n’ont pas de modèle final global. Chargez uniquement des modèles de confiance : joblib/pickle peut exécuter du code.
+
+À la page 4, chargez le modèle de cette exécution et les nouvelles données. Le contrôle des variables requises est automatique. L’ordre des colonnes peut différer et les colonnes supplémentaires sont conservées ; variables absentes, nombres invalides ou valeurs manquantes sans imputation bloquent la prédiction. Si un ancien modèle n’a pas de noms de variables, confirmez l’association manuelle dans l’ordre d’entraînement. Après validation, lancez la prédiction et ouvrez son dossier pour consulter `prediction/run_*/predictions.csv`. La [référence des modèles et prédictions](#results) précise colonnes, métadonnées et portée de l’évaluation.
+
+![Modèle et données à prédire](images/fr/09-prediction.png)
+
+Le [chapitre des résultats](#results) décrit aussi SHAP, l’importance par permutation et les coefficients. La page 4 partage le dossier racine de l’entraînement et crée un `run_*` distinct par opération. Modifier la racine n’affecte que les exécutions suivantes ; les fichiers terminés restent disponibles. Utilisez la copie d’erreur complète pour un signalement ; les textes sélectionnables peuvent aussi être copiés par clic droit.
+
+Autres captures : [import de configuration](images/fr/06-import-config.png) · [vérification de reproduction](images/fr/07-reproduce-run.png) · [résultat reproduit](images/fr/08-reproduced-result.png) · [enregistrement du modèle](images/fr/11-save-model.png) · [résultat de prédiction](images/fr/10-prediction-results.png) · [coefficients ajustés](images/fr/12-coefficients.png).
 
 <a id="data"></a>
 
@@ -365,22 +416,18 @@ Pour les principes généraux, consulter les références scikit-learn sur les [
 
 ## Reproduire à partir d’une configuration
 
-Commencez les essais dans [examples/quickstart/](../examples/quickstart/README.md) : chaque tâche fournit une configuration, 48 lignes d’entraînement et 10 nouvelles lignes à prédire, toutes synthétiques. Suivez la [procédure du README](../README.md#french) ; enregistrement et prédiction font partie de l’étape 9.
+Commencez les essais dans [examples/quickstart/](../examples/quickstart/README.md) : chaque tâche fournit une configuration, 48 lignes d’entraînement et 10 nouvelles lignes à prédire, toutes synthétiques. Suivez la [parcours dans l’application](#gui-workflow) ; enregistrement et prédiction figurent à l’étape 5.
 
 À la page 1, **Importer une configuration…** ouvre un exemple fourni, le `config.json` d’un résultat ou `best_parameters_configure.json`, sans terminal. Réassociez les données correspondantes si leur chemin est introuvable ; les colonnes requises sont vérifiées. Vérifiez variables, validation et paramètres, puis choisissez un dossier local et lancez à la page 2. Chaque exécution crée un nouveau sous-dossier `training/run_*` sans réutiliser le chemin de sortie importé. **Enregistrer la configuration…** conserve les réglages. Relancer les meilleurs paramètres fixes ne reproduit pas la recherche originale et ne constitue pas une validation indépendante.
 
-## Vérifications depuis les sources
-
-Un paquet autonome et une copie des sources peuvent contenir des correctifs différents. Les cinq points ci-dessous vous aident à vérifier le comportement depuis les sources.
-
-1. Lancez l'interface depuis la racine des sources (sous macOS, double-cliquez sur `Launch PsyML.command`) ; l'installation des dépendances est décrite dans le [guide de développement](DEVELOPMENT_FR.md). Les paquets autonomes n'incluent pas l'environnement de test. Importez une configuration de classification ou de régression de `examples/quickstart/` et exécutez-la une fois.
-2. **Étiquette de version :** une petite étiquette sous le nom de l'application doit afficher le numéro de version courant `0.3.0`. La source unique des sources est `__version__` dans `src/psyml/__init__.py` (`pyproject.toml` est dynamique) ; un paquet autonome lit son `BUILD.json`, généré à partir de la même constante, et une version de développement `0.3.0.dev0` s'affiche `0.3.0-dev` tandis que la version officielle `0.3.0` s'affiche telle quelle.
-3. **Dossiers de sortie et anciens résultats :** une nouvelle exécution d'entraînement de la page 2 apparaît sous `training/run_*` dans la racine choisie ; prédiction, SHAP et coefficients de la page 4 arrivent dans de nouveaux dossiers `run_*` sous `prediction/`, `explanation/` et `coefficients/` dans la racine partagée, sans écraser de fichier existant ni écrire dans le dossier de données masqué de l'application. Les anciens dossiers d'entraînement `run_*` directement sous la racine s'ouvrent toujours en place, sans réécriture de leur contenu.
-4. **Actions de la page 4 :** les trois blocs proposent **Ouvrir le dossier de résultats** (prédiction : **Ouvrir le dossier des prédictions**, qui ouvre le dossier d'exécution, pas le CSV) et **Ouvrir l'image en cascade**. La sortie de prédiction est un `predictions.csv` directement ouvrable.
-5. **Appartenance du défilement et état de finalisation :** un geste commencé sur la page continue de la faire défiler au passage sur un tableau imbriqué, seul un geste commencé sur le tableau fait défiler celui-ci, et une pause d'environ 250 ms démarre un nouveau geste pouvant choisir une autre couche (le verrouillage ne concerne que la molette et le balayage). Pendant l'écriture finale des résultats, l'état doit afficher « Finalisation et écriture des résultats… » avec une barre de progression non pleine ; la page des résultats ne s'ouvre qu'après `completed`. Utilisez **Copier l'erreur complète** pour signaler un problème.
-
-### Provenance des entrées et de l’exécution
+## Provenance des entrées et de l’exécution
 
 L’analyse lit une copie temporaire privée et calcule l’empreinte des octets effectivement analysés ; cette copie est supprimée après chargement. Toute modification ou disparition ultérieure du fichier source est signalée sans remplacer l’empreinte initiale. Les validations indépendantes partagent la même copie. `analysis_manifest.json` indique le commit source/construction et les modifications, l’identité du verrou, les versions SciPy/joblib/threadpoolctl, les moteurs numériques chargés et leurs threads ; les identités indisponibles sont marquées unknown. Les `model_params` fixes exigent un seul modèle ; utilisez les grilles personnalisées par modèle pour plusieurs familles.
 
 R² conserve la convention scikit-learn `force_finite=True` : pour une cible constante dans une partition évaluée, une prédiction parfaite vaut 1, sinon 0. Ces valeurs restent dans les résumés et la sélection par R² avec un `ConstantTargetWarning` contextualisé ; elles ne représentent pas la proportion habituelle de variance expliquée. MAE/RMSE gardent leur interprétation d’erreur.
+
+## Configuration et confidentialité
+
+Le [schéma de configuration](../src/psyml/schemas/analysis_config.schema.json) décrit `test_size`, `random_seed`, `model_params`, `parameter_grids` et `include_data_hash`. L’importance par permutation utilise `permutation_importance` (défaut `false`) et `permutation_repeats` (1–100, défaut `10`) ; les anciens fichiers qui omettent ces champs la laissent désactivée. Désactiver les empreintes n’anonymise pas les exports, qui peuvent encore contenir valeurs observées et prédites. Il n’y a pas de sélecteur de classe positive/seuil ni de validation temporelle dédiée.
+
+Les captures et jeux de test fournis sont synthétiques ; les sources publiques figurent dans le [répertoire des cas](../examples/public/README.md). Signalez les problèmes avec un exemple minimal public, sans documents privés ni données sensibles de participants dans les issues GitHub. Pour rendre compte d’une étude, consultez [TRIPOD+AI](https://www.bmj.com/content/385/bmj-2023-078378) et les normes de votre domaine.

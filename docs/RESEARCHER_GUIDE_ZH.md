@@ -1,8 +1,8 @@
 # 研究者参考：模型、指标、结果与术语
 
-本指南描述源码检出 **0.3.0**（单一版本源）的行为，其中包含 v0.2.0 之后新增的功能与改进（置换重要性、数据检查与结果解读、单样本 SHAP、拟合系数，以及界面与输出流程改进）。独立包与分发 PDF 的版本与可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准；v0.2.0 及更早的独立包与分发 PDF 不包含这些功能与修复，界面与输出布局可能与源码检出不同。版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量；`pyproject.toml` 通过 dynamic 读取它，独立包的 `BUILD.json` 由 `tools/build_native.py` 用同一常量生成，界面小字显示同一值（正式版本 `0.3.0` 原样显示，开发版 `0.3.0.dev0` 显示为 `0.3.0-dev`）。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准，不要用本指南标题推断下载包内容。
+本文说明当前源码的操作和分析方法。每次运行的实际版本见 `analysis_manifest.json`；下载包与源码的版本区别见[首页](../README_ZH.md)。
 
-[返回 README 中文部分](../README.md#chinese) · **中文** · [English](RESEARCHER_GUIDE_EN.md) · [Français](RESEARCHER_GUIDE_FR.md)
+[返回 README 中文部分](../README_ZH.md) · **中文** · [English](RESEARCHER_GUIDE_EN.md) · [Français](RESEARCHER_GUIDE_FR.md)
 
 本指南解释 PsyML Toolkit 当前实现中的概念，适合在设置分析或阅读结果时查阅。中文术语附有英文名称，代码名与配置及 CSV 保持一致。内容可离线阅读；外部参考链接需联网。简短公式用于理解，不要求研究者手算。Markdown 阅读器不支持公式时，可直接阅读公式前后的文字说明。
 
@@ -10,6 +10,7 @@
 
 ## 查阅导航
 
+- [软件操作步骤](#gui-workflow)
 - [1. 数据与预处理](#data)
 - [2. 本项目支持的模型](#models)
 - [3. 分类与回归评价指标](#metrics)
@@ -18,6 +19,56 @@
 - [6. 常见参数与术语速查](#glossary)
 - [7. 常见误解与核查顺序](#checklist)
 - [8. 实现依据与延伸阅读](#references)
+
+<a id="gui-workflow"></a>
+
+## 软件操作步骤
+
+### 1. 打开应用和导入数据
+
+完整解压[应用下载包](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases)。Mac 打开 `PsyML Toolkit.app`；Windows 打开 `PsyML Toolkit.exe`，保留旁边的 `core` 文件夹。平台、首次启动与源码启动说明见[开发者指南](DEVELOPMENT_ZH.md#打开应用)。截图使用合成数据，展示界面操作。
+
+第一次使用可从[快速开始](../examples/quickstart/README.md#中文)导入分类或回归配置；公开数据验证请使用 [DSA](VALIDATION_DSA_ZH.md) 或 [California](CALIFORNIA_VALIDATION_ZH.md) 的完整配置和 CSV。
+
+在第 1 页点“导入配置…”并选择 JSON。若出现“找不到配置中的数据，请重新选择数据文件”，在这个弹窗选对应 CSV。导入成功后核对实际路径、目标、分组、预测变量和验证方法。不要导入后再用普通“浏览…”重选文件；它会重置角色和验证选择。如果已经这样操作，重新导入原配置，并在出现数据定位弹窗时选择 CSV，再核对设置。
+
+分析自己的新数据时，先用“浏览…”打开表格，读取预览后再设置变量角色。支持 CSV、TSV、XLSX、XLS、SPSS SAV、Stata DTA、SAS7BDAT、XPT 和 Parquet。检查行列数、类型、缺失值、表头和编码；不要将编号或分析时不应已知的答案信息当作预测变量。[数据与预处理](#data)解释缺失值、类别编码和重复测量的处理。
+
+![数据与变量角色](images/zh/01-data.png)
+
+### 2. 选择分析设置
+
+选择分类或回归、目标变量、预测变量，以及需要时的分组列。重复参与者应使用分组验证；仅填写分组列不会让普通 K 折隔离参与者。缺失处理、缩放、候选模型和参数选择均在本页设置。[验证与调参](#validation)说明如何选验证方法，以及模型选择和最终拟合的区别。
+
+可以指定主要验证，或让多个验证分别输出；不指定主要验证时，运行后需要在结果页选择要查看的方法。不要看完分数再挑验证方法。参数可用默认、快速搜索或自定义网格；自定义值写成 JSON 数组，例如 `[0.1, 1.0, 10.0]`。每模型候选上限和内层折数会影响工作量。[模型](#models)、[指标](#metrics)与[参数术语](#glossary)提供具体说明。
+
+![模型、验证与参数设置](images/zh/02-settings.png)
+
+### 3. 检查并运行
+
+打开“2 检查与运行”，选择本机结果根目录。核对数据路径、变量、主要验证、候选模型、参数网格、指标、随机种子和任务数量，再点击“运行分析”。新结果位于 `training/run_*/`，不会覆盖旧运行。
+
+界面显示当前阶段、模型、验证、外层折和完成任务数；预计时间会随任务耗时更新。如需停止，点击“终止运行”，不要把未完成输出作为研究结果。最后一个计数任务结束后，写文件阶段仍显示“正在整理并写出结果…”；只有全部写完才进入结果页。
+
+![检查与运行](images/zh/03-review.png)
+
+### 4. 查看结果
+
+在“3 结果”先选择要查看的验证方法，再读风险提示、与 Dummy 的差值、折间波动和预测错误。最终全数据模型与探索性排行榜是不同内容；排行榜不负责挑选验证方法。通过“打开完整结果文件夹”查看本次指标、预测、图形、Methods 与复现报告。[结果文件与解释](#results)列出每个文件的用途、指标汇总方式和解释范围。
+
+![选择验证方法后的结果](images/zh/05-selected-result.png)
+
+### 5. 保存模型并预测新数据
+
+训练前保留“保存最佳模型”勾选。运行完成后，模型位于 `model/best_<模型名>.joblib`，与 `model_metadata.json` 放在一起。未指定全局主要验证的独立输出没有全局最终模型。只加载可信模型，joblib/pickle 文件可以执行代码。
+
+在“4 模型与预测”加载本次模型和新数据，软件会自动检查所需变量。列顺序可以不同，多余列会保留；缺列、非法数值或无法填补的缺失值会阻止预测。旧模型没有变量名时，按训练顺序完成手动变量映射。检查通过后点击“运行预测”，再用“打开预测结果文件夹”查看 `prediction/run_*/predictions.csv`。[保存模型与预测结果](#results)说明输出列、元数据和评估边界。
+
+![模型信息与预测数据](images/zh/09-prediction.png)
+
+SHAP、置换重要性和拟合系数的操作、文件及限制都在[结果章节](#results)。第 4 页与训练共用结果根目录，各操作创建自己的 `run_*` 目录；更改根目录只影响之后的运行，已有结果保留。报告问题时可使用“复制完整报错”；可选文字也可右键复制。
+
+其他步骤截图：[导入配置](images/zh/06-import-config.png) · [复现前检查](images/zh/07-reproduce-run.png) · [复现结果](images/zh/08-reproduced-result.png) · [保存模型开关](images/zh/11-save-model.png) · [预测结果](images/zh/10-prediction-results.png) · [拟合系数](images/zh/12-coefficients.png)。
 
 <a id="data"></a>
 
@@ -366,22 +417,18 @@ CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV�
 
 ## 从配置快速复现
 
-用户测试从 [examples/quickstart/](../examples/quickstart/README.md) 开始：分类和回归分别提供配置、48 行训练数据与 10 行新预测数据，全部为合成数据。操作顺序见 [README 数据分析操作](../README.md#chinese)，保存模型与预测已并入第 9 步。
+用户测试从 [examples/quickstart/](../examples/quickstart/README.md) 开始：分类和回归分别提供配置、48 行训练数据与 10 行新预测数据，全部为合成数据。操作顺序见 [软件操作步骤](#gui-workflow)，保存模型与预测见第 5 步。
 
 应用第 1 页的“导入配置…”可读取附带示例、结果目录的 `config.json`，或固定参数文件 `best_parameters_configure.json`；无需命令行。数据路径失效时，重新选择对应数据；程序会核对所需列。检查变量、验证与参数后，在第 2 页选择你电脑上的输出目录并运行。每次建立新的 `training/run_*` 结果子目录，导入的输出路径不会被沿用。“保存配置…”可保存当前设置。固定最佳参数的再运行不重现原搜索，也不是独立验证。
 
-## 源码版行为核对
-
-独立应用包与源码检出可能包含不同的修复；以下 5 点帮助你在源码版核对行为。
-
-1. 在源码检出根目录启动界面（macOS 可双击 `Launch PsyML.command`），依赖安装见[开发者指南](DEVELOPMENT_ZH.md)；独立应用包不包含开发测试环境。导入 `examples/quickstart/` 的分类或回归配置并运行一次。
-2. **版本小字**：软件名下方应以小字显示当前版本号 `0.3.0`。源码版唯一来源是 `src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic），独立包读取包内由同一常量生成的 `BUILD.json`；开发版 `0.3.0.dev0` 界面显示为 `0.3.0-dev`，正式版本 `0.3.0` 原样显示。
-3. **输出目录与旧结果**：第 2 页新训练结果显示在所选结果根目录的 `training/run_*` 下；第 4 页预测、SHAP 与系数分别落在与第 2 页共享根目录下 `prediction/`、`explanation/`、`coefficients/` 的 `run_*` 新目录，不覆盖已有文件，也不写入隐藏的应用数据目录。旧版本直接放在结果根目录的 `run_*` 目录仍能原位打开、内容不被改写。
-4. **第 4 页结果入口**：三块都提供“打开结果文件夹”（预测为“打开预测结果文件夹”，直接打开本次运行目录而不是 CSV）与“打开瀑布图”；预测产物是可直接打开的 `predictions.csv`。
-5. **滚动控制与收尾状态**：在长页面与嵌套小表格之间滚动时，从整页起手经过小表格仍继续滚动整页，从小表格起手才滚动该表格，停顿约 250 毫秒后再滚动才重新选择控制层（锁定只作用于滚轮/滑动）；运行收尾阶段应显示“正在整理并写出结果…”且进度条未满，完成后才进入结果页。记录问题时使用“复制完整报错”。
-
-### 输入与执行溯源
+## 输入与执行溯源
 
 分析读取私有临时快照，对实际解析的字节计算哈希，加载后删除临时副本。源文件之后改变或被删除会给出提示，不会替换原输入哈希；独立验证共用同一快照。`analysis_manifest.json` 记录源码/构建提交与修改状态、锁文件身份、SciPy/joblib/threadpoolctl 版本、已加载数值后端和线程设置；无法取得的身份标记为 unknown。固定 `model_params` 仅适用于单模型，多家族请使用各模型的自定义网格。
 
 R² 保留 scikit-learn 的 `force_finite=True` 约定：评分分区目标恒定时，完美预测记为 1，否则记为 0。这些值保留于汇总和 R² 选择，并附上下文 `ConstantTargetWarning`；不能按通常的解释方差比例理解。MAE/RMSE 仍按误差解释。
+
+## 配置与隐私
+
+完整字段见[配置说明](../src/psyml/schemas/analysis_config.schema.json)，包括 `test_size`、`random_seed`、`model_params`、`parameter_grids` 和 `include_data_hash`。置换重要性使用 `permutation_importance`（默认 `false`）及 `permutation_repeats`（1–100，默认 `10`）；旧配置省略这些字段时保持关闭。关闭数据指纹不等于匿名化，导出预测仍可包含目标值和预测值。当前没有正类／阈值选择器或专门的时间序列验证。
+
+截图和内置测试夹具使用合成数据；公开数据来源见[案例目录](../examples/public/README.md)。反馈问题请提供可公开的最小示例，不要向 GitHub Issues 上传私人研究资料或参与者敏感信息。报告撰写可参考 [TRIPOD+AI](https://www.bmj.com/content/385/bmj-2023-078378)，并结合研究领域的报告规范。
