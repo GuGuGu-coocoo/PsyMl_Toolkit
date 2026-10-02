@@ -1,0 +1,32 @@
+[
+  {
+    "config": "california_config.json",
+    "effective_verbose": 0,
+    "effective_verbose_type": "int",
+    "scope": "three synthetic rows; no real-data metric",
+    "fit_status": "completed"
+  },
+  {
+    "config": "gui_saved.json",
+    "effective_verbose": 0.0,
+    "effective_verbose_type": "float",
+    "scope": "three synthetic rows; no real-data metric",
+    "fit_status": "failed",
+    "error_type": "InvalidParameterError",
+    "error": "The 'verbose' parameter of RandomForestRegressor must be an int in the range [0, inf), an instance of 'bool' or an instance of 'numpy.bool'. Got 0.0 instead."
+  },
+  {
+    "config": "california_config_v1_1.json",
+    "effective_verbose": 0,
+    "effective_verbose_type": "int",
+    "scope": "three synthetic rows; no real-data metric",
+    "fit_status": "completed"
+  },
+  {
+    "config": "gui_roundtrip_v1_1.json",
+    "effective_verbose": 0,
+    "effective_verbose_type": "int",
+    "scope": "three synthetic rows; no real-data metric",
+    "fit_status": "completed"
+  }
+]

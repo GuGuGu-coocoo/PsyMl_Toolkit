@@ -312,6 +312,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 - 技术报告：[DSA 验证：数值复现与跨平台核验](docs/VALIDATION_DSA_ZH.md)
 - 复现说明：[可复算示例](examples/public/dsa_group_nested_v1/README.md)
+- 另一公开案例：[California Housing 回归与真实窗口验证](docs/CALIFORNIA_VALIDATION_ZH.md)（原始失败与 v1.1 成功分开保留；[复现命令](examples/public/california_random_nested_v1/README.md)）
 - 真实 CI：[最近一次三平台 Core CI 运行](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36880091260)
 
 ### 配置与功能边界
@@ -598,6 +599,7 @@ The case was completed in the recorded Linux environment and re-run on macOS and
 
 - Technical report: [DSA validation: numerical reproduction and cross-platform verification](docs/VALIDATION_DSA_EN.md)
 - Reproduction: [reproducible example](examples/public/dsa_group_nested_v1/README.md)
+- Another public case: [California Housing regression and real-window validation](docs/CALIFORNIA_VALIDATION_EN.md) (original failure and v1.1 success retained separately; [reproduction commands](examples/public/california_random_nested_v1/README.md))
 - CI: [most recent three-platform Core CI run](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36880091260)
 
 ### Configuration and feature boundaries
@@ -884,6 +886,7 @@ Le cas a été exécuté dans l’environnement Linux documenté puis rejoué so
 
 - Rapport technique : [validation DSA : reproduction numérique et vérification inter-plateformes](docs/VALIDATION_DSA_FR.md)
 - Reproduction : [exemple reproductible](examples/public/dsa_group_nested_v1/README.md)
+- Autre cas public : [California Housing, régression et interface réelle](docs/CALIFORNIA_VALIDATION_FR.md) (échec original et succès v1.1 conservés séparément ; [commandes](examples/public/california_random_nested_v1/README.md))
 - CI : [dernière exécution Core CI sur trois plateformes](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36880091260)
 
 ### Configuration et limites fonctionnelles

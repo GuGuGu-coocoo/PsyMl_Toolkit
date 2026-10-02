@@ -1,0 +1,52 @@
+{
+  "date_utc": "2026-10-02",
+  "purpose": "Repository integration check against preserved historical v1.1 exports; no new GUI run or California fits.",
+  "preparation": {
+    "archive_sha256": "aaa5c9a6afe2225cc2aed2723682ae403280c4a3695a2ddda4ffb5d8215ea681",
+    "csv_sha256": "157b6c0d3acd6d93a50c411d0cd4130d8c719ce5eb17b61f1c45300f2af6fc85",
+    "prediction_fixture_sha256": "9f8ea3201b4bf1d106bb40adc5ddff7199384f14cb4a7869568a2818e2e9d1f7",
+    "matches_historical": true
+  },
+  "comparison": {
+    "status": "passed_observed_scope",
+    "n_checks": 278,
+    "n_passed": 278,
+    "n_failed": 0,
+    "tolerances": {
+      "atol": 1e-10,
+      "rtol": 1e-10
+    }
+  },
+  "reference_sklearn": "1.8.0",
+  "comparison_sklearn": "1.8.0",
+  "historical_comparison_count_unchanged": 270,
+  "added_checks_note": "The integrated comparator adds historical/relocated identity, schema-version, runtime/model path and prediction-input-column checks; this is a separate report, not a replacement of historical counts.",
+  "contract_tests": {
+    "command": "python -m pytest tests/test_public_california_case_contract.py -q",
+    "passed": 36,
+    "environment_sklearn": "1.9.0",
+    "network": false,
+    "california_fits": 0
+  },
+  "tool_sha256": {
+    "prepare_california.py": "d6cc2599b908c0be9cde23bffb97c4dbeb05c3ae0dd9f7e57858352c7110a049",
+    "reference_california.py": "029ee5265ad293be43942fef87a8cba822ae8c864478255ccfefb269923edc4f",
+    "check_california_controls.py": "71e29629611c2b1bd152772168d3257bdc4c9c1dd8ba4ea21ac94ce117cb6c72",
+    "compare_california.py": "e18f91dc2c8352d8c9c9ee5668d6b487b61f72dc1faa8bc1421c582a1275dcd6",
+    "california_case.py": "63b94abc727c46f4d8176692ef6c97c517013fba8b9a88e3883ffeef936dcb80"
+  },
+  "tracked_public_evidence_note": "Only this bounded result summary is tracked; full comparison output remains a local ignored artifact.",
+  "original_failed_artifacts_recheck": {
+    "status": "failed",
+    "n_checks": 231,
+    "n_passed": 199,
+    "n_failed": 32,
+    "exit_code": 1
+  },
+  "synthetic_controls": {
+    "passed": 13,
+    "total": 13,
+    "real_data_fits": 0,
+    "synthetic_reference_fits": 1
+  }
+}

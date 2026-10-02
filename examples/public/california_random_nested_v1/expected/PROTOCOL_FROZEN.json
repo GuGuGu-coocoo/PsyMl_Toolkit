@@ -1,0 +1,88 @@
+{
+  "status": "FROZEN BEFORE FIRST MODEL FIT OR SCORE",
+  "frozen_at_utc": "2026-10-02T03:30:00Z",
+  "commit": "a145e07c4b6a4135781725c1390f68192ab8e92c",
+  "version": "0.3.0",
+  "data": {
+    "raw_sha256": "aaa5c9a6afe2225cc2aed2723682ae403280c4a3695a2ddda4ffb5d8215ea681",
+    "raw_bytes": 441963,
+    "csv_sha256": "157b6c0d3acd6d93a50c411d0cd4130d8c719ce5eb17b61f1c45300f2af6fc85",
+    "csv_bytes": 2539419,
+    "rows": 20640,
+    "features": [
+      "MedInc",
+      "HouseAge",
+      "AveRooms",
+      "AveBedrms",
+      "Population",
+      "AveOccup",
+      "Latitude",
+      "Longitude"
+    ],
+    "target": "MedHouseVal",
+    "missing": 0,
+    "source_url": "https://ndownloader.figshare.com/files/5976036",
+    "record_url": "https://figshare.com/articles/dataset/cal_housing_tgz/3829992",
+    "license": "CC BY 4.0 as displayed by Figshare record; attribution retained",
+    "target_units": "USD 100000 (1990 census); capped source values retained",
+    "row_order": "unchanged source order; zero-based row_index for joins",
+    "conversion": "MedInc=raw7,HouseAge=raw2,AveRooms=raw3/raw6,AveBedrms=raw4/raw6,Population=raw5,AveOccup=raw5/raw6,Latitude=raw1,Longitude=raw0,target=raw8/100000; raw indices zero-based; no rows removed"
+  },
+  "config_sha256": "6545958eadc8a20ed56e267f37ad2a6925ae18d95c2455ac18ca80fae8d935ce",
+  "outer": "KFold(5,shuffle=True,random_state=20261002); source row order",
+  "inner": "KFold(3,shuffle=True,random_state=20261002+outer_fold),outer_fold=1..5; final uses20261002",
+  "preprocessing": "fresh numeric ColumnTransformer with median SimpleImputer and StandardScaler at every inner/outer/final fit; fitted only on that fit training rows",
+  "selection": "minimum unweighted mean of 3 inner RMSE; exact ties preserve family and candidate order; family order dummy,ridge,random_forest; ridge alpha order.1,1,10; no outer-score feedback",
+  "fits": {
+    "inner": 90,
+    "family_outer": 15,
+    "full_data": 1,
+    "total": 106
+  },
+  "primary": "unweighted mean of 5 outer fold RMSE for inner-selected procedure; lower better",
+  "secondary": [
+    "foldmean MAE,R2",
+    "fold std ddof=0 descriptive only",
+    "pooled OOF RMSE,MAE,R2 reported separately",
+    "same-fold dummy minus procedure RMSE/MAE, procedure minus dummy R2"
+  ],
+  "numeric_acceptance": {
+    "rtol": 1e-10,
+    "atol": 1e-10,
+    "applies": "all same-environment finite scores,predictions,preprocessing statistics and model replay; report exact equality/max diff as well",
+    "reason": "allows floating summation/CSV roundoff, remains far below meaningful score changes; no tolerance change after results"
+  },
+  "exact_acceptance": [
+    "source/derived hashes",
+    "row coverage,fold membership and no split overlap",
+    "candidate order,model and parameter identity",
+    "selected family/params",
+    "fit counts",
+    "roundtrip science config fields"
+  ],
+  "nan_inf_policy": "fail nonfinite values and one-sided missingness",
+  "csv_parser": "pandas.read_csv defaults, matching production; same serialized CSV on both sides",
+  "execution": "CPU; OPENBLAS_NUM_THREADS=OMP_NUM_THREADS=MKL_NUM_THREADS=NUMEXPR_NUM_THREADS=1; RandomForest n_jobs=1",
+  "scope": "Software conformance and Linux real-window source-GUI acceptance only; random geographic row folds do not establish spatial transfer or current house-price accuracy; shares sklearn estimators/splitters with reference; no macOS/Windows/package testing",
+  "no_data_changes": "no winsorization,target transform,row removal,feature selection; capped target values retained",
+  "gui": [
+    "import data/config and inspect scientific fields",
+    "save config/reimport; compare science fields",
+    "run from actual window and observe progress/results",
+    "inspect full exported predictions numerically",
+    "load saved trusted model and predict 10 reordered feature rows with sample_id; export/check"
+  ],
+  "environment": {
+    "python": "3.12.14",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "libraries": {
+      "numpy": "2.3.5",
+      "scipy": "1.17.0",
+      "pandas": "2.2.3",
+      "scikit-learn": "1.8.0",
+      "joblib": "1.5.3",
+      "matplotlib": "3.10.8"
+    },
+    "godot": "4.6.3.stable.official.7d41c59c4"
+  }
+}

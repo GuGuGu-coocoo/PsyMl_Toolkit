@@ -1,0 +1,86 @@
+{
+  "PROTOCOL_FROZEN.json": {
+    "sha256": "8c421185c4171fc8f8f17822043a2b3616f9c890163fb953a306e80c3e2db0e0",
+    "bytes": 4232
+  },
+  "PROTOCOL_AMENDMENT_v1_1.json": {
+    "sha256": "13df9aaccd74422e3667d17bd083e2be1037fdce28e42e50d2e4ab76778e0391",
+    "bytes": 1909
+  },
+  "california_config.json": {
+    "sha256": "6545958eadc8a20ed56e267f37ad2a6925ae18d95c2455ac18ca80fae8d935ce",
+    "bytes": 2507
+  },
+  "california_config_v1_1.json": {
+    "sha256": "9c463398d4d5dd388502be1d8dd1140d727f6c7ae6e2732ec63835c331f132d8",
+    "bytes": 2469
+  },
+  "prepare_california.py": {
+    "sha256": "17110eb665a7e375f5ddf7e316c3decdee1cb39cfb16eb3ce3d9ea62763ffd1e",
+    "bytes": 2487
+  },
+  "provenance.json": {
+    "sha256": "1d08cbe0e9192e8df36ab9d1be875a8cd16d04245b36ca4b86c927ef85707bd8",
+    "bytes": 1013
+  },
+  "california_housing.csv": {
+    "sha256": "157b6c0d3acd6d93a50c411d0cd4130d8c719ce5eb17b61f1c45300f2af6fc85",
+    "bytes": 2539419
+  },
+  "california_predict.csv": {
+    "sha256": "9f8ea3201b4bf1d106bb40adc5ddff7199384f14cb4a7869568a2818e2e9d1f7",
+    "bytes": 1277
+  },
+  "reference/summary.json": {
+    "sha256": "63dc573c947906bbae84c7e249281373dcd674097738994fada98901e537c9e4",
+    "bytes": 5173
+  },
+  "reference/environment.json": {
+    "sha256": "49f7a178ae361c81e92501e1443acc3f7c921f7e539e70456a259f45708e969b",
+    "bytes": 1952
+  },
+  "reference/fold_metrics.csv": {
+    "sha256": "a658ab3509bd5e89564cd35802e831c6c515f746898c40ff167bcae1e6878a81",
+    "bytes": 449
+  },
+  "reference/parameter_search.csv": {
+    "sha256": "ffd24e8f6c92c58e73acdb181c67480b1c5984a9b9af9ec385f697ff3ff8406e",
+    "bytes": 8397
+  },
+  "reference/selection_trace.csv": {
+    "sha256": "084a5e147e970d78193e1bfe82180ca0fa524dded81bdf3681c3a0a8df1dbe84",
+    "bytes": 3069
+  },
+  "reference/fit_audit.json": {
+    "sha256": "48c65e76d549d1b9703cee48d72f4abd374836f8069dfd27cb6eb355d6118506",
+    "bytes": 16433198
+  },
+  "reference/fold_membership.json": {
+    "sha256": "549fd2c9f560f4c2dd3f7c18090d14898738a85e4c70c46a591416cb52fc23bf",
+    "bytes": 8341186
+  },
+  "tools/reference_california.py": {
+    "sha256": "d7e87759f33a6107eb44871a97547d5560e356706250551b44cf25d33623cbea",
+    "bytes": 21530
+  },
+  "tools/compare_california.py": {
+    "sha256": "29af2ea5aee6a620dbdba257de866def0ae7f92520a93bcc18ce81be5d395c51",
+    "bytes": 24178
+  },
+  "comparison_original_failure_recheck/comparison.json": {
+    "sha256": "f82c083fc85b289e1779770f3eed8144ac9b0bca3ff99d132b85962ea6356df0",
+    "bytes": 937151
+  },
+  "comparison_v1_1_final_roundtrip/comparison.json": {
+    "sha256": "dbf94acb0dbe5d6ea57e1d14e720c2d8ed4fd30c90cb752da989762255225c4b",
+    "bytes": 40009
+  },
+  "evidence/independent_gui_roundtrip_v1_1.json": {
+    "sha256": "53a2c2bfe2fe273b097b1893e0f7d6f263e831f30a18faca9de1b25b8de3ea2c",
+    "bytes": 6933
+  },
+  "California_Housing_GUI_Complete_Case_20261002.zip": {
+    "sha256": "5a58b9a9467b66e70101ff185241efb1ba1b7e48cc8311105780f7eb8a39e85a",
+    "bytes": 18297153
+  }
+}

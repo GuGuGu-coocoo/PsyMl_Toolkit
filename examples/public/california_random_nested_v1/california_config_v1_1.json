@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "task": "regression",
+  "target_column": "MedHouseVal",
+  "model_name": "dummy",
+  "model_names": [
+    "dummy",
+    "ridge",
+    "random_forest"
+  ],
+  "input_path": "examples/public/data/california_housing.csv",
+  "output_dir": "examples/public/results/california_random_nested_v1_1",
+  "feature_columns": [
+    "MedInc",
+    "HouseAge",
+    "AveRooms",
+    "AveBedrms",
+    "Population",
+    "AveOccup",
+    "Latitude",
+    "Longitude"
+  ],
+  "group_column": null,
+  "validation_strategy": "k_fold",
+  "validation_strategies": [
+    "k_fold"
+  ],
+  "primary_validation": "k_fold",
+  "n_splits": 5,
+  "inner_splits": 3,
+  "random_seed": 20261002,
+  "test_size": 0.2,
+  "missing_strategy": "median",
+  "scaling": "standard",
+  "save_best_model": true,
+  "include_data_hash": true,
+  "model_params": {},
+  "tuning_mode": "custom",
+  "parameter_grids": {
+    "dummy": {
+      "constant": [
+        null
+      ],
+      "quantile": [
+        null
+      ],
+      "strategy": [
+        "mean"
+      ]
+    },
+    "ridge": {
+      "alpha": [
+        0.1,
+        1.0,
+        10.0
+      ],
+      "copy_X": [
+        true
+      ],
+      "fit_intercept": [
+        true
+      ],
+      "max_iter": [
+        null
+      ],
+      "positive": [
+        false
+      ],
+      "random_state": [
+        20261002
+      ],
+      "solver": [
+        "svd"
+      ],
+      "tol": [
+        0.0001
+      ]
+    },
+    "random_forest": {
+      "bootstrap": [
+        true
+      ],
+      "ccp_alpha": [
+        0.0
+      ],
+      "criterion": [
+        "squared_error"
+      ],
+      "max_depth": [
+        10
+      ],
+      "max_features": [
+        1.0
+      ],
+      "max_leaf_nodes": [
+        null
+      ],
+      "max_samples": [
+        null
+      ],
+      "min_impurity_decrease": [
+        0.0
+      ],
+      "min_samples_leaf": [
+        3
+      ],
+      "min_samples_split": [
+        2
+      ],
+      "min_weight_fraction_leaf": [
+        0.0
+      ],
+      "monotonic_cst": [
+        null
+      ],
+      "n_estimators": [
+        100
+      ],
+      "n_jobs": [
+        1
+      ],
+      "oob_score": [
+        false
+      ],
+      "random_state": [
+        20261002
+      ],
+      "warm_start": [
+        false
+      ]
+    }
+  },
+  "selection_metric": "rmse",
+  "max_candidates": 3,
+  "figure_types": [
+    "observed_vs_predicted",
+    "residuals",
+    "residual_distribution"
+  ],
+  "selection_protocol": "nested_family_v1",
+  "permutation_importance": false,
+  "permutation_repeats": 10
+}

@@ -1,0 +1,25 @@
+{
+  "raw_sha256": "aaa5c9a6afe2225cc2aed2723682ae403280c4a3695a2ddda4ffb5d8215ea681",
+  "raw_bytes": 441963,
+  "csv_sha256": "157b6c0d3acd6d93a50c411d0cd4130d8c719ce5eb17b61f1c45300f2af6fc85",
+  "csv_bytes": 2539419,
+  "rows": 20640,
+  "features": [
+    "MedInc",
+    "HouseAge",
+    "AveRooms",
+    "AveBedrms",
+    "Population",
+    "AveOccup",
+    "Latitude",
+    "Longitude"
+  ],
+  "target": "MedHouseVal",
+  "missing": 0,
+  "source_url": "https://ndownloader.figshare.com/files/5976036",
+  "record_url": "https://figshare.com/articles/dataset/cal_housing_tgz/3829992",
+  "license": "CC BY 4.0 as displayed by Figshare record; attribution retained",
+  "target_units": "USD 100000 (1990 census); capped source values retained",
+  "row_order": "unchanged source order; zero-based row_index for joins",
+  "conversion": "MedInc=raw7,HouseAge=raw2,AveRooms=raw3/raw6,AveBedrms=raw4/raw6,Population=raw5,AveOccup=raw5/raw6,Latitude=raw1,Longitude=raw0,target=raw8/100000; raw indices zero-based; no rows removed"
+}
