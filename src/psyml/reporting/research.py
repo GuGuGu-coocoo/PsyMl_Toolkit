@@ -201,7 +201,7 @@ The final model was fitted on all analyzed rows. Reported metrics remain held-ou
 
 `config.json`, `analysis_config.json`, and `study_config.json` retain the original search design for reruns; `best_parameters.json` records all effective final estimator hyperparameters, including defaults. `result.json.best_parameters` and the fixed-parameter recipe retain selected overrides for compatibility. The configured seed controls splits and seeded estimators; inner split seeds add the outer fold number (zero for final tuning), and explicit estimator random_state overrides take precedence.
 
-This summary is generated offline by local rules and is not guaranteed to be correct. Researchers must check the data, design, warnings and results. This text describes the executed configuration and is intended as a starting point for a manuscript Methods section; researchers remain responsible for study-specific justification and reporting.
+This summary is generated from this run's configuration; add the research question, sample source and design rationale. Researchers must check the data, study design, missing-value handling, groups, parameters, warnings and results before use in a manuscript.
 """
 
 
@@ -294,7 +294,7 @@ Use `best_parameters_configure.json` for a fixed-parameter run. This is not a re
 
 ## Review suggestions
 
-Check warnings, fold variability and systematic errors in held-out predictions and task-specific figures. Assess practical relevance using the research question. These rule-based suggestions run offline and are not guaranteed to be correct; researcher review is required.
+Check warnings, fold variability and systematic errors in held-out predictions and task-specific figures. Assess practical relevance using the research question. These rule-based suggestions are generated locally and require no network; researchers should review them item by item.
 
 ## Re-running and artefacts
 
@@ -607,7 +607,7 @@ def _write_companion_outputs(output_dir, config, manifest, fold_metrics, warning
 
 {'堆叠模型在内部交叉拟合完整基础流水线，设置分组时采用分组切分；passthrough 的原始变量在元估计器内预处理。' if 'stacking' in config.selected_models() else ''}
 
-本摘要由本地规则离线生成，不保证绝对正确，也不替代科学判断。研究者应核对数据、研究设计、缺失处理、分组、参数、警告和结果后再用于论文。内部验证不证明可推广至新群体、中心或时间，也不能防止查看结果后修改设计造成的偏差。
+以下按本次运行配置生成；请补充研究问题、样本来源与设计依据。研究者应核对数据、研究设计、缺失处理、分组、参数、警告和结果后再用于论文。内部验证不证明可推广至新群体、中心或时间，也不能防止查看结果后修改设计造成的偏差。
 """
     (output_dir / "methods_summary_zh.md").write_text(methods, encoding="utf-8")
     warning_text = "\n".join(f"- {warning}" for warning in warnings) or "- 无记录。"
@@ -647,6 +647,6 @@ PsyML {manifest['psyml_version']}；Python {manifest['python']['version']}；系
 
 ## 核查与建议
 
-{grouped} 目标列在预处理前排除。请检查样本外预测与残差/混淆矩阵是否存在系统性错误，检查折间波动，并结合研究问题判断性能是否有实际意义。自动建议仅由本地规则生成，无需网络，不保证绝对正确，请研究者逐项复核。完整方法与指标限制见 `methods_summary_zh.md`；英文版见 `methods_summary.md` 和 `reproducibility_report.md`。
+{grouped} 目标列在预处理前排除。请检查样本外预测与残差/混淆矩阵是否存在系统性错误，检查折间波动，并结合研究问题判断性能是否有实际意义。自动建议仅由本地规则生成，无需网络；请研究者逐项复核。完整方法与指标限制见 `methods_summary_zh.md`；英文版见 `methods_summary.md` 和 `reproducibility_report.md`。
 """
     (output_dir / "reproducibility_report_zh.md").write_text(report, encoding="utf-8")

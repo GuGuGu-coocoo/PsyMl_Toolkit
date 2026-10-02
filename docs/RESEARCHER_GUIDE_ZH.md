@@ -237,17 +237,17 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 第 4 页加载可信模型和新表格后会自动检查。只需模型要求的预测变量，不需要目标列或分组列；有变量名时按训练顺序自动选列。只有特征数而无名称时，需要确认手动映射的变量及顺序。缺列、不可用数值、无穷值或无法填补的缺失值会阻止预测；兼容性通过不代表人群分布一致，也不保证模型执行一定成功。训练时选择 `drop` 不会让预测页静默删除新样本。
 
-预测结果保留原始行顺序和全部输入列，新增 `predicted_class`（分类）或 `predicted_value`（回归）；只有原生支持概率的分类模型新增 `probability_*`。类别名称会转换为可用列名，重名时新增列带数字后缀。目标列即使存在也只保留，不自动计算外部验证指标、校准概率或优化阈值。
+预测结果保留原始行顺序和全部输入列，新增 `predicted_class`（分类）或 `predicted_value`（回归）；只有原生支持概率的分类模型新增 `probability_*`。类别名称会转换为可用列名，重名时新增列带数字后缀。目标列即使存在也只保留。
 
-CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV、DTA、XPT 或 Parquet；XLS、SAS7BDAT 仅支持读取，统计格式限制可能使导出失败，可改用 XLSX 或 Parquet。GUI 第 4 页只写 `predictions.csv`，不使用多格式导出。模型与元数据应成对保留；损坏、校验不匹配或 scikit-learn 版本不一致会报错，缺少元数据时尝试恢复信息但不保证完整。
+CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV、DTA、XPT 或 Parquet；XLS、SAS7BDAT 仅支持读取，统计格式限制可能使导出失败，可改用 XLSX 或 Parquet。GUI 第 4 页只写 `predictions.csv`。模型与元数据应成对保留；损坏、校验不匹配或 scikit-learn 版本不一致会报错，缺少元数据时尝试恢复信息但不保证完整。
 
 **第 4 页产物与训练结果的输出位置。** 第 4 页与第 2 页共享同一个结果根目录：新的训练结果写入 `<结果根目录>/training/run_<时间>_<usec>/`，预测写入 `<结果根目录>/prediction/run_<时间>_<usec>/predictions.csv`，单样本 SHAP 与系数分别写入 `explanation/run_*/`、`coefficients/run_*/`。每次操作开始时冻结一个新运行目录，不覆盖已有文件；“打开预测结果文件夹”“打开结果文件夹”指向该次实际运行目录，“打开瀑布图”指向本次的 `shap_waterfall.png`。旧版本直接写在结果根目录下的 `run_*` 训练目录保持原位、仍可正常打开，不搬家、不改写；只有新训练才进入 `training/`。未选择根目录、路径为相对路径或根目录不可写时直接显示错误，不会回退到隐藏的应用数据目录。更改根目录只影响后续操作，已完成的产物保留在磁盘。
 
-**预测产物怎么读（`prediction/run_*/predictions.csv`）。** 文件保留原始数据与行序，只追加预测列：回归追加 `predicted_value`，分类追加 `predicted_class`，分类器原生支持概率时按类别顺序追加 `probability_<类别>`。原始列（含目标列）不改动，列名冲突时只给新增列加数字后缀；目标列存在也只保留，不自动计算外部验证指标、校准概率或优化阈值。**分类与回归的区别**：分类输出类别与非负、不保证已校准的概率，回归只输出连续数值、不生成概率；“打开预测结果文件夹”打开的是本次运行目录，不是直接打开 CSV。预测可以没有真实目标，这**不是外部验证**：外部验证需要独立样本、真实目标和适当的评价设计。更换模型、数据或映射后会清除旧预测并重新检查，旧运行目录中的文件留在磁盘。
+**预测产物怎么读（`prediction/run_*/predictions.csv`）。** 文件保留原始数据与行序，只追加预测列：回归追加 `predicted_value`，分类追加 `predicted_class`，分类器原生支持概率时按类别顺序追加 `probability_<类别>`。原始列（含目标列）不改动，列名冲突时只给新增列加数字后缀。预测页生成新样本的类别或数值；性能评估请使用带真实目标的独立数据和预先规定的验证方案。分类概率沿用模型原生输出。“打开预测结果文件夹”打开的是本次运行目录，不是直接打开 CSV。更换模型、数据或映射后会清除旧预测并重新检查，旧运行目录中的文件留在磁盘。
 
 ### 单样本 SHAP 解释（可选）
 
-第 4 页在模型与数据检查通过后可解释单个样本：选择背景参考文件（background reference）、1 起始的样本行号、背景行数（background rows，默认 50，1–100）与排列轮数（permutation cycles，默认 5，1–20）；分类再选择要解释的类别并显示原始标签。计算在可取消子进程中运行，首次可能较慢，可随时取消。结果区显示从**基准值（base value）**逐项累加到模型输出的**累计瀑布图**（正负方向、原始变量名与值、TopN 与“其余 N 项之和”，CSV 保留全部贡献），只提供“打开瀑布图”与“打开结果文件夹”两个入口，不提供复制或另存导出入口。产物（默认位于 `explanation/run_*/`）为 `shap_explanation.json`、`shap_contributions.csv`、`shap_waterfall.png` 与 `shap_explanation_notes.md`，满足 `base + Σφ = 所选输出`（容差 1e-7/1e-6），且切换行/类别/设置或关闭页面时已完成产物保留在磁盘。命令行 `psyml explain --output-dir` 仍要求新建或空目录并拒绝 `--overwrite`，但界面不再提供导出操作。
+第 4 页在模型与数据检查通过后可解释单个样本：选择背景参考文件（background reference）、1 起始的样本行号、背景行数（background rows，默认 50，1–100）与排列轮数（permutation cycles，默认 5，1–20）；分类再选择要解释的类别并显示原始标签。计算在可取消子进程中运行，首次可能较慢，可随时取消。结果区显示从**基准值（base value）**逐项累加到模型输出的**累计瀑布图**（正负方向、原始变量名与值、TopN 与“其余 N 项之和”，CSV 保留全部贡献），提供“打开瀑布图”与“打开结果文件夹”两个入口。产物（默认位于 `explanation/run_*/`）为 `shap_explanation.json`、`shap_contributions.csv`、`shap_waterfall.png` 与 `shap_explanation_notes.md`，满足 `base + Σφ = 所选输出`（容差 1e-7/1e-6），且切换行/类别/设置或关闭页面时已完成产物保留在磁盘。命令行 `psyml explain --output-dir` 要求新建或空目录并拒绝 `--overwrite`。
 
 怎么读这些结果：
 
@@ -255,8 +255,7 @@ CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV�
 - **背景参考（background reference）**：用于近似“变量取参考值时输出会怎样”的参考数据；行数越多通常越稳定，但计算更慢，它不代表人群常模。
 - **所选样本与类别**：决定被解释的是哪一行、哪个输出轴；分类必须选定类别，回归只有一个输出轴。
 - **正负贡献**：每个变量把输出从基准值推高（正）或压低（负）的近似量；`base + Σφ = 所选输出`（CSV 逐项列出全部贡献，界面只折叠 TopN 之外的项）。
-- **重建**：这条加法恒等式在容差内成立是核验条件，不表示因果机制；数值依赖背景集合与排列轮数。
-- **近似限制**：有限排列的**近似** SHAP，不是精确 SHAP；背景替换不保持变量相关结构；不是因果效应，也不是外层测试性能。
+- **重建**：这条加法恒等式在容差内成立是核验条件；数值依赖背景集合与排列轮数。
 
 这是有限排列的**近似** SHAP：不是精确 SHAP、不是因果效应，也不是外层测试性能；背景替换不保持变量相关结构。首版仅支持分类 `logistic_regression`、`decision_tree`、`random_forest` 与回归 `linear_regression`、`ridge`、`lasso`、`elastic_net`、`decision_tree`、`random_forest`，且仅接受带 PsyML 导出元数据（`psyml_version`/`fit_scope`）与标准 `preprocess`+`model` 结构的保存模型；缺少元数据或自定义预处理的外来模型明确提示不支持，普通预测不受影响。未安装 `explain` 可选依赖时该区不可用。
 
@@ -264,7 +263,7 @@ CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV�
 
 ### 拟合系数与截距
 
-第 4 页“拟合系数与截距”区只读取**已拟合模型**在**预处理后坐标空间**（缺失填补、缩放、独热编码之后）的参数，不重新拟合、不回流调参、也不换算回原始单位。首版支持回归 `linear_regression`、`ridge`、`lasso`、`elastic_net`、`svr`（`kernel='linear'`）与分类 `logistic_regression`、`lda`、`svm`（`kernel='linear'`，仅二分类）；多类 SVC 的成对系数、非线性核、树、KNN、MLP 与 stacking 给出具体不支持原因。若已加载兼容预测数据，会在同一流水线与容差（1e-7/1e-6）下重建回归预测或分类决策分数并显示核验状态；无数据时明确标注未核验。界面逐输出轴显示截距、输出单位与拟合范围，并区分“未提供核验数据”与“核验失败”；核验失败会拒绝发布任何系数产物（显示具体原因，不显示提取完成、不可导出）。`coefficients.json` 记录被删除的全缺失列及原因、逐原始列映射、`drop_idx_` 与逐列类别映射，训练 dtype 来源为保存元数据或明确 unknown。分类输出轴：二分类 logistic 为 `classes_[1]` 相对 `classes_[0]` 的 log-odds，多类 logistic 为各类 softmax logit，线性 SVC 仅为 margin（不是概率或 log-odds）；类别保存真实标签、类型与索引。第 4 页只保留“打开结果文件夹”（指向本次 `coefficients/run_*/`），不再提供复制或另存导出入口；提取成功时该运行目录一次写齐 `coefficients.csv`、`coefficients.json` 与 `coefficients_notes.md`（JSON 最后写入）。常规分析也会在本次分析目录的 `coefficients/` 写入同名三件，并标注 `fit_scope=all_analyzed_rows`。这些是最终全数据模型的拟合参数（不是超参数），不提供 p 值、置信区间、显著性、因果或定义明确的标准化效应；普通预测、超参数区与 SHAP 区不受影响。CLI 等价命令为 `psyml coefficients --model … --trust-model [--input …] [--output-dir …]`，另有 `--check-only`，且不需要 `explain` 可选依赖。
+第 4 页“拟合系数与截距”区只读取**已拟合模型**在**预处理后坐标空间**（缺失填补、缩放、独热编码之后）的参数，不重新拟合、不回流调参、也不换算回原始单位。首版支持回归 `linear_regression`、`ridge`、`lasso`、`elastic_net`、`svr`（`kernel='linear'`）与分类 `logistic_regression`、`lda`、`svm`（`kernel='linear'`，仅二分类）；多类 SVC 的成对系数、非线性核、树、KNN、MLP 与 stacking 给出具体不支持原因。若已加载兼容预测数据，会在同一流水线与容差（1e-7/1e-6）下重建回归预测或分类决策分数并显示核验状态；无数据时明确标注未核验。界面逐输出轴显示截距、输出单位与拟合范围，并区分“未提供核验数据”与“核验失败”；核验失败会拒绝发布任何系数产物（显示具体原因，不显示提取完成）。`coefficients.json` 记录被删除的全缺失列及原因、逐原始列映射、`drop_idx_` 与逐列类别映射，训练 dtype 来源为保存元数据或明确 unknown。分类输出轴：二分类 logistic 为 `classes_[1]` 相对 `classes_[0]` 的 log-odds，多类 logistic 为各类 softmax logit，线性 SVC 仅为 margin（不是概率或 log-odds）；类别保存真实标签、类型与索引。第 4 页提供“打开结果文件夹”（指向本次 `coefficients/run_*/`）；提取成功时该运行目录一次写齐 `coefficients.csv`、`coefficients.json` 与 `coefficients_notes.md`（JSON 最后写入）。常规分析也会在本次分析目录的 `coefficients/` 写入同名三件，并标注 `fit_scope=all_analyzed_rows`。普通预测、超参数区与 SHAP 区不受影响。CLI 等价命令为 `psyml coefficients --model … --trust-model [--input …] [--output-dir …]`，另有 `--check-only`，且不需要 `explain` 可选依赖。
 
 怎么读这些结果：
 
@@ -369,14 +368,14 @@ CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV�
 
 用户测试从 [examples/quickstart/](../examples/quickstart/README.md) 开始：分类和回归分别提供配置、48 行训练数据与 10 行新预测数据，全部为合成数据。操作顺序见 [README 数据分析操作](../README.md#chinese)，保存模型与预测已并入第 9 步。
 
-应用第 1 页的“导入配置…”可读取附带示例、结果目录的 `config.json`，或固定参数文件 `best_parameters_configure.json`；无需命令行。数据路径失效时，重新选择对应数据；程序会核对所需列。检查变量、验证与参数后，在第 2 页选择本机输出目录并运行。每次建立新的 `training/run_*` 结果子目录，导入的输出路径不会被沿用。“保存配置…”可保存当前设置。固定最佳参数的再运行不重现原搜索，也不是独立验证。
+应用第 1 页的“导入配置…”可读取附带示例、结果目录的 `config.json`，或固定参数文件 `best_parameters_configure.json`；无需命令行。数据路径失效时，重新选择对应数据；程序会核对所需列。检查变量、验证与参数后，在第 2 页选择你电脑上的输出目录并运行。每次建立新的 `training/run_*` 结果子目录，导入的输出路径不会被沿用。“保存配置…”可保存当前设置。固定最佳参数的再运行不重现原搜索，也不是独立验证。
 
-## 源码版复测步骤
+## 源码版行为核对
 
-独立应用包与源码检出可能包含不同的修复；以下 5 点用于源码版自测。
+独立应用包与源码检出可能包含不同的修复；以下 5 点帮助你在源码版核对行为。
 
 1. 在源码检出根目录启动界面（macOS 可双击 `Launch PsyML.command`），依赖安装见[开发者指南](DEVELOPMENT_ZH.md)；独立应用包不包含开发测试环境。导入 `examples/quickstart/` 的分类或回归配置并运行一次。
 2. **版本小字**：软件名下方应以小字显示当前版本号 `0.3.0`。源码版唯一来源是 `src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic），独立包读取包内由同一常量生成的 `BUILD.json`；开发版 `0.3.0.dev0` 界面显示为 `0.3.0-dev`，正式版本 `0.3.0` 原样显示。
 3. **输出目录与旧结果**：第 2 页新训练结果显示在所选结果根目录的 `training/run_*` 下；第 4 页预测、SHAP 与系数分别落在与第 2 页共享根目录下 `prediction/`、`explanation/`、`coefficients/` 的 `run_*` 新目录，不覆盖已有文件，也不写入隐藏的应用数据目录。旧版本直接放在结果根目录的 `run_*` 目录仍能原位打开、内容不被改写。
-4. **第 4 页只打开、不导出**：三块都只有“打开结果文件夹”（预测为“打开预测结果文件夹”，直接打开本次运行目录而不是 CSV）与“打开瀑布图”，没有复制或另存导出入口；预测产物是可直接打开的 `predictions.csv`，不再有 `predictions.parquet`。
+4. **第 4 页结果入口**：三块都提供“打开结果文件夹”（预测为“打开预测结果文件夹”，直接打开本次运行目录而不是 CSV）与“打开瀑布图”；预测产物是可直接打开的 `predictions.csv`。
 5. **滚动控制与收尾状态**：在长页面与嵌套小表格之间滚动时，从整页起手经过小表格仍继续滚动整页，从小表格起手才滚动该表格，停顿约 250 毫秒后再滚动才重新选择控制层（锁定只作用于滚轮/滑动）；运行收尾阶段应显示“正在整理并写出结果…”且进度条未满，完成后才进入结果页。记录问题时使用“复制完整报错”。

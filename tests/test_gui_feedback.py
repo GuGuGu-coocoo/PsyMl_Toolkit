@@ -50,7 +50,9 @@ def test_reported_godot_float_grid_and_fixed_parameter_recipe(tmp_path):
     for key, value in result["artifacts"].items():
         assert (config.output_dir / value).is_file(), key
     assert "best_parameters" in (config.output_dir / "reproducibility_report.md").read_text(encoding="utf-8")
-    assert "不保证绝对正确" in (config.output_dir / "methods_summary_zh.md").read_text(encoding="utf-8")
+    methods_zh = (config.output_dir / "methods_summary_zh.md").read_text(encoding="utf-8")
+    assert "以下按本次运行配置生成" in methods_zh
+    assert "内部验证不证明可推广至新群体、中心或时间" in methods_zh
     assert config.parameter_grids["decision_tree"]["min_samples_leaf"] == [1, 3, 5]
     assert all(
         isinstance(value, int)
