@@ -1,6 +1,8 @@
 # Keep synthetic fixtures identical across platforms without rewriting legacy files.
 examples/synthetic/** text=auto eol=lf
 examples/quickstart/** text=auto eol=lf
+# Archived California hashes describe exact bytes, including line endings.
+examples/public/california_random_nested_v1/expected/** -text
 *.sav binary
 *.sas7bdat binary
 *.dta binary
