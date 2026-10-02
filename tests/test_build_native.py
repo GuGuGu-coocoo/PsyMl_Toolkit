@@ -525,6 +525,7 @@ def test_macos_gui_is_thinned_before_signing_without_weakening_architecture_chec
                 "arm64": _mach_executable(), "x86_64": _mach_executable(0x01000007)}
     binary.write_bytes(payloads[architecture])
     binary.chmod(0o755)
+    original_mode = binary.stat().st_mode
     calls = []
     def run(*args):
         calls.append(args)
@@ -540,7 +541,8 @@ def test_macos_gui_is_thinned_before_signing_without_weakening_architecture_chec
         module.thin_macos_gui(binary)
         verify_release_artifacts.check_file_architecture(binary, "macOS-arm64")
         assert len(calls) == (1 if architecture == "universal" else 0)
-        assert binary.stat().st_mode & 0o111
+        # Windows does not expose POSIX executable bits; preserve the observed mode.
+        assert binary.stat().st_mode == original_mode
         assert not binary.with_name(binary.name + ".arm64.tmp").exists()
 
 
