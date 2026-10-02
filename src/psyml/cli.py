@@ -310,7 +310,13 @@ def _execute(config: ExperimentConfig, progress_callback=None):
 def _prediction_command(args):
     from psyml.data.formats import prediction_output_suffix
     from psyml.data.io import load_dataframe, save_dataframe
-    from psyml.prediction import compatibility_check, load_model, predict_dataframe
+    from psyml.prediction import (
+        build_prediction_manifest,
+        compatibility_check,
+        load_model,
+        predict_frame,
+        write_prediction_manifest,
+    )
     from psyml.protocol import dataframe_preview
 
     if args.command == "export-table":
@@ -333,9 +339,23 @@ def _prediction_command(args):
     if args.output.resolve() in {args.input.resolve(), args.model.resolve(),
                                  (args.model.parent / 'model_metadata.json').resolve()}:
         raise ValueError("Choose a separate prediction output; preserve the input and model files.")
-    predicted, columns = predict_dataframe(loaded, frame, args.feature)
-    save_dataframe(predicted, args.output, overwrite=args.overwrite)
-    payload.update(predictions=dataframe_preview(predicted), prediction_columns=columns,
+    prediction = predict_frame(loaded, frame, args.feature)
+    save_dataframe(prediction.frame, args.output, overwrite=args.overwrite)
+    manifest = build_prediction_manifest(
+        loaded,
+        prediction,
+        model_path=args.model,
+        input_path=args.input,
+        output_path=args.output,
+        rows=len(frame),
+        feature_order=check['feature_order'],
+        manual_mapping=check['manual_mapping'],
+    )
+    manifest_path = write_prediction_manifest(manifest, args.output, overwrite=args.overwrite)
+    payload.update(predictions=dataframe_preview(prediction.frame),
+                   prediction_columns=prediction.additions,
+                   prediction_manifest={**manifest, 'path': str(manifest_path)},
+                   prediction_manifest_path=str(manifest_path),
                    output_path=str(args.output))
     return payload
 

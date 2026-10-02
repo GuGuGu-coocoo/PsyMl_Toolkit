@@ -4,6 +4,7 @@ import hashlib
 import json
 import warnings
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
@@ -24,6 +25,15 @@ class LoadedModel:
     model: object
     metadata: dict
     notices: list[str]
+
+
+@dataclass
+class PredictionFrame:
+    """Appended prediction columns plus their original-label provenance."""
+
+    frame: pd.DataFrame
+    additions: list[str]
+    columns: list[dict]
 
 
 def _validate_metadata(metadata):
@@ -205,8 +215,8 @@ def model_input(loaded: LoadedModel, frame: pd.DataFrame, mapping=None, *, check
     return features
 
 
-def predict_dataframe(loaded, frame, mapping=None):
-    """Append native predictions, keeping original values, target, row order and index."""
+def predict_frame(loaded, frame, mapping=None) -> PredictionFrame:
+    """Append native predictions and keep per-column provenance for the manifest."""
     check = compatibility_check(loaded, frame, mapping)
     features = model_input(loaded, frame, mapping, check=check)
     try:
@@ -220,22 +230,85 @@ def predict_dataframe(loaded, frame, mapping=None):
     if predicted.ndim != 1 or len(predicted) != len(frame):
         raise ValueError('Model returned an unsupported prediction shape.')
     result = frame.copy()
-    additions = []
+    additions: list[str] = []
+    columns: list[dict] = []
 
-    def append(base, values):
+    def append(base, values, *, kind, class_index=None, class_label=None):
         name, number = base, 2
         while name in result.columns:
             name = f'{base}_{number}'
             number += 1
         result[name] = values
         additions.append(name)
+        entry = {'column': name, 'base': base, 'kind': kind}
+        if class_index is not None:
+            entry.update(class_index=class_index, class_label=class_label,
+                         class_type=type(class_label).__name__)
+        columns.append(entry)
 
     append('predicted_class' if loaded.metadata['task'] == 'classification' else 'predicted_value',
-           predicted)
+           predicted, kind='prediction')
     if probabilities is not None:
         classes = loaded.metadata['classes']
         if probabilities.shape != (len(frame), len(classes)):
             raise ValueError('Model returned an unsupported probability shape.')
         for index, label in enumerate(classes):
-            append('probability_' + safe_name(str(label)), probabilities[:, index])
-    return result, additions
+            append('probability_' + safe_name(str(label)), probabilities[:, index],
+                   kind='probability', class_index=index, class_label=label)
+    return PredictionFrame(result, additions, columns)
+
+
+def predict_dataframe(loaded, frame, mapping=None):
+    """Append native predictions, keeping original values, target, row order and index."""
+    prediction = predict_frame(loaded, frame, mapping)
+    return prediction.frame, prediction.additions
+
+
+def build_prediction_manifest(
+    loaded: LoadedModel,
+    prediction: PredictionFrame,
+    *,
+    model_path,
+    input_path,
+    output_path,
+    rows: int,
+    feature_order: list[str],
+    manual_mapping: bool,
+    created: datetime | None = None,
+) -> dict:
+    """Machine-readable provenance for one prediction file.
+
+    The prediction table keeps its sanitized column names; this manifest is the
+    durable mapping from every appended column back to the original class label,
+    its position in ``classes_`` and the exact files the prediction used.
+    """
+    from importlib.metadata import version
+
+    return {
+        'schema_version': '1.0',
+        'created_time': (created or datetime.now(timezone.utc)).isoformat(),
+        'psyml_version': version('psyml-toolkit'),
+        'sklearn_version': sklearn.__version__,
+        'task': loaded.metadata.get('task'),
+        'model_path': str(model_path),
+        'model_sha256': hashlib.sha256(Path(model_path).read_bytes()).hexdigest(),
+        'input_path': str(input_path),
+        'input_sha256': hashlib.sha256(Path(input_path).read_bytes()).hexdigest(),
+        'output_path': str(output_path),
+        'rows': int(rows),
+        'feature_order': list(feature_order),
+        'manual_mapping': bool(manual_mapping),
+        'classes': loaded.metadata.get('classes'),
+        'columns': prediction.columns,
+    }
+
+
+def write_prediction_manifest(manifest: dict, output_path, *, overwrite: bool = False) -> Path:
+    """Write ``prediction_manifest.json`` next to the prediction file."""
+    path = Path(output_path).parent / 'prediction_manifest.json'
+    if path.exists() and not overwrite:
+        raise ValueError('A prediction manifest already exists for this output; use a new '
+                         'prediction folder or --overwrite.')
+    path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + '\n',
+                    encoding='utf-8')
+    return path

@@ -323,11 +323,17 @@ func _run() -> void:
 		assert(first_path.get_base_dir().get_file().begins_with("run_"), first_path)
 		assert(FileAccess.file_exists(first_path), first_path)
 		assert(not first_path.begins_with(str(config.output_dir)), "page 4 must not write into the model folder")
-		# The run folder holds one artifact only, a plain CSV the user can
-		# open directly; no Parquet is written next to it.
+		# The run folder holds the plain CSV plus its machine-readable
+		# manifest; no Parquet is written next to it.
 		assert(first_path.get_file() == "predictions.csv", first_path)
-		var artifact_names := DirAccess.open(first_path.get_base_dir()).get_files()
-		assert(artifact_names.size() == 1 and artifact_names[0] == "predictions.csv", str(artifact_names))
+		var artifact_names := Array(DirAccess.open(first_path.get_base_dir()).get_files())
+		artifact_names.sort()
+		assert(
+			artifact_names == ["prediction_manifest.json", "predictions.csv"],
+			str(artifact_names))
+		var manifest = JSON.parse_string(
+			FileAccess.get_file_as_string(first_path.get_base_dir().path_join("prediction_manifest.json")))
+		assert(manifest is Dictionary and int(manifest.get("rows", 0)) == 10, str(manifest))
 		# Opening targets exactly this successful run folder, never the CSV file.
 		assert(not page.prediction_folder_button.disabled)
 		opened.clear()
