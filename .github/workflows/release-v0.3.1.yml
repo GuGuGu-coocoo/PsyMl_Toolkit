@@ -2,7 +2,7 @@ name: Release v0.3.1
 
 on:
   push:
-    branches: [release/v0.3.1, publish/v0.3.1]
+    branches: [release/v0.3.1, publish/v0.3.1, republish/v0.3.1]
 
 permissions:
   contents: read
@@ -89,7 +89,7 @@ jobs:
           retention-days: 14
 
   publish:
-    if: github.ref == 'refs/heads/publish/v0.3.1'
+    if: github.ref == 'refs/heads/publish/v0.3.1' || github.ref == 'refs/heads/republish/v0.3.1'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -99,6 +99,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
         with:
           python-version: '3.12.13'
@@ -107,4 +108,4 @@ jobs:
       - name: Verify successful candidate, upload, re-download and publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uv run --locked python tools/release_v031.py publish --directory dist/v0.3.1
+        run: uv run --locked python tools/release_v031.py ${{ github.ref == 'refs/heads/republish/v0.3.1' && 'replace' || 'publish' }} --directory dist/v0.3.1

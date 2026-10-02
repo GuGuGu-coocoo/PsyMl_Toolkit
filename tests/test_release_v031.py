@@ -127,7 +127,7 @@ def test_uploaded_assets_require_exact_names_sizes_and_digests(release, tmp_path
 
 def test_workflow_scopes_writes_to_publication_and_current_version():
     text = (ROOT / ".github/workflows/release-v0.3.1.yml").read_text(encoding="utf-8")
-    assert "branches: [release/v0.3.1, publish/v0.3.1]" in text
+    assert "branches: [release/v0.3.1, publish/v0.3.1, republish/v0.3.1]" in text
     assert text.count("contents: write") == 1
     assert "contents: write" not in text.split("  publish:")[0]
     assert "needs: [quality, native]" in text
@@ -137,6 +137,84 @@ def test_workflow_scopes_writes_to_publication_and_current_version():
         assert flag in text
     assert "id-token:" not in text
     assert "secrets:" not in text
+
+
+@pytest.mark.parametrize("failure", [None, "backup", "changed_main", "archive_tag", "archive_release"])
+def test_replacement_preserves_original_before_nonforced_tag_move(
+        release, tmp_path, monkeypatch, failure):
+    from withdraw_v031 import ASSETS, OLD_COMMIT, RELEASE_ID
+
+    events = []
+    old = {"id": RELEASE_ID, "tag_name": "v0.3.1", "target_commitish": OLD_COMMIT,
+           "draft": True, "immutable": False, "prerelease": False,
+           "assets": [{"name": name, "id": identifier, "size": size,
+                       "digest": "sha256:" + digest, "state": "uploaded"}
+                      for name, (identifier, size, digest) in ASSETS.items()]}
+    monkeypatch.setattr(release, "check_original_release", lambda: dict(old))
+
+    def download(directory, assets):
+        events.append("download_original")
+        directory.mkdir()
+        if failure == "backup":
+            raise OSError("Download failed")
+
+    monkeypatch.setattr(release, "download_assets", download)
+    monkeypatch.setattr(release, "verify_downloads", lambda *args: events.append("verify_original"))
+
+    def api(path):
+        if path == "git/ref/heads/main":
+            return {"object": {"sha": "b" * 40 if failure == "changed_main" else COMMIT}}
+        if path == "git/ref/tags/v0.3.1-withdrawn-2d2308e":
+            return {"object": {"sha": "b" * 40 if failure == "archive_tag" else OLD_COMMIT}}
+        assert path == f"releases/{RELEASE_ID}"
+        return {**old, "tag_name": "v0.3.1-withdrawn-2d2308e",
+                "draft": failure != "archive_release"}
+
+    def run(*args):
+        if args[:3] == ("git", "merge-base", "--is-ancestor"):
+            assert args[3:] == (OLD_COMMIT, COMMIT)
+            events.append("ancestry")
+        elif "POST" in args:
+            assert events == ["ancestry", "download_original", "verify_original", "verify_original"]
+            assert "ref=refs/tags/v0.3.1-withdrawn-2d2308e" in args
+            assert f"sha={OLD_COMMIT}" in args
+            events.append("archive_tag")
+        elif f"repos/{release.REPOSITORY}/releases/{RELEASE_ID}" in args:
+            assert "draft=true" in args
+            assert "tag_name=v0.3.1-withdrawn-2d2308e" in args
+            events.append("archive_release")
+        else:
+            assert "force=false" in args and "force=true" not in args
+            assert "verify_original" == events[-2] and events[-1] == "require_old"
+            events.append("move_tag")
+        assert "DELETE" not in args and "--clobber" not in args
+        return ""
+
+    monkeypatch.setattr(release, "run", run)
+    monkeypatch.setattr(release, "api", api)
+    monkeypatch.setattr(release, "require_tag", lambda sha:
+                        events.append("require_old" if sha == OLD_COMMIT else "require_new"))
+    if failure:
+        with pytest.raises((SystemExit, OSError)):
+            release.preserve_original_and_move_tag(tmp_path, COMMIT)
+        assert "move_tag" not in events
+    else:
+        release.preserve_original_and_move_tag(tmp_path, COMMIT)
+        assert events[-2:] == ["move_tag", "require_new"]
+        assert json.loads((tmp_path / "original-v031/release.json").read_text()) == old
+
+
+def test_replacement_refuses_original_commit(release, tmp_path, monkeypatch):
+    from withdraw_v031 import OLD_COMMIT
+    monkeypatch.setattr(release, "run", lambda *args: pytest.fail("No remote action expected"))
+    with pytest.raises(SystemExit, match="corrected source"):
+        release.preserve_original_and_move_tag(tmp_path, OLD_COMMIT)
+
+
+def test_replacement_requires_distinct_explicit_branch(release, tmp_path, monkeypatch):
+    monkeypatch.setattr(release, "api", lambda *args: pytest.fail("No remote action expected"))
+    with pytest.raises(SystemExit):
+        release.publish(tmp_path, COMMIT, replace_original=True)
 
 
 @pytest.mark.parametrize("mutation", ["extra_field", "extra_asset", "missing_asset", "path", "digest",

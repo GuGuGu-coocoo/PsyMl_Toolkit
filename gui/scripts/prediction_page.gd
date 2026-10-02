@@ -26,9 +26,9 @@ var required_tree: Tree
 var variables_tree: Tree
 var sample_tree: Tree
 var result_tree: Tree
-var summary: Label
-var result_summary: Label
-var status: Label
+var summary: RichTextLabel
+var result_summary: RichTextLabel
+var status: RichTextLabel
 var mapping_toggle: Button
 var mapping_box: VBoxContainer
 var mapping_options: Array[OptionButton] = []
@@ -60,8 +60,8 @@ var explain_background_size: SpinBox
 var explain_cycles: SpinBox
 var explain_button: Button
 var explain_cancel_button: Button
-var explain_status: Label
-var explain_summary: Label
+var explain_status: RichTextLabel
+var explain_summary: RichTextLabel
 var explain_tree: Tree
 var explain_view: TextureRect
 var explain_open_button: Button
@@ -76,9 +76,9 @@ var explain_request := 0
 var explain_staging_root := ""
 var coefficients_button: Button
 var coefficients_cancel_button: Button
-var coefficients_status: Label
-var coefficients_summary: Label
-var coefficients_outputs: Label
+var coefficients_status: RichTextLabel
+var coefficients_summary: RichTextLabel
+var coefficients_outputs: RichTextLabel
 var coefficients_tree: Tree
 var coefficients_open_button: Button
 var coefficients_busy := false
@@ -108,7 +108,7 @@ func build(owner: Control) -> void:
 	content.add_theme_constant_override("separation", 12)
 	margin.add_child(content)
 	label(content, "PREDICTION_HEADING").add_theme_font_size_override("font_size", 24)
-	label(content, "PREDICTION_HELP")
+	selectable(content, "PREDICTION_HELP")
 	# Page 4 shares page 2's result root: prediction, SHAP and coefficient
 	# artifacts go into new run subfolders under prediction/, explanation/ and
 	# coefficients/ inside it. Nothing is inferred from the model location and
@@ -177,20 +177,20 @@ func build(owner: Control) -> void:
 	mapping_toggle.toggled.connect(func(value): mapping_box.visible = value)
 	data_button = button(right, "LOAD_PREDICTION_DATA")
 	data_path_label = label(right, "NO_DATA")
-	summary = label(right, "NO_DATA")
+	summary = selectable(right, "NO_DATA")
 	variables_tree = tree(right, 145)
 	label(right, "SAMPLE")
 	sample_tree = tree(right, 170)
-	status = label(content, "PREDICTION_WAITING")
+	status = selectable(content, "PREDICTION_WAITING")
 	var actions := HBoxContainer.new()
 	content.add_child(actions)
 	predict_button = button(actions, "RUN_PREDICTION")
 	prediction_folder_button = button(actions, "OPEN_PREDICTION_FOLDER")
-	result_summary = label(content, "PREDICTION_RESULTS")
+	result_summary = selectable(content, "PREDICTION_RESULTS")
 	result_tree = tree(content, 180)
-	label(content, "PREDICTION_SCIENCE")
+	selectable(content, "PREDICTION_SCIENCE")
 	label(content, "EXPLAIN_HEADING").add_theme_font_size_override("font_size", 20)
-	label(content, "EXPLAIN_HELP")
+	selectable(content, "EXPLAIN_HELP")
 	# Background selection gets its own row: a long path label must never share an
 	# HBox with the controls, or automatic wrapping collapses it into a column of
 	# single characters and stretches the whole page.
@@ -236,8 +236,8 @@ func build(owner: Control) -> void:
 	content.add_child(explain_deliver)
 	explain_open_button = button(explain_deliver, "OPEN_WATERFALL")
 	explain_folder_button = button(explain_deliver, "OPEN_RESULTS_FOLDER")
-	explain_status = label(content, "EXPLAIN_WAITING")
-	explain_summary = label(content, "EXPLAIN_RESULTS")
+	explain_status = selectable(content, "EXPLAIN_WAITING")
+	explain_summary = selectable(content, "EXPLAIN_RESULTS")
 	explain_view = TextureRect.new()
 	explain_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	explain_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -247,9 +247,9 @@ func build(owner: Control) -> void:
 	content.add_child(explain_view)
 	explain_tree = tree(content, 200)
 	explain_tree.columns = 4
-	label(content, "EXPLAIN_SCIENCE")
+	selectable(content, "EXPLAIN_SCIENCE")
 	label(content, "COEFFICIENTS_HEADING").add_theme_font_size_override("font_size", 20)
-	label(content, "COEFFICIENTS_HELP")
+	selectable(content, "COEFFICIENTS_HELP")
 	var coefficients_actions := HBoxContainer.new()
 	content.add_child(coefficients_actions)
 	coefficients_button = button(coefficients_actions, "RUN_COEFFICIENTS")
@@ -258,12 +258,12 @@ func build(owner: Control) -> void:
 	coefficients_deliver.add_theme_constant_override("separation", 14)
 	content.add_child(coefficients_deliver)
 	coefficients_open_button = button(coefficients_deliver, "OPEN_COEFFICIENTS_FOLDER")
-	coefficients_status = label(content, "COEFFICIENTS_WAITING")
-	coefficients_summary = label(content, "COEFFICIENTS_RESULTS")
-	coefficients_outputs = label(content, "COEFFICIENTS_OUTPUTS")
+	coefficients_status = selectable(content, "COEFFICIENTS_WAITING")
+	coefficients_summary = selectable(content, "COEFFICIENTS_RESULTS")
+	coefficients_outputs = selectable(content, "COEFFICIENTS_OUTPUTS")
 	coefficients_tree = tree(content, 200)
 	coefficients_tree.columns = 4
-	label(content, "COEFFICIENTS_SCIENCE")
+	selectable(content, "COEFFICIENTS_SCIENCE")
 	model_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, PackedStringArray(["*.joblib,*.pkl ; sklearn / joblib"]))
 	data_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, main.file_dialog.filters)
 	background_dialog = main.configuration_io._dialog(FileDialog.FILE_MODE_OPEN_FILE, main.file_dialog.filters)
@@ -1068,3 +1068,10 @@ func _exit_tree() -> void:
 	_clear_explanation()
 	_clear_coefficients()
 	_clear_predictions()
+
+
+func selectable(parent: Node, key: String) -> RichTextLabel:
+	var control := preload("res://scripts/selectable_text.gd").new()
+	parent.add_child(control)
+	main.translated_controls.append({"node": control, "key": key})
+	return control

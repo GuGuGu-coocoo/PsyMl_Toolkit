@@ -76,6 +76,16 @@ Le [chapitre des résultats](#results) décrit aussi SHAP, l’importance par pe
 
 Autres captures : [import de configuration](images/fr/06-import-config.png) · [vérification de reproduction](images/fr/07-reproduce-run.png) · [résultat reproduit](images/fr/08-reproduced-result.png) · [enregistrement du modèle](images/fr/11-save-model.png) · [résultat de prédiction](images/fr/10-prediction-results.png) · [coefficients ajustés](images/fr/12-coefficients.png).
 
+### Lecture, copie et aide
+
+Redimensionnez la fenêtre selon votre écran : l’application remplit l’espace disponible. Les explications et résumés importants permettent la sélection à la souris, la copie par clic droit et Ctrl+C (Cmd+C sous macOS). Les boutons **Copier le texte** et **Copier le tableau** copient la section actuelle, avec le contexte utile et les en-têtes. Sous les informations du modèle, **Copier le texte** inclut aussi les chemins complets du modèle, des données d’entrée et du fond SHAP. Les titres et libellés de champs restent de simples étiquettes.
+
+Le bouton **À propos**, en haut à droite, ouvre un petit panneau avec des liens vers le dépôt, le README et le guide dans la langue choisie. Les liens s’ouvrent dans le navigateur système et nécessitent Internet. Fermez le panneau ou appuyez sur Échap pour revenir ; l’analyse peut continuer pendant son ouverture.
+
+![À propos et documentation en ligne](images/fr/11-about.png)
+
+![Résumé des coefficients sélectionné et bouton de copie de section (exemple synthétique)](images/fr/12-copy.png)
+
 <a id="data"></a>
 
 ## 1. Données et prétraitement

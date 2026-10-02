@@ -136,10 +136,15 @@ custom_minimum_size = Vector2(128, 42)
 layout_mode = 2
 theme_type_variation = &"AccentButton"
 
-[node name="DataSummaryLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataSourcePanel/Margin/Content"]
+[node name="DataSummaryLabel" type="RichTextLabel" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataSourcePanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.34902, 0.396078, 0.478431, 1)
+theme_override_colors/default_color = Color(0.34902, 0.396078, 0.478431, 1)
+fit_content = true
+scroll_active = false
+selection_enabled = true
+context_menu_enabled = true
+
 
 [node name="DataWorkspace" type="HBoxContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent"]
 layout_mode = 2
@@ -361,11 +366,16 @@ layout_mode = 2
 size_flags_horizontal = 3
 select_mode = 2
 
-[node name="PrimaryValidationHelp" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content"]
+[node name="PrimaryValidationHelp" type="RichTextLabel" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/DesignPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.34902, 0.396078, 0.478431, 1)
+theme_override_colors/default_color = Color(0.34902, 0.396078, 0.478431, 1)
 autowrap_mode = 2
+fit_content = true
+scroll_active = false
+selection_enabled = true
+context_menu_enabled = true
+
 
 [node name="ParameterPanel" type="PanelContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content"]
 layout_mode = 2
@@ -454,11 +464,16 @@ min_value = 1.0
 max_value = 200.0
 value = 20.0
 
-[node name="ParameterHelpLabel" type="Label" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content"]
+[node name="ParameterHelpLabel" type="RichTextLabel" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.34902, 0.396078, 0.478431, 1)
+theme_override_colors/default_color = Color(0.34902, 0.396078, 0.478431, 1)
 autowrap_mode = 2
+fit_content = true
+scroll_active = false
+selection_enabled = true
+context_menu_enabled = true
+
 
 [node name="ParameterEditor" type="VBoxContainer" parent="AppMargin/Page/Tabs/Data/Padding/DataContent/DataWorkspace/PredictorsPanel/Margin/Content/ParameterPanel/Margin/Content"]
 unique_name_in_owner = true
@@ -559,11 +574,16 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(116, 42)
 layout_mode = 2
 
-[node name="OutputHelpLabel" type="Label" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ReviewConfigPanel/Margin/Content"]
+[node name="OutputHelpLabel" type="RichTextLabel" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ReviewConfigPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.34902, 0.396078, 0.478431, 1)
+theme_override_colors/default_color = Color(0.34902, 0.396078, 0.478431, 1)
 autowrap_mode = 2
+fit_content = true
+scroll_active = false
+selection_enabled = true
+context_menu_enabled = true
+
 
 [node name="ReviewText" type="TextEdit" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ReviewConfigPanel/Margin/Content"]
 unique_name_in_owner = true
@@ -591,17 +611,27 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 
-[node name="ProgressDetailLabel" type="Label" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ExecutionPanel/Margin/Content"]
+[node name="ProgressDetailLabel" type="RichTextLabel" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ExecutionPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.34902, 0.396078, 0.478431, 1)
+theme_override_colors/default_color = Color(0.34902, 0.396078, 0.478431, 1)
 autowrap_mode = 2
+fit_content = true
+scroll_active = false
+selection_enabled = true
+context_menu_enabled = true
 
-[node name="StopHelpLabel" type="Label" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ExecutionPanel/Margin/Content"]
+
+[node name="StopHelpLabel" type="RichTextLabel" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ExecutionPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.38, 0.41, 0.47, 1)
+theme_override_colors/default_color = Color(0.38, 0.41, 0.47, 1)
 autowrap_mode = 2
+fit_content = true
+scroll_active = false
+selection_enabled = true
+context_menu_enabled = true
+
 
 [node name="RunRow" type="HBoxContainer" parent="AppMargin/Page/Tabs/Review/Padding/ReviewContent/ExecutionPanel/Margin/Content"]
 layout_mode = 2
@@ -690,10 +720,15 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 
-[node name="BestResultLabel" type="Label" parent="AppMargin/Page/Tabs/Results/Padding/ResultsContent/ResultsBody/DetailsPanel/Margin/Content"]
+[node name="BestResultLabel" type="RichTextLabel" parent="AppMargin/Page/Tabs/Results/Padding/ResultsContent/ResultsBody/DetailsPanel/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 2
+fit_content = true
+scroll_active = false
+selection_enabled = true
+context_menu_enabled = true
+
 
 [node name="ComparisonsLabel" type="Label" parent="AppMargin/Page/Tabs/Results/Padding/ResultsContent/ResultsBody/DetailsPanel/Margin/Content"]
 unique_name_in_owner = true

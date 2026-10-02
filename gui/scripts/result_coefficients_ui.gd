@@ -7,8 +7,8 @@ extends RefCounted
 
 var main: Control
 var heading: Label
-var status_label: Label
-var detail_label: Label
+var status_label: RichTextLabel
+var detail_label: RichTextLabel
 var open_button: Button
 var current_dir := ""
 var current_artifacts: Dictionary = {}
@@ -26,11 +26,11 @@ func build() -> void:
 	parent.add_child(heading)
 	main.translated_controls.append({"node": heading, "key": "RESULT_COEFFICIENTS_SECTION"})
 
-	status_label = Label.new()
+	status_label = preload("res://scripts/selectable_text.gd").new()
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(status_label)
 
-	detail_label = Label.new()
+	detail_label = preload("res://scripts/selectable_text.gd").new()
 	detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(detail_label)
 

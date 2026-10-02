@@ -30,6 +30,7 @@ Group = tuple[str, str, str]
 GROUPS: tuple[Group, ...] = (
     ("bridge", "test_bridge.gd", "PSYML_GODOT_BRIDGE_OK"),
     ("ui_flow", "test_ui_flow.gd", "PSYML_GODOT_UI_FLOW_OK"),
+    ("reading_access", "test_reading_access.gd", "PSYML_READING_ACCESS_OK"),
     ("feedback", "test_feedback.gd", "PSYML_FEEDBACK_OK"),
     ("parameter_context", "test_parameter_context.gd", "PSYML_PARAMETER_CONTEXT_OK"),
     ("independent_results", "test_independent_results.gd", "PSYML_INDEPENDENT_RESULTS_OK"),

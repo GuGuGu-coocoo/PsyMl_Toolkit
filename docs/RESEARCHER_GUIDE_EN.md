@@ -76,6 +76,16 @@ The [results chapter](#results) also covers SHAP, permutation importance and fit
 
 More screenshots: [configuration import](images/en/06-import-config.png) · [reproduction review](images/en/07-reproduce-run.png) · [reproduced result](images/en/08-reproduced-result.png) · [save-model switch](images/en/11-save-model.png) · [prediction result](images/en/10-prediction-results.png) · [fitted coefficients](images/en/12-coefficients.png).
 
+### Reading, copying and help
+
+Resize the window to suit your screen; the application fills the available area. Key explanations and result summaries support mouse selection, right-click Copy and Ctrl+C (Cmd+C on macOS). Explicit **Copy text** and **Copy table** buttons copy the current section, including relevant result context and table headers. **Copy text** under model information also includes the full model, input-data and SHAP-background paths. Titles and field labels remain ordinary labels.
+
+The **About** button in the upper-right corner opens a small panel with the project repository, README and researcher guide in the selected language. Links open in your system browser and require Internet access. Close the panel or press Escape to return; analysis can continue while it is open.
+
+![About and online documentation links](images/en/11-about.png)
+
+![Current selectable coefficient summary and section-copy button (synthetic example)](images/en/12-copy.png)
+
 <a id="data"></a>
 
 ## 1. Data and preprocessing

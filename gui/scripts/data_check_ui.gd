@@ -7,11 +7,11 @@ extends RefCounted
 
 var main: Control
 var section_label: Label
-var summary_label: Label
+var summary_label: RichTextLabel
 var category_tree: Tree
 var id_title_label: Label
-var id_label: Label
-var note_label: Label
+var id_label: RichTextLabel
+var note_label: RichTextLabel
 
 
 func _init(owner: Control) -> void:
@@ -25,7 +25,7 @@ func build() -> void:
 	parent.add_child(section_label)
 	main.translated_controls.append({"node": section_label, "key": "DATA_CHECK_SECTION"})
 
-	summary_label = Label.new()
+	summary_label = preload("res://scripts/selectable_text.gd").new()
 	summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(summary_label)
 	summary_label.hide()
@@ -44,14 +44,14 @@ func build() -> void:
 	parent.add_child(id_title_label)
 	id_title_label.hide()
 
-	id_label = Label.new()
+	id_label = preload("res://scripts/selectable_text.gd").new()
 	id_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(id_label)
 	id_label.hide()
 
-	note_label = Label.new()
+	note_label = preload("res://scripts/selectable_text.gd").new()
 	note_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note_label.add_theme_color_override("font_color", Color("626977"))
+	note_label.add_theme_color_override("default_color", Color("626977"))
 	parent.add_child(note_label)
 	note_label.hide()
 

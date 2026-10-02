@@ -18,10 +18,10 @@ const REASON_KEYS := {
 
 var main: Control
 var heading: Label
-var status_label: Label
-var baseline_label: Label
-var failures_label: Label
-var note_label: Label
+var status_label: RichTextLabel
+var baseline_label: RichTextLabel
+var failures_label: RichTextLabel
+var note_label: RichTextLabel
 var diff_tree: Tree
 var current_interpretation: Dictionary = {}
 var current_validation := ""
@@ -38,15 +38,15 @@ func build() -> void:
 	parent.add_child(heading)
 	main.translated_controls.append({"node": heading, "key": "INTERPRETATION_RESULT_SECTION"})
 
-	status_label = Label.new()
+	status_label = preload("res://scripts/selectable_text.gd").new()
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(status_label)
 
-	baseline_label = Label.new()
+	baseline_label = preload("res://scripts/selectable_text.gd").new()
 	baseline_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(baseline_label)
 
-	failures_label = Label.new()
+	failures_label = preload("res://scripts/selectable_text.gd").new()
 	failures_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(failures_label)
 
@@ -57,9 +57,9 @@ func build() -> void:
 	diff_tree.hide_root = true
 	parent.add_child(diff_tree)
 
-	note_label = Label.new()
+	note_label = preload("res://scripts/selectable_text.gd").new()
 	note_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note_label.add_theme_color_override("font_color", Color("626977"))
+	note_label.add_theme_color_override("default_color", Color("626977"))
 	parent.add_child(note_label)
 	main.translated_controls.append({"node": note_label, "key": "INTERPRETATION_DESCRIPTIVE"})
 	clear()

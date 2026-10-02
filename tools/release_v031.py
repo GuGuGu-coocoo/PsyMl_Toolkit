@@ -2,7 +2,9 @@
 
 Candidate creation is read-only outside the workspace. Publishing is invoked
 only by the separate publish/v0.3.1 branch, after candidate review. Existing
-releases and tags are never replaced. Public assets stay limited to two ZIPs.
+releases and tags are refused by default. The separately authorized replacement
+mode preserves the known original release as a draft archive. Public assets stay
+limited to two ZIPs.
 """
 
 from __future__ import annotations
@@ -132,21 +134,81 @@ def require_tag(commit: str) -> None:
         raise SystemExit("Release tag differs from verified source commit")
 
 
-def publish(directory: Path, commit: str) -> None:
+def check_original_release() -> dict:
+    from withdraw_v031 import OLD_COMMIT, RELEASE_ID, check_release
+
+    require_tag(OLD_COMMIT)
+    original = api(f"releases/{RELEASE_ID}")
+    check_release(original, draft=True)
+    archive_tag = "v0.3.1-withdrawn-2d2308e"
+    if any(item["ref"] == f"refs/tags/{archive_tag}"
+           for item in api(f"git/matching-refs/tags/{archive_tag}")):
+        raise SystemExit("Original archive tag already exists; inspect state before retrying")
+    return original
+
+
+def preserve_original_and_move_tag(directory: Path, commit: str) -> None:
+    from withdraw_v031 import OLD_COMMIT, RELEASE_ID, check_release
+
+    if commit == OLD_COMMIT:
+        raise SystemExit("Replacement must contain the corrected source")
+    run("git", "merge-base", "--is-ancestor", OLD_COMMIT, commit)
+    original = check_original_release()
+    backup = directory / "original-v031"
+    download_assets(backup, original["assets"])
+    verify_downloads(backup, original["assets"])
+    (backup / "release.json").write_text(json.dumps(original, indent=2) + "\n", encoding="utf-8")
+    original = check_original_release()
+    verify_downloads(backup, original["assets"])
+    if api("git/ref/heads/main")["object"]["sha"] != commit:
+        raise SystemExit("Main changed before the original release was archived")
+    archive_tag = "v0.3.1-withdrawn-2d2308e"
+    # Preserve the original tag target and every original asset. No DELETE or
+    # asset-clobber operation is used anywhere in this one-time transition.
+    run("gh", "api", "--method", "POST", f"repos/{REPOSITORY}/git/refs",
+        "-f", f"ref=refs/tags/{archive_tag}", "-f", f"sha={OLD_COMMIT}")
+    if api(f"git/ref/tags/{archive_tag}")["object"]["sha"] != OLD_COMMIT:
+        raise SystemExit("Archive tag differs from original source")
+    run("gh", "api", "--method", "PATCH", f"repos/{REPOSITORY}/releases/{RELEASE_ID}",
+        "-f", f"tag_name={archive_tag}", "-f", f"target_commitish={OLD_COMMIT}",
+        "-f", "name=PsyML Toolkit v0.3.1 — withdrawn original", "-F", "draft=true")
+    archived = api(f"releases/{RELEASE_ID}")
+    if archived["tag_name"] != archive_tag:
+        raise SystemExit("Original release was not preserved under its archive tag")
+    # Validate every immutable original identity after the tag-name change.
+    check_release({**archived, "tag_name": TAG}, draft=True)
+    verify_downloads(backup, archived["assets"])
+    require_tag(OLD_COMMIT)
+    # The new source is a descendant of the old source, so this specific ref
+    # move uses force=false. It never rewrites main or removes the old commit.
+    run("gh", "api", "--method", "PATCH", f"repos/{REPOSITORY}/git/refs/tags/{TAG}",
+        "-f", f"sha={commit}", "-F", "force=false")
+    require_tag(commit)
+
+
+def publish(directory: Path, commit: str, *, replace_original: bool = False) -> None:
     if os.environ.get("GITHUB_REPOSITORY") != REPOSITORY:
         raise SystemExit("Publishing is restricted to the intended repository")
-    if os.environ.get("GITHUB_REF") != "refs/heads/publish/v0.3.1":
+    expected_branch = "republish/v0.3.1" if replace_original else "publish/v0.3.1"
+    if os.environ.get("GITHUB_REF") != "refs/heads/" + expected_branch:
         raise SystemExit("Publishing requires the separately created publish/v0.3.1 branch")
     if api("git/ref/heads/main")["object"]["sha"] != commit:
         raise SystemExit("Release candidate must equal current main")
     # Collection reads fail closed on API errors. Never interpret a generic
     # failed request as evidence that a tag or release does not exist.
     tags = api(f"git/matching-refs/tags/{TAG}")
-    if any(item["ref"] == f"refs/tags/{TAG}" for item in tags):
+    if replace_original:
+        check_original_release()
+    elif any(item["ref"] == f"refs/tags/{TAG}" for item in tags):
         raise SystemExit(f"Refusing to replace existing tag {TAG}")
     releases = json.loads(run("gh", "api", "--paginate", "--slurp",
                              f"repos/{REPOSITORY}/releases?per_page=100"))
-    if any(item["tag_name"] == TAG for page in releases for item in page):
+    matching_releases = [item for page in releases for item in page if item["tag_name"] == TAG]
+    if replace_original:
+        from withdraw_v031 import RELEASE_ID
+        if len(matching_releases) != 1 or matching_releases[0]["id"] != RELEASE_ID:
+            raise SystemExit("Replacement requires exactly the known original draft")
+    elif matching_releases:
         raise SystemExit(f"Refusing to replace existing release {TAG}")
     runs = api(f"actions/runs?branch=release/v0.3.1&event=push&head_sha={commit}&per_page=100")
     successful = [item for item in runs["workflow_runs"]
@@ -164,10 +226,13 @@ def publish(directory: Path, commit: str) -> None:
     document = json.loads((directory / "CANDIDATE.json").read_text(encoding="utf-8"))
     verify_candidate_document(document, directory, commit, run_id)
     verify(directory, commit)
-    # Creating a new ref is atomic and fails if another actor created it after
-    # preflight. Never update or reuse an existing tag, even if its name matches.
-    run("gh", "api", "--method", "POST", f"repos/{REPOSITORY}/git/refs",
-        "-f", f"ref=refs/tags/{TAG}", "-f", f"sha={commit}")
+    # Ordinary publication atomically creates a new ref. Only the separately
+    # authorized replacement mode preserves and advances the exact original tag.
+    if replace_original:
+        preserve_original_and_move_tag(directory, commit)
+    else:
+        run("gh", "api", "--method", "POST", f"repos/{REPOSITORY}/git/refs",
+            "-f", f"ref=refs/tags/{TAG}", "-f", f"sha={commit}")
     require_tag(commit)
     created = json.loads(run(
         "gh", "api", "--method", "POST", f"repos/{REPOSITORY}/releases",
@@ -206,12 +271,19 @@ def publish(directory: Path, commit: str) -> None:
     public_download = ROOT / "tmp/release-v031-public"
     download_public_assets(public_download, released["assets"])
     verify_downloads(public_download, released["assets"])
+    if replace_original:
+        from withdraw_v031 import RELEASE_ID, check_release
+        archived = api(f"releases/{RELEASE_ID}")
+        if archived["tag_name"] != "v0.3.1-withdrawn-2d2308e":
+            raise SystemExit("Original archive changed during replacement")
+        check_release({**archived, "tag_name": TAG}, draft=True)
+        verify_downloads(directory / "original-v031", archived["assets"])
     print(f"PSYML_RELEASE_PUBLISHED {released['html_url']} commit={commit}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["candidate", "publish"])
+    parser.add_argument("mode", choices=["candidate", "publish", "replace"])
     parser.add_argument("--directory", type=Path, required=True)
     args = parser.parse_args()
     directory = args.directory.resolve()
@@ -219,7 +291,7 @@ def main() -> None:
     if args.mode == "candidate":
         candidate(directory, commit)
     else:
-        publish(directory, commit)
+        publish(directory, commit, replace_original=args.mode == "replace")
 
 
 if __name__ == "__main__":

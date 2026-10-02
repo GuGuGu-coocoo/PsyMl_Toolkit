@@ -17,9 +17,9 @@ var section_label: Label
 var enable_check: CheckBox
 var repeats_label: Label
 var repeats_spin: SpinBox
-var help_label: Label
+var help_label: RichTextLabel
 var result_heading: Label
-var status_label: Label
+var status_label: RichTextLabel
 var summary_tree: Tree
 var export_button: Button
 var current_validation := ""
@@ -72,9 +72,9 @@ func _build_settings() -> void:
 	repeats_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_child(repeats_spin)
 
-	help_label = Label.new()
+	help_label = preload("res://scripts/selectable_text.gd").new()
 	help_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	help_label.add_theme_color_override("font_color", Color("626977"))
+	help_label.add_theme_color_override("default_color", Color("626977"))
 	parent.add_child(help_label)
 	main.translated_controls.append({"node": help_label, "key": "PERMUTATION_HELP"})
 
@@ -96,7 +96,7 @@ func _build_result_section() -> void:
 	parent.add_child(result_heading)
 	main.translated_controls.append({"node": result_heading, "key": "PERMUTATION_RESULT_SECTION"})
 
-	status_label = Label.new()
+	status_label = preload("res://scripts/selectable_text.gd").new()
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(status_label)
 	status_label.hide()

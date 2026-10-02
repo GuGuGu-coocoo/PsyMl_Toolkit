@@ -76,6 +76,16 @@ SHAP、置换重要性和拟合系数的操作、文件及限制都在[结果章
 
 其他步骤截图：[导入配置](images/zh/06-import-config.png) · [复现前检查](images/zh/07-reproduce-run.png) · [复现结果](images/zh/08-reproduced-result.png) · [保存模型开关](images/zh/11-save-model.png) · [预测结果](images/zh/10-prediction-results.png) · [拟合系数](images/zh/12-coefficients.png)。
 
+### 阅读、复制与帮助
+
+窗口可按屏幕比例调整，应用填满可用区域。关键说明与结果摘要支持鼠标选中、右键复制及 Ctrl+C（macOS 使用 Cmd+C）。显式的**复制文本**与**复制表格**按钮复制当前区块，包含相关结果说明及表头。模型信息下的**复制文本**还包含完整的模型、输入数据与 SHAP 背景数据路径。标题与字段标签保持普通标签。
+
+右上角的**关于**打开小面板，提供项目主页、README 和当前语言的研究者指南链接。链接由系统浏览器打开，需要联网。点击关闭或按 Escape 可返回；面板打开时分析仍可继续。
+
+![关于与在线文档链接](images/zh/11-about.png)
+
+![当前界面的系数摘要选中与区块复制按钮（合成示例）](images/zh/12-copy.png)
+
 <a id="data"></a>
 
 ## 1. 数据与预处理

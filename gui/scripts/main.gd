@@ -30,7 +30,7 @@ var language_option: OptionButton
 var browse_button: Button
 var preview_button: Button
 var data_path_edit: LineEdit
-var data_summary_label: Label
+var data_summary_label: RichTextLabel
 var variable_tree: Tree
 var sample_tree: Tree
 var feature_list: ItemList
@@ -56,12 +56,12 @@ var refresh_review_button: Button
 var output_edit: LineEdit
 var review_text: TextEdit
 var status_label: Label
-var progress_detail_label: Label
+var progress_detail_label: RichTextLabel
 var progress_bar: ProgressBar
 var run_button: Button
 var cancel_button: Button
 var warnings_text: RichTextLabel
-var best_result_label: Label
+var best_result_label: RichTextLabel
 var comparison_tree: Tree
 var metrics_tree: Tree
 var predictions_tree: Tree
@@ -96,6 +96,8 @@ var interpretation_ui
 var result_coefficients_ui
 var scroll_router
 var version_label: Label
+var about_ui
+var copy_buttons: Dictionary = {}
 
 
 
@@ -175,6 +177,8 @@ func _build_theme() -> void:
 	app_theme.set_color("font_focus_color", "AccentButton", Color.WHITE)
 	app_theme.set_color("font_focus_color", "DangerButton", Color("842424"))
 	app_theme.set_color("default_color", "RichTextLabel", TEXT)
+	app_theme.set_color("selection_color", "RichTextLabel", Color("dce2ff"))
+	app_theme.set_color("font_selected_color", "RichTextLabel", TEXT)
 	app_theme.set_color("font_pressed_color", "AccentButton", Color.WHITE)
 	app_theme.set_color("font_pressed_color", "DangerButton", Color("842424"))
 	app_theme.set_color("font_selected_color", "ItemList", TEXT)
@@ -251,6 +255,11 @@ func _bind_scene() -> void:
 	result_coefficients_ui = preload("res://scripts/result_coefficients_ui.gd").new(self)
 	result_coefficients_ui.build()
 	_install_version_label()
+	_install_reading_actions()
+	about_ui = preload("res://scripts/about_panel.gd").new()
+	add_child(about_ui)
+	about_ui.build(self)
+	_configure_readable_controls(self)
 	scroll_router = preload("res://scripts/scroll_gesture_router.gd").new()
 	add_child(scroll_router)
 	tabs.tab_changed.connect(func(_tab): scroll_router.release())
@@ -579,14 +588,18 @@ func _apply_language() -> void:
 	for item in translated_controls:
 		var node: Control = item["node"]
 		var text_value := tr(item["key"])
-		if node is Label:
+		if node is Label or node is RichTextLabel:
 			node.text = text_value
 		elif node is Button:
 			node.text = text_value
 	_refresh_version_label()
+	if about_ui != null:
+		about_ui.refresh_language()
 	for control in find_children("*", "Control", true, false):
-		if control is Label:
-			control.tooltip_text = tr("COPY_TEXT_HINT")
+		if control is RichTextLabel:
+			control.tooltip_text = tr("SELECT_TEXT_HINT")
+			control.get_menu().set_item_text(control.get_menu().get_item_index(RichTextLabel.MENU_COPY), tr("COPY_SELECTION"))
+			control.get_menu().set_item_text(control.get_menu().get_item_index(RichTextLabel.MENU_SELECT_ALL), tr("SELECT_ALL"))
 		elif control is Tree:
 			control.tooltip_text = tr("COPY_ROW_HINT")
 	if figure_choices != null:
@@ -808,7 +821,7 @@ func _populate_parameter_editor() -> void:
 	var tuning_mode: String = tuning_option.get_item_metadata(tuning_option.selected)
 	parameter_editor_mode = tuning_mode
 	if tuning_mode == "tuning_none":
-		var no_search := Label.new()
+		var no_search := preload("res://scripts/selectable_text.gd").new()
 		no_search.text = tr("NO_PARAMETER_SEARCH")
 		no_search.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		parameter_editor.add_child(no_search)
@@ -828,7 +841,7 @@ func _populate_parameter_editor() -> void:
 		parameter_editor.add_child(parameter_grid)
 		var model_grid: Dictionary = capabilities.parameter_grids[task].get(model_name, {})
 		if model_grid.is_empty():
-			var empty_label := Label.new()
+			var empty_label := preload("res://scripts/selectable_text.gd").new()
 			empty_label.text = tr("NO_TUNABLE_PARAMETERS")
 			parameter_grid.add_child(empty_label)
 			continue
@@ -1596,23 +1609,25 @@ func _configure_readable_controls(node: Node) -> void:
 		if not node.scroll_active:
 			node.mouse_filter = Control.MOUSE_FILTER_PASS
 			node.mouse_force_pass_scroll_events = true
-	if node is Label:
-		node.mouse_filter = Control.MOUSE_FILTER_PASS
-		node.tooltip_text = tr("COPY_TEXT_HINT")
-		node.gui_input.connect(func(event):
-			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-				DisplayServer.clipboard_set(node.text)
-		)
-	if node is Tree:
+	if node is RichTextLabel:
+		node.context_menu_enabled = true
+		node.shortcut_keys_enabled = true
+		node.focus_mode = Control.FOCUS_ALL
+		node.tooltip_text = tr("SELECT_TEXT_HINT")
+		node.get_menu().set_item_text(node.get_menu().get_item_index(RichTextLabel.MENU_COPY), tr("COPY_SELECTION"))
+		node.get_menu().set_item_text(node.get_menu().get_item_index(RichTextLabel.MENU_SELECT_ALL), tr("SELECT_ALL"))
+	if node is Tree and not node.has_meta("copy_configured"):
+		node.set_meta("copy_configured", true)
 		node.tooltip_text = tr("COPY_ROW_HINT")
 		node.gui_input.connect(func(event):
 			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-				var row = node.get_selected()
+				var row = node.get_item_at_position(event.position)
 				if row != null:
-					var values := PackedStringArray()
-					for column in range(node.columns):
-						values.append(row.get_text(column))
-					DisplayServer.clipboard_set("\t".join(values))
+					row.select(0)
+					DisplayServer.clipboard_set(_tree_row_text(node, row))
+			elif event.is_action_pressed("ui_copy") and node.get_selected() != null:
+				DisplayServer.clipboard_set(_tree_row_text(node, node.get_selected()))
+				node.accept_event()
 		)
 	for child in node.get_children():
 		_configure_readable_controls(child)
@@ -1743,3 +1758,73 @@ func _on_validation_result_selected(index: int) -> void:
 		best_result_label.text = _validation_display(validation) + " — " + tr("VALIDATION_FAILED")
 		last_warnings = [str(entry.get("error", {}).get("message", ""))]
 		_render_warnings()
+
+
+func _tree_row_text(tree: Tree, row: TreeItem) -> String:
+	var values := PackedStringArray()
+	for column in range(tree.columns):
+		values.append(row.get_text(column))
+	return "\t".join(values)
+
+
+func _copy_text(control: Control) -> String:
+	if control is RichTextLabel:
+		return control.get_parsed_text()
+	if control is TextEdit or control is Label:
+		return control.text
+	if control is Tree:
+		var lines := PackedStringArray()
+		if control.column_titles_visible:
+			var titles := PackedStringArray()
+			for column in range(control.columns):
+				titles.append(control.get_column_title(column))
+			lines.append("\t".join(titles))
+		var root_item = control.get_root()
+		if root_item != null:
+			var row = root_item.get_first_child() if control.hide_root else root_item
+			while row != null:
+				lines.append(_tree_row_text(control, row))
+				row = row.get_next_in_tree()
+		return "\n".join(lines)
+	return ""
+
+
+func _add_copy_action(control: Control, key: String, sources: Array = []) -> Button:
+	var button := Button.new()
+	button.name = str(control.name) + "CopyButton"
+	button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	control.get_parent().add_child(button)
+	control.get_parent().move_child(button, control.get_index() + 1)
+	translated_controls.append({"node": button, "key": key})
+	var copied_sources := sources if not sources.is_empty() else [control]
+	button.pressed.connect(func(): DisplayServer.clipboard_set(_copy_section_text(copied_sources)))
+	control.visibility_changed.connect(func(): button.visible = control.visible)
+	button.visible = control.visible
+	copy_buttons[control] = button
+	return button
+
+
+func _copy_section_text(sources: Array) -> String:
+	var parts := PackedStringArray()
+	for control in sources:
+		if control.visible:
+			var value := _copy_text(control)
+			if control == prediction_page.model_info:
+				value += "\n" + prediction_page.model_path + "\n" + prediction_page.input_path + "\n" + prediction_page.background_path
+			if not value.strip_edges().is_empty():
+				parts.append(value.strip_edges())
+	return "\n\n".join(parts)
+
+
+func _install_reading_actions() -> void:
+	_add_copy_action(data_summary_label, "COPY_SECTION", [data_summary_label, data_check_ui.summary_label, data_check_ui.id_label, data_check_ui.note_label])
+	for control in [review_text, best_result_label, warnings_text, prediction_page.model_info]:
+		_add_copy_action(control, "COPY_SECTION")
+	for control in [comparison_tree, metrics_tree, predictions_tree]:
+		_add_copy_action(control, "COPY_TABLE")
+	_add_copy_action(prediction_page.result_tree, "COPY_SECTION", [prediction_page.status, prediction_page.result_summary, prediction_page.result_tree])
+	_add_copy_action(prediction_page.explain_tree, "COPY_SECTION", [prediction_page.explain_status, prediction_page.explain_summary, prediction_page.explain_tree])
+	_add_copy_action(prediction_page.coefficients_tree, "COPY_SECTION", [prediction_page.coefficients_status, prediction_page.coefficients_summary, prediction_page.coefficients_outputs, prediction_page.coefficients_tree])
+	_add_copy_action(interpretation_ui.baseline_label, "COPY_SECTION", [interpretation_ui.status_label, interpretation_ui.baseline_label, interpretation_ui.failures_label, interpretation_ui.diff_tree, interpretation_ui.note_label])
+	_add_copy_action(permutation_ui.status_label, "COPY_SECTION", [permutation_ui.status_label, permutation_ui.summary_tree])
+	_add_copy_action(result_coefficients_ui.status_label, "COPY_SECTION", [result_coefficients_ui.status_label, result_coefficients_ui.detail_label])

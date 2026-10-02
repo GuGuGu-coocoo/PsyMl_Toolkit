@@ -2,8 +2,11 @@
 
 ## 中文
 
+2026-10-02 更新包替换同日较早的 0.3.1；此前下载的用户请重新下载，源码用户请更新 main。
+
 本版集中改进配置往返、结果可追溯性、图形呈现与公开案例复现，并重新整理三语使用说明。
 
+- **窗口与阅读**：界面适应窗口比例；关键说明与结果支持选中复制，重要区块提供显式复制按钮；右上角的“关于”通过系统浏览器打开三语文档链接。
 - **配置与界面**：保留估计器参数的 JSON 数值类型；拒绝含糊的多模型固定参数组合；配置保存错误显示在发起操作的页面。混淆矩阵适配多类别结果，图形正确呈现折间不确定性与类别标签。
 - **结果记录**：保存成功运行中的优化器和估计器警告；预测清单记录类别映射与来源；分析文件哈希、行标识和数值运行环境绑定到实际输入快照。常量目标的 R² 约定明确写入结果说明，类别计数以已观测值为准。
 - **公开复现**：提供 DSA 活动分类与 California Housing 回归的可导入 CSV、配置、三语步骤和有环境记录的比较结果；California 冻结数据在 Windows 检出时保持原始字节。各案例的验证范围与环境见对应记录。
@@ -16,8 +19,11 @@ macOS 应用采用临时代码签名，未经 Apple 公证；Windows 应用未�
 
 ## English
 
+The updated packages on 2026-10-02 replace the earlier 0.3.1 packages from the same day. Download the updated archives, or update main when running from source.
+
 This release improves configuration round-tripping, result provenance, figures and reproducible public examples, with reorganized documentation in three languages.
 
+- **Window and reading:** the interface adapts to the window aspect ratio; key explanations and results support text selection, important sections expose Copy buttons, and About opens documentation links in the system browser.
 - **Configuration and interface:** preserve JSON numeric parameter types; reject ambiguous fixed-parameter combinations across multiple models; show configuration-save errors on the originating page. Confusion matrices support many classes, and figures preserve fold uncertainty and class labels.
 - **Result records:** retain optimizer and estimator warnings from successful runs; record prediction class mappings and provenance; bind input hashes, row identities and numerical runtime information to actual data snapshots. Reports disclose constant-target R² conventions, and category counts use observed values.
 - **Public examples:** importable CSVs, configurations, three-language instructions and environment-specific comparisons for DSA activity classification and California Housing regression. Frozen California data retain their original bytes on Windows checkout. Each case documents its own scope and recorded environment.
@@ -30,8 +36,11 @@ The macOS app is ad-hoc signed and is not Apple-notarized; the Windows app has n
 
 ## Français
 
+Les archives mises à jour le 2026-10-02 remplacent les premières archives 0.3.1 du même jour. Téléchargez les nouvelles archives ou mettez main à jour pour une utilisation depuis les sources.
+
 Cette version améliore la conservation des configurations, la traçabilité des résultats, les figures et les exemples publics reproductibles, avec une documentation réorganisée en trois langues.
 
+- **Fenêtre et lecture :** adaptation aux proportions de la fenêtre, sélection des textes importants, boutons de copie des sections et panneau À propos ouvrant la documentation dans le navigateur système.
 - **Configuration et interface :** conservation des types numériques JSON ; rejet des paramètres fixes ambigus pour plusieurs modèles ; erreurs de sauvegarde affichées sur la page d'origine. Les matrices de confusion prennent en charge de nombreuses classes ; les figures conservent l'incertitude entre plis et les étiquettes des classes.
 - **Résultats :** conservation des avertissements des estimateurs et des optimiseurs ; correspondance des classes et provenance dans le manifeste de prédiction ; empreintes des données, identifiants de lignes et environnement numérique liés aux données effectivement lues. Les rapports explicitent le R² pour une cible constante ; le comptage des catégories utilise les valeurs observées.
 - **Exemples publics :** CSV et configurations importables, instructions trilingues et comparaisons documentées par environnement pour DSA et California Housing. Les octets des données California figées sont préservés lors de l'extraction Git sous Windows. Chaque dossier précise la portée de sa validation.

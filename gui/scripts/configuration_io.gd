@@ -12,7 +12,7 @@ var save_best_model: CheckBox
 var data_hash: CheckBox
 var fixed_parameters: LineEdit
 var extra_grids: LineEdit
-var notice: Label
+var notice: RichTextLabel
 var source_path := ""
 var model_order: Array = []
 var validation_order: Array = []
@@ -39,7 +39,7 @@ func _init(owner: Control) -> void:
 	import_dialog.file_selected.connect(import_file)
 	save_dialog.file_selected.connect(save_file)
 	relink_dialog.file_selected.connect(func(path): import_file(source_path, path))
-	notice = Label.new()
+	notice = preload("res://scripts/selectable_text.gd").new()
 	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.get_parent().add_child(notice)
 	main.translated_controls.append({"node": notice, "key": "CONFIG_IO_HELP"})
@@ -66,7 +66,7 @@ func _init(owner: Control) -> void:
 	fixed_parameters = _json_field(grid)
 	_label(grid, "EXTRA_GRIDS")
 	extra_grids = _json_field(grid)
-	var help := Label.new()
+	var help := preload("res://scripts/selectable_text.gd").new()
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	grid.get_parent().add_child(help)
 	main.translated_controls.append({"node": help, "key": "ADVANCED_CONFIG_HELP"})
@@ -264,7 +264,7 @@ func enrich(config: Dictionary) -> Dictionary:
 func _show_save_error(message: String) -> void:
 	# Saving starts on page 1; keep the actionable error beside that control.
 	notice.text = main.tr("ERROR") % message
-	notice.add_theme_color_override("font_color", Color("a12c35"))
+	notice.add_theme_color_override("default_color", Color("a12c35"))
 	main._show_error(message)
 
 
@@ -283,7 +283,7 @@ func save_file(path: String) -> bool:
 	file.store_string(JSON.stringify(config, "  "))
 	file.close()
 	notice.text = main.tr("CONFIG_IO_HELP")
-	notice.remove_theme_color_override("font_color")
+	notice.remove_theme_color_override("default_color")
 	return true
 
 
