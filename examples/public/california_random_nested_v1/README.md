@@ -1,4 +1,14 @@
-# California Housing: frozen nested-regression / GUI case
+# California housing regression
+
+Download the prepared CSV and full configuration, import the configuration in PsyML, select the CSV if asked, then run from the GUI. You do not need to run the scripts below.
+
+- [中文：下载与结果对照](../../../docs/CALIFORNIA_VALIDATION_ZH.md)
+- [English: downloads and result comparison](../../../docs/CALIFORNIA_VALIDATION_EN.md)
+- [Français : téléchargements et comparaison](../../../docs/CALIFORNIA_VALIDATION_FR.md)
+- [Prepared data, official sources, conversion scripts and licences](../downloads/README.md)
+
+The commands below are optional: rebuild the CSV from its source, run a separately written reference, or compare complete numerical exports. Downloaded prepared CSVs can also be copied into `examples/public/data/` to use the unchanged repository-relative CLI configurations. Normal GUI use only requires selecting the downloaded CSV when prompted.
+
 
 [中文报告](../../../docs/CALIFORNIA_VALIDATION_ZH.md) · [English report](../../../docs/CALIFORNIA_VALIDATION_EN.md) · [Rapport français](../../../docs/CALIFORNIA_VALIDATION_FR.md)
 
@@ -36,7 +46,7 @@ rewritten by this repository integration. See [`expected/`](expected/README.md).
   RMSE: **0.5343022051161513**. All outer folds and final selection chose Random
   Forest. These are recorded historical results, not outputs of quick tests.
 
-## Reproduce from the repository root
+## Optional: rebuild data and verify independently
 
 `input_path` and `output_dir` in these public configurations are repository-root
 relative for CLI use. They differ from the historical files only in these two
@@ -132,8 +142,7 @@ coerces an invalid float `verbose` or fractional sample-size semantics.
 
 - `california_config*.json`: portable v1 and v1.1 templates.
 - `expected/`: original protocol/config bytes, provenance, source metadata,
-  compact historical metrics/failure summary and artifact hashes. Full data,
-  models, GUI screenshots and bulky result trees are deliberately not tracked.
+  compact historical metrics/failure summary and artifact hashes. Prepared data are linked above; models, GUI screenshots and bulky result trees are not tracked.
 - `tools/cases/*california*.py`: preparation, independent reference, fail-closed
   comparator and bounded synthetic controls.
 - `tests/test_public_california_case_contract.py`: archive and conversion
@@ -155,7 +164,7 @@ is asserted by the historical case.
 这是有界的软件流程符合性案例。原始 v1 的 `verbose` 整数丢失失败与 v1.1
 仅省略该参数后的成功分开保留。运行步骤、源文件哈希、冻结容差及环境差异见上文；
 完整方法、结果和证据边界见[中文报告](../../../docs/CALIFORNIA_VALIDATION_ZH.md)。
-数据、模型与大体积结果不进入 Git；请在新目录复跑，不覆盖冻结证据。
+分析用 CSV 已公开提供；模型与大体积结果不进入 Git；请在新目录复跑，不覆盖冻结证据。
 
 ## Résumé français
 

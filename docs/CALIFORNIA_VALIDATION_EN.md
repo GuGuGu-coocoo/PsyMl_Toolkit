@@ -1,6 +1,58 @@
-# California Housing: real-window and numerical-conformance case
+# California housing regression: download, run and compare
 
-[中文](CALIFORNIA_VALIDATION_ZH.md) · [Français](CALIFORNIA_VALIDATION_FR.md) · [Runnable case and commands](../examples/public/california_random_nested_v1/README.md)
+[中文](CALIFORNIA_VALIDATION_ZH.md) · [Français](CALIFORNIA_VALIDATION_FR.md) · [README](../README.md)
+
+This case predicts median house value for 20,640 California census block groups in 1990 from eight area features, including income and house age. It checks whether PsyML and a separately written scikit-learn program agree. These historical data cannot establish present-day house prices.
+
+## Download and run in the application
+
+- [Analysis CSV: california_housing.csv, 2.54 MB](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv). It is already converted using the reference transformation and ready to import.
+- [Configuration: california_config.json](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json). This is the original v1 configuration with `verbose=0`, used in the repaired-source verification.
+- [Original official data, conversion scripts, licence and checksums](../examples/public/downloads/README.md). The conversion script is public for inspection; you do not need to run it to use this case.
+
+Save the CSV and JSON in one local folder. If the browser displays file contents, use Save as and retain the extensions.
+
+The available application is still v0.3.0; an installer with the later source fixes is not yet available. The historical reference uses the source environment named on this page and does not certify the existing bundles. Checking the repaired application requires its corresponding installer. Available platforms are listed in [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases).
+
+1. Open PsyML and click “Import configuration…” on page 1. Select `california_config.json`. If asked for the data, select the downloaded `california_housing.csv`; check the resulting path and use “Browse…” to select it again if needed.
+2. Check: 20,640 rows; regression; target `MedHouseVal`; eight predictors; no group; 5 outer K-fold splits and 3 inner splits; seed `20261002`; RMSE selection; Dummy, Ridge and Random Forest candidates. The data section below lists all predictor names.
+3. On “2 Review & run”, choose a local results folder and click “Run analysis”. Keep the configured candidates, parameters and seed when comparing with the reference.
+4. On “3 Results”, read RMSE and open the complete results folder. Retain `config.json`, `metrics.csv`, `metrics_summary.csv`, `fold_metrics.csv`, predictions and environment records.
+
+Each of five outer tests holds out 4,128 rows. The remaining data are split three ways to compare models and parameters before testing the selected setting. This is nested validation. Each row's test prediction comes from a model that did not train on that row; together these are out-of-fold (OOF) predictions.
+
+## Numbers, configuration and output files
+
+These values come from the original v1 independent reference; actual GUI exports from the repaired source were compared with it on 2026-10-02. Every row uses the same [california_config.json](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) and `california_housing.csv`; separate configurations are not needed.
+
+| Reference value | Meaning | Where to compare |
+| --- | --- | --- |
+| 0.5339815958325378 | Primary: average RMSE over five outer tests. Root mean squared error is lower when predictions are closer, in units of USD 100,000 | `rmse` in this run's `metrics.csv`; [reference summary](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `rmse/mean` |
+| 0.01850680156369903 | Standard deviation of the five RMSEs, describing variation between tests; not a confidence interval | `metrics_summary.csv`; [same reference table](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `rmse/std` |
+| 0.3610547401259507 | Average of five mean absolute errors (MAE), in the same units | `mae` in `metrics.csv`; [same reference table](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `mae/mean` |
+| 0.7856663784093894 | Mean test R², measuring fit relative to variation in the target; it does not mean “78.6% accuracy” | `r2` in `metrics.csv`; [same reference table](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv), `r2/mean` |
+| 0.5343022051161513 | RMSE recomputed by the independent reference from all 20,640 test predictions together. This scalar is not directly exported in `metrics.csv`; it differs from the fold mean | [Pooled reference table](../examples/public/california_random_nested_v1/expected/historical_pooled_metrics.csv), `procedure/rmse` |
+| 1.153954483920011 / 0.7273658464149191 | Mean outer RMSE for Dummy / Ridge in the same configuration. Dummy predicts the training target mean; Ridge is regularized linear regression | `model_comparison.csv`; [family/fold reference table](../examples/public/california_random_nested_v1/expected/historical_family_fold_metrics.csv) |
+
+All five tests and the final full-data choice selected Random Forest. The fold RMSEs and other metrics below also use this configuration. The final model trains on all rows; predicting those rows with it does not provide an independent test score.
+
+## Recorded original v1 verification
+
+[Verification record: configuration/data hashes, environment, 270-check summary and scope](CALIFORNIA_REPAIRED_V1_RECORD.json).
+
+On 2026-10-02, the repaired Linux source GUI used the original v1 configuration, retaining integer `verbose=0`, for import, save, reimport, training and ten-row prediction after loading the saved model. All 270 observable checks passed without the v1.1 compatibility amendment. Mean outer RMSE was 0.5339815958325378. GUI progress planned 106 fits; there was no separate runtime trace of each production fit call.
+
+The tested application code is identical to public commit [948c451](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/commit/948c451bb0e401c7ffe1c9ab65439ebc3521031b). The following `a1450df` changed only historical-file line-ending protection. This GUI run used Linux x86_64, Python 3.12.14, scikit-learn 1.8.0, NumPy 2.3.5, pandas 2.2.3, SciPy 1.17.0 and Godot 4.6.3, with one numerical-library thread. The current official lock uses scikit-learn 1.9.0; it is a separate environment. The [three-platform CI for a1450df](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36978714686) is automated testing, not real-window validation of macOS, Windows or application bundles.
+
+The archived CSV links in the table retain values from that same original v1 independent reference. Before the fix, the original v1 GUI run failed; a separate historical run succeeded with the v1.1 configuration that omitted `verbose`. Those records remain below and are distinct from the repaired original v1 run.
+
+Formal comparison uses absolute and relative tolerances `atol=rtol=1e-10`, plus checks of row identity, splits, candidates and effective parameters. It does not promise bit-identical results on every platform. Rounded interface numbers are an initial check; the [comparator and independent reference](../examples/public/california_random_nested_v1/README.md) check complete exports. The 270/270 count covers observable checks in this run. Ordinary exports do not expose all inner memberships, preprocessing states of each inner fit, or row-level predictions of nonselected families.
+
+Random splits can put neighboring areas in both training and testing. They do not establish performance in new regions or future markets, causality, or suitability for housing or lending decisions. Capped target values remain in the data. Keep configuration, software/library versions and a separate output directory for every new run.
+
+## Historical record: pre-fix v1 failure and v1.1 compatibility run
+
+The following sections describe the earlier source revision `a145e07`, separately from the repaired original v1 verification above. Their historical result table corresponds to [california_config_v1_1.json](../examples/public/california_random_nested_v1/california_config_v1_1.json); this configuration revision is not a software version.
 
 ## 1. Result and scope
 
@@ -14,9 +66,7 @@ against an independent reference, at the tolerance frozen before scoring.
 
 This is a bounded software-workflow case. It does not certify every PsyML
 parameter, the complete toolkit, another OS or a distributed application bundle.
-The historical run did not modify production source code. This repository
-integration adds portable tools and documentation; it must not be confused with
-a new real-window validation. Later GUI repairs require their own recorded run.
+The historical run did not modify production source code. The public tools can check other runs. Later GUI repairs require validation recorded against their own source revision.
 
 ## 2. Data, attribution and conversion
 
@@ -170,10 +220,7 @@ new GUI run or new fit.
 Native GUI exports do **not** disclose all production inner memberships,
 per-inner-fit preprocessing states, individual inner scores or nonselected
 families' row-level OOF. The complete reference audit must not be described as
-an observation of those production internals. Only compact historical summaries,
-source metadata and hashes are tracked; large data, model binaries, screenshots
-and result trees are excluded. Reproduction requires the official source archive
-and a new local run.
+an observation of those production internals. The repository includes compact historical summaries, source metadata, hashes and the [prepared CSV](../examples/public/downloads/README.md). Model binaries, screenshots and full result trees are excluded. Reproduction uses a new local run; rebuilding the CSV from the source archive is optional.
 
 Random row folds can place neighboring census block groups in training and test
 sets. There is no spatially held-out, temporal or external-population validation,

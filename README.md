@@ -10,8 +10,26 @@
 
 ## 中文
 
+### 先用两个公开案例核对结果
+
+两个案例分别检查分类和回归流程：同一份数据、同一份配置，PsyML 与独立编写的 scikit-learn 程序能否给出一致的结果。
+
+| 案例 | 下载数据与配置 | 已记录的主要结果 | 操作步骤与数字来源 |
+| --- | --- | --- | --- |
+| DSA 活动分类：根据身体传感器记录识别 19 种活动；8 名参与者、9,120 行 | [分析用 CSV（2.34 MB）](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv) · [配置 JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) | 平衡准确率 0.5740131578947368，四次测试得分的平均值 | [下载、导入与结果对照](docs/VALIDATION_DSA_ZH.md) |
+| California 房价回归：用 8 个地区特征预测 1990 年街区房价中位数；20,640 行 | [分析用 CSV（2.54 MB）](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv) · [原始 v1 配置 JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) | RMSE 0.5339815958325378，五次测试误差的平均值，单位为 10 万美元 | [下载、导入与结果对照](docs/CALIFORNIA_VALIDATION_ZH.md) |
+
+软件可在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 下载。**目前可下载的应用仍为 v0.3.0，尚无包含后续源码修复的新安装包。** 下述参考结果来自案例页注明的源码版本，不能据此认定现有下载包已通过相同验证。CSV 与配置的导入操作不需要代码；若要检验修复后的应用，请等待相应安装包。配置链接固定到提交 `a1450df`，每个案例均列出环境、结果文件和比较容差，保留跨平台差异。California 使用含 `verbose=0` 的原始 v1 配置；历史 v1.1 兼容配置在案例页单独说明。
+
+1. 下载所选案例的 CSV 和 JSON 配置，放在同一个本地文件夹。若浏览器直接显示文件内容，使用“另存为”，保留 `.csv` / `.json` 后缀。CSV 已完成与参考分析相同的数据转换，不用运行脚本。
+2. 打开 PsyML，在第 1 页点击“导入配置…”。若弹出数据选择窗口，选刚下载的 CSV；导入后核对案例页列出的行数、目标和预测变量。
+3. 在第 2 页选择本地结果文件夹，点击“运行分析”。完成后在第 3 页查看指标，并打开完整结果文件夹，对照案例页的数值表。
+
+[原始数据、转换脚本、许可和文件校验值](examples/public/downloads/README.md)都可查阅。只有希望自行检查数据转换的读者才需要运行脚本。
+
 **目录**
 
+- [两个公开案例](#先用两个公开案例核对结果)
 - [打开应用](#打开应用)
 - [测试数据与快速复现](#测试数据与快速复现)
 - [数据分析操作](#数据分析操作)
@@ -36,7 +54,7 @@
 - [批量预测命令行（通用）](#batch-prediction-cli--批量预测命令行--prédiction-en-ligne-de-commande)
 
 
-📖 [研究者参考：模型、指标、结果与术语](docs/RESEARCHER_GUIDE_ZH.md) — 中文术语附英文名称，包含简短公式、阅读示例与解释边界。其他版本：[English](docs/RESEARCHER_GUIDE_EN.md) · [Français](docs/RESEARCHER_GUIDE_FR.md)
+[研究者参考：模型、指标、结果与术语](docs/RESEARCHER_GUIDE_ZH.md) — 中文术语附英文名称，包含简短公式、阅读示例与解释边界。其他版本：[English](docs/RESEARCHER_GUIDE_EN.md) · [Français](docs/RESEARCHER_GUIDE_FR.md)
 
 PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查、变量角色、预处理、模型比较、参数选择、验证、结果解释和可复现性材料放进同一流程。Godot 图形界面与命令行共用同一套 Python 分析核心。输入数据只在你的电脑上处理。
 
@@ -306,14 +324,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 ### 已验证的公开数据案例（UCI DSA）
 
-我们用一份公开的人体活动数据检验本工具的流程：UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F)，8 位参与者、19 类活动、共 9,120 条五秒记录。该案例采用按参与者分组的嵌套交叉验证，用不导入 PsyML 的独立 scikit-learn 参考实现逐项复算，并加入分组隔离审计、固定外折扰动与打乱标签 canary 等工程负控。
-
-案例已在记录的 Linux 环境完成，并在 macOS 与官方 `uv.lock` 环境中复跑核对；两次复跑彼此一致，与记录基线之间保留了小幅数值差异，原因尚未确认（见报告）。跨平台数值差异的机制诊断（Linux 内核对照与 macOS（aarch64）核查）见[诊断附录](docs/VALIDATION_DSA_DIAGNOSTICS_ZH.md)：受控实验可重现同量级差异，支持拟合数值路径敏感性；原 Mac 具体根因仍未确认。这些结果支持记录环境与固定协议下、本案例所测工作流的数值核对与复现，不代表工具包全部功能或发布包的全面验证。
-
-- 技术报告：[DSA 验证：数值复现与跨平台核验](docs/VALIDATION_DSA_ZH.md)
-- 复现说明：[可复算示例](examples/public/dsa_group_nested_v1/README.md)
-- 另一公开案例：[California Housing 回归与真实窗口验证](docs/CALIFORNIA_VALIDATION_ZH.md)（原始失败与 v1.1 成功分开保留；[复现命令](examples/public/california_random_nested_v1/README.md)）
-- 真实 CI：[最近一次三平台 Core CI 运行](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36880091260)
+[DSA 下载与结果对照](docs/VALIDATION_DSA_ZH.md) · [California 下载与结果对照](docs/CALIFORNIA_VALIDATION_ZH.md)。两个案例的入口已列在本语言章节开头。
 
 ### 配置与功能边界
 
@@ -330,6 +341,23 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 <a id="english"></a>
 
 ## English
+
+### Check results with two public examples
+
+These cases check classification and regression: do PsyML and a separately written scikit-learn program produce matching results from the same data and settings?
+
+| Case | Data and configuration downloads | Recorded primary result | Steps and number sources |
+| --- | --- | --- | --- |
+| DSA activity classification: identify 19 activities from body sensors; 8 participants, 9,120 rows | [Analysis CSV (2.34 MB)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv) · [Configuration JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) | Balanced accuracy 0.5740131578947368, averaged over four test folds | [Download, import and compare](docs/VALIDATION_DSA_EN.md) |
+| California housing regression: predict 1990 block-group median house value from 8 area features; 20,640 rows | [Analysis CSV (2.54 MB)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv) · [Original v1 configuration JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) | RMSE 0.5339815958325378, averaged over five test folds, in units of USD 100,000 | [Download, import and compare](docs/CALIFORNIA_VALIDATION_EN.md) |
+
+Download the application from [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). **The available application is still v0.3.0; a new installer containing the later source fixes is not available.** The reference results come from the source revisions identified on each case page and do not certify the existing bundles. Importing CSV and configuration requires no code; checking the repaired application requires its corresponding installer when available. Configuration links are pinned to commit `a1450df`. Each case lists its environment, output files, tolerances and retained platform differences. California uses the original v1 configuration with `verbose=0`; the historical v1.1 compatibility configuration is documented separately.
+
+1. Download the case's CSV and JSON configuration into one local folder. If the browser shows file contents, use Save as and keep the `.csv` / `.json` extensions. The CSV is already prepared using the reference transformation; no script is needed.
+2. Open PsyML and choose “Import configuration…” on page 1. If asked to locate the data, select the downloaded CSV; check the row count, target and predictors against the case page.
+3. On page 2 choose a local results folder and click “Run analysis”. On page 3 read the metrics and open the complete results folder to compare them with the case's table.
+
+[Original data, conversion scripts, licences and checksums](examples/public/downloads/README.md) are available for inspection. Running a script is only needed if you want to repeat the data conversion yourself.
 
 **Contents**
 
@@ -357,7 +385,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 - [Batch prediction CLI (shared)](#batch-prediction-cli--批量预测命令行--prédiction-en-ligne-de-commande)
 
 
-📖 [Researcher reference: models, metrics, results and terminology](docs/RESEARCHER_GUIDE_EN.md) — Short formulas, worked examples and interpretation limits. Other versions: [中文](docs/RESEARCHER_GUIDE_ZH.md) · [Français](docs/RESEARCHER_GUIDE_FR.md)
+[Researcher reference: models, metrics, results and terminology](docs/RESEARCHER_GUIDE_EN.md) — Short formulas, worked examples and interpretation limits. Other versions: [中文](docs/RESEARCHER_GUIDE_ZH.md) · [Français](docs/RESEARCHER_GUIDE_FR.md)
 
 PsyML Toolkit is a local machine-learning tool for researchers. It joins data review, variable roles, preprocessing, model comparison, parameter selection, validation, interpretation and reproducibility outputs in one workflow. The Godot GUI and CLI use the same Python analysis core. Input data stay on the local computer.
 
@@ -593,14 +621,7 @@ Except for separately identified third-party material, the project is licensed u
 
 ### Verified public-data case (UCI DSA)
 
-We use one public human-activity dataset to check the workflow: UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) — 8 participants, 19 activities, 9,120 five-second records. The case runs a participant-grouped nested cross-validation, recomputes it point by point with an independent scikit-learn reference that does not import PsyML, and adds engineering controls: a group-isolation audit, fixed outer-fold perturbations and a shuffled-label canary.
-
-The case was completed in the recorded Linux environment and re-run on macOS and in the official `uv.lock` environment; the two re-runs agree with each other, and a small numerical difference against the recorded baseline is retained, with the cause not yet confirmed (see the report). The numerical-path diagnosis of that difference (Linux kernel contrast and macOS (aarch64) checks) is in the [diagnostics appendix](docs/VALIDATION_DSA_DIAGNOSTICS_EN.md): controlled experiments reproduce differences of the same magnitude, supporting sensitivity of the fitted numerical path, while the original Mac root cause remains unconfirmed. These results support numerical checks and reproduction of the tested workflow under the recorded environments and fixed protocol, rather than comprehensive validation of all toolkit features or release packages.
-
-- Technical report: [DSA validation: numerical reproduction and cross-platform verification](docs/VALIDATION_DSA_EN.md)
-- Reproduction: [reproducible example](examples/public/dsa_group_nested_v1/README.md)
-- Another public case: [California Housing regression and real-window validation](docs/CALIFORNIA_VALIDATION_EN.md) (original failure and v1.1 success retained separately; [reproduction commands](examples/public/california_random_nested_v1/README.md))
-- CI: [most recent three-platform Core CI run](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36880091260)
+[DSA downloads and results](docs/VALIDATION_DSA_EN.md) · [California downloads and results](docs/CALIFORNIA_VALIDATION_EN.md). Both cases are introduced at the start of this language section.
 
 ### Configuration and feature boundaries
 
@@ -617,6 +638,23 @@ Researchers are welcome to report reproducible problems, methodological suggesti
 <a id="french"></a>
 
 ## Français
+
+### Vérifier les résultats avec deux exemples publics
+
+Ces cas vérifient la classification et la régression : PsyML et un programme scikit-learn écrit séparément donnent-ils des résultats concordants avec les mêmes données et réglages ?
+
+| Cas | Télécharger les données et la configuration | Résultat principal enregistré | Étapes et origine des chiffres |
+| --- | --- | --- | --- |
+| DSA : reconnaître 19 activités à partir de capteurs corporels ; 8 participants, 9 120 lignes | [CSV pour l’analyse (2,34 Mo)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv) · [Configuration JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) | Exactitude équilibrée 0.5740131578947368, moyenne de quatre plis de test | [Télécharger, importer et comparer](docs/VALIDATION_DSA_FR.md) |
+| California Housing : prédire la valeur médiane des logements par zone en 1990 avec 8 variables ; 20 640 lignes | [CSV pour l’analyse (2,54 Mo)](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv) · [Configuration originale v1 JSON](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) | RMSE 0.5339815958325378, moyenne de cinq plis de test, en unités de 100 000 USD | [Télécharger, importer et comparer](docs/CALIFORNIA_VALIDATION_FR.md) |
+
+L’application se télécharge dans [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). **La version disponible reste v0.3.0 ; aucun nouvel installateur contenant les correctifs source ultérieurs n’est encore disponible.** Les résultats de référence correspondent aux révisions source précisées dans chaque cas et ne certifient pas les paquets actuels. L’import du CSV et de la configuration ne nécessite aucun code ; vérifier l’application corrigée nécessite son installateur lorsqu’il sera disponible. Les configurations pointent vers le commit `a1450df`. Chaque cas indique environnement, fichiers de résultats, tolérances et écarts conservés entre plateformes. California utilise la configuration originale v1 avec `verbose=0` ; la variante historique v1.1 est présentée séparément.
+
+1. Téléchargez le CSV et la configuration JSON dans un même dossier local. Si le navigateur affiche le contenu, utilisez « Enregistrer sous » en gardant les extensions `.csv` / `.json`. Le CSV est déjà préparé avec la transformation de référence ; aucun script n’est nécessaire.
+2. Ouvrez PsyML et cliquez sur « Importer une configuration… » à la page 1. Si un dialogue demande les données, choisissez le CSV téléchargé ; vérifiez le nombre de lignes, la cible et les prédicteurs indiqués dans le cas.
+3. À la page 2, choisissez un dossier local de résultats et cliquez sur « Exécuter l’analyse ». À la page 3, consultez les métriques et ouvrez le dossier complet pour les comparer au tableau du cas.
+
+Les [données originales, scripts de conversion, licences et empreintes](examples/public/downloads/README.md) sont consultables. Exécuter un script n’est nécessaire que pour refaire la conversion des données.
 
 **Table des matières**
 
@@ -644,7 +682,7 @@ Researchers are welcome to report reproducible problems, methodological suggesti
 - [Prédiction en ligne de commande (commun)](#batch-prediction-cli--批量预测命令行--prédiction-en-ligne-de-commande)
 
 
-📖 [Guide de référence : modèles, métriques, résultats et terminologie](docs/RESEARCHER_GUIDE_FR.md) — Formules courtes, exemples et limites d’interprétation. Autres versions : [中文](docs/RESEARCHER_GUIDE_ZH.md) · [English](docs/RESEARCHER_GUIDE_EN.md)
+[Guide de référence : modèles, métriques, résultats et terminologie](docs/RESEARCHER_GUIDE_FR.md) — Formules courtes, exemples et limites d’interprétation. Autres versions : [中文](docs/RESEARCHER_GUIDE_ZH.md) · [English](docs/RESEARCHER_GUIDE_EN.md)
 
 PsyML Toolkit est un outil local d’apprentissage automatique destiné à la recherche. Il réunit l’examen des données, les rôles des variables, le prétraitement, la comparaison des modèles, le choix des paramètres, la validation, l’interprétation et les éléments de reproductibilité. L’interface Godot et la ligne de commande utilisent le même noyau Python. Les données restent sur l’ordinateur local.
 
@@ -880,14 +918,7 @@ Sauf éléments tiers signalés séparément, le projet est sous [licence Apache
 
 ### Cas public vérifié (UCI DSA)
 
-Nous utilisons un jeu de données public d’activité humaine pour éprouver le flux de travail : UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) — 8 participants, 19 activités, 9 120 enregistrements de cinq secondes. Le cas applique une validation croisée imbriquée groupée par participant, la recalcule point par point avec une référence scikit-learn indépendante qui n’importe pas PsyML, et ajoute des contrôles d’ingénierie : audit d’isolement des groupes, perturbations ciblées du pli externe et canari de labels mélangés.
-
-Le cas a été exécuté dans l’environnement Linux documenté puis rejoué sous macOS et dans l’environnement officiel `uv.lock` ; les deux reprises concordent entre elles et un petit écart numérique par rapport à la base enregistrée est conservé, sa cause n’étant pas confirmée (voir le rapport). Le diagnostic du chemin numérique de cet écart (contraste de noyaux Linux et vérifications macOS (aarch64)) se trouve dans l’[appendice de diagnostic](docs/VALIDATION_DSA_DIAGNOSTICS_FR.md) : les expériences contrôlées reproduisent des écarts de même magnitude, ce qui soutient la sensibilité du chemin numérique d’ajustement, tandis que la cause racine Mac d’origine reste non confirmée. Ces résultats étayent les vérifications numériques et la reproduction du flux testé dans les environnements documentés et selon le protocole fixé, sans constituer une validation complète de toutes les fonctions ou des paquets distribués.
-
-- Rapport technique : [validation DSA : reproduction numérique et vérification inter-plateformes](docs/VALIDATION_DSA_FR.md)
-- Reproduction : [exemple reproductible](examples/public/dsa_group_nested_v1/README.md)
-- Autre cas public : [California Housing, régression et interface réelle](docs/CALIFORNIA_VALIDATION_FR.md) (échec original et succès v1.1 conservés séparément ; [commandes](examples/public/california_random_nested_v1/README.md))
-- CI : [dernière exécution Core CI sur trois plateformes](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36880091260)
+[Téléchargements et résultats DSA](docs/VALIDATION_DSA_FR.md) · [Téléchargements et résultats California](docs/CALIFORNIA_VALIDATION_FR.md). Les deux cas figurent au début de cette section linguistique.
 
 ### Configuration et limites fonctionnelles
 

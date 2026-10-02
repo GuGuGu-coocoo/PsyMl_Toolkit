@@ -1,6 +1,13 @@
 # Public acceptance examples
 
-These examples use three datasets distributed by the UCI Machine Learning Repository under CC BY 4.0. The datasets are downloaded from UCI and verified against pinned SHA-256 hashes; generated local CSV files are ignored by Git and are not redistributed by this repository.
+Start with the two documented validation cases:
+
+- [DSA activity classification](../../docs/VALIDATION_DSA_EN.md): [中文](../../docs/VALIDATION_DSA_ZH.md) · [Français](../../docs/VALIDATION_DSA_FR.md)
+- [California housing regression](../../docs/CALIFORNIA_VALIDATION_EN.md): [中文](../../docs/CALIFORNIA_VALIDATION_ZH.md) · [Français](../../docs/CALIFORNIA_VALIDATION_FR.md)
+
+Both have [prepared CSV downloads, official sources and conversion scripts](downloads/README.md). The GUI route uses CSV + JSON and needs no code. Only readers who want to rebuild the data or run an independent comparison need the commands below. Application-version limits are stated in the main README.
+
+Iris and Concrete examples below are also from UCI under CC BY 4.0. Their fetch tool checks pinned source hashes and keeps generated CSVs local. DSA and California's explicitly published prepared copies are in `downloads/`; locally generated data in `data/` remain Git-ignored.
 
 ## Classification — Iris
 

@@ -14,3 +14,5 @@ examples/public/california_random_nested_v1/expected/** -text
 *.ico binary
 *.icns binary
 *.pdf binary
+# Public prepared datasets retain the frozen byte identity on every platform.
+examples/public/downloads/*.csv -text

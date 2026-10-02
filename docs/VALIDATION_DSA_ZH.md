@@ -1,39 +1,55 @@
-# PsyML 在公开人体活动数据上的分组嵌套交叉验证：数值复现与跨平台核验
+# DSA 活动分类：下载数据、运行配置、核对结果
 
-[English](VALIDATION_DSA_EN.md) · [Français](VALIDATION_DSA_FR.md)
+[English](VALIDATION_DSA_EN.md) · [Français](VALIDATION_DSA_FR.md) · [返回 README](../README.md)
 
-案例 `psyml_dsa_group_nested_v1` · PsyML `0.3.0`（提交 `de33abfe52ccfee67f461a850edd00a14d2fbfaa`） · 2026-10-01
+这个案例用身体传感器记录识别走路、坐下等 19 种活动。数据来自 8 名参与者，共 9,120 段五秒记录。检验的问题是：把同一个人的全部记录放在同一侧，PsyML 能否正确完成训练和测试，并得到与独立 scikit-learn 程序一致的结果？
 
-## 摘要
+## 1. 从下载到运行
 
-**目的。** 用一份公开的人体活动数据，检验 PsyML 的参与者分组嵌套验证流程在真实数据上的数值行为：切分成员、训练折内预处理、内层选择、折外预测、指标计算与模型持久化是否按事先冻结的协议执行，并能被一份独立实现复算。
+### 下载两个文件
 
-**方法。** 数据为 UCI *Daily and Sports Activities*（DSA）：8 位参与者、19 类活动、每人每类 60 条五秒记录，共 9,120 条。每段只取躯干三轴加速度与三轴角速度，逐段计算均值与总体标准差，得到 12 个特征。外层为 4 折参与者分组交叉验证；内层为 3 折分层分组交叉验证；候选为 Dummy 与逻辑回归；选择指标为内层 balanced accuracy 的未加权均值。独立参考实现不导入 PsyML，只用公开 scikit-learn API 重建同一协议；另有分组隔离审计、固定外折扰动与打乱标签 canary 等工程负控。
+- [分析用 CSV：dsa_torso_mean_std.csv，2.34 MB](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv)，共 9,120 行。这是已转换好的数据，下载后可直接导入。
+- [完整分析配置：dsa_group_nested_v1.json](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json)。它包含全部候选模型与参数搜索；不要用运行后生成的 `best_parameters_configure.json` 替代。
 
-**主要结果。** 主指标为 4 个外层折的折均 balanced accuracy：0.5740131578947368。9,120 条折外预测在两套实现间逐行一致；54 次拟合的训练行、家族、参数与预处理统计对齐；保存模型回放与独立最终模型一致。该数值来自原案例包的 Linux 冻结运行；在 macOS（aarch64）复跑中，硬预测逐字节一致，仅概率导出的 ROC-AUC 相差约 2.03e-7、折外概率最大差约 1.98e-5，该差异被原样保留。
+把两个文件放在同一个文件夹。如果浏览器显示文件内容，使用“另存为”，保留 `.csv` 和 `.json` 后缀。无需安装 Python 或运行转换脚本。
 
-**结论边界。** 结果只支持所测流程在该案例中的数值符合性与可复现性；不构成新算法、性能领先、临床或人群结论，也不代表工具包全部功能已在所有平台验证。
+CSV 将每段躯干六个传感器通道的均值和标准差整理成 12 个预测变量，另有记录编号、参与者编号和活动类别。[官方原始数据、转换脚本、许可及 SHA-256](../examples/public/downloads/README.md)均可查看；脚本仅供希望独立重做转换的读者使用。
 
-## 1. 引言
+### 导入软件并运行
 
-机器学习工具的正确性并不只体现在最终分数上。对研究者而言，同样关键的是：划分是否真的按参与者隔离、预处理是否只在训练折内拟合、模型与参数是否只依据训练侧证据选择、折外预测与指标是否能被独立复算、保存的模型是否能忠实回放。在真实行为数据上用一个固定协议检验这些环节，比只用合成数据更能暴露数据转换与分组语义上的问题；而按参与者（而非按行）划分，避免把同一人的相邻片段分到训练和测试两侧，是这类数据最基本的防泄漏要求。
+1. 打开 PsyML。应用下载和版本说明见 [README](../README.md)：现有 v0.3.0 下载包尚不包含后续源码修复，新版安装包尚未提供。本页历史参考不能作为该下载包的验收结果。
+2. 在“1 数据与分析设置”点击“导入配置…”，选下载的 `dsa_group_nested_v1.json`。如果软件询问数据位置，选刚下载的 `dsa_torso_mean_std.csv`。导入后确认数据路径正确；需要重选时点击“浏览…”。不需要手改 JSON。
+3. 核对：9,120 行；分类；目标 `activity`；分组 `subject_id`；12 个 `torso_` 开头的预测变量；分组 K 折、外层 4 折、内层 3 折；随机种子 `20261001`；Dummy 和 Logistic Regression 两个候选模型。不要把 `segment_id` 或 `subject_id` 勾成预测变量。
+4. 打开“2 检查与运行”，选择电脑上的结果文件夹，点击“运行分析”。导入配置本身不会启动运行。软件会创建新的结果子文件夹。
+5. 完成后打开“3 结果”，查看平衡准确率，并点击“打开完整结果文件夹”。保留 `config.json`、指标、预测和环境记录，作为这次运行的结果。
 
-本报告记录一个此类案例：在公开的 UCI *Daily and Sports Activities*（DSA）数据上，以事先冻结的协议运行 PsyML，并与不导入 PsyML 的独立 scikit-learn 实现逐项核对。它属于软件维护与流程验收，**不是**新方法论文、不是原论文基准复现，也不是同类工具比较；不涉及心理构念测量、临床、因果或人因效果结论。
+“外层 4 折”表示分四次测试，每次留出两名参与者，测试数据不参与该次训练。“内层 3 折”是在剩余参与者中比较候选设置，再把选好的设置用于外层测试。这就是本案例所说的嵌套验证。
 
-## 数据、配置与 GUI 复现入口
+### 哪个数字对应哪个配置？
 
-- **分析配置。** 复现使用案例原始的完整搜索配置 [`examples/public/configs/dsa_group_nested_v1.json`](../examples/public/configs/dsa_group_nested_v1.json)：其中包含完整候选与参数网格、分组列以及外层 4 折/内层 3 折设置。不要用运行后导出的最佳参数配置（如 `best_parameters_configure.json`）替代，后者只固定选出的参数，不重新执行内层搜索。
-- **测试数据。** 所需文件为 `dsa_torso_mean_std.csv`（9,120 行）。该派生 CSV 未随仓库分发，也没有直接下载地址；请从 UCI 官方页面下载原始压缩包（DOI <https://doi.org/10.24432/C5C59F>），再按[案例运行说明](../examples/public/dsa_group_nested_v1/README.md#运行仓库根目录)在仓库根目录生成：
+先看第一行的主要结果。其余指标与单独的打乱标签检查供需要深入核对的读者查看。
 
-  ```bash
-  uv run python tools/cases/prepare_dsa.py \
-    --archive /path/to/daily_and_sports_activities.zip \
-    --output-dir examples/public/data
-  ```
+下面是 2026-10-01 原始 Linux 案例的记录值。除最后一行的打乱标签检查外，均使用上面的完整配置和同一个 `dsa_torso_mean_std.csv`。机器可读原值在 [case_summary.json](../examples/public/dsa_group_nested_v1/expected/case_summary.json)。
 
-  生成位置为 `examples/public/data/dsa_torso_mean_std.csv`（`examples/public/data/` 被 Git 忽略）；`/path/to/...` 只是本地 ZIP 路径的占位符，不是公开下载地址。脚本会按冻结哈希校验生成的 CSV。
-- **GUI 操作。** 在应用第 1 页点击“导入配置…”，选择上述 JSON；若提示数据不存在，在系统窗口中定位上一步生成的 `dsa_torso_mean_std.csv`；随后在“2 检查与运行”页核对设置并点击“运行分析”。这些步骤供读者自行运行与核对，不构成 GUI 或打包应用已通过人工验收的声明。
-- **案例与参考结果。** 案例目录为 [`examples/public/dsa_group_nested_v1/`](../examples/public/dsa_group_nested_v1/README.md)，其 [`expected/`](../examples/public/dsa_group_nested_v1/expected/README.md) 入口给出冻结期望值与复跑摘要（`case_summary.json`、`golden_hashes.json` 等），便于逐项核对结果。
+| 记录值 | 含义与查看位置 | 配置／单独操作 |
+| --- | --- | --- |
+| 0.5740131578947368 | 四个外层测试的平衡准确率平均值；在 `metrics.csv` 看 `balanced_accuracy`。平衡准确率先分别计算每类的识别率，再对 19 类取平均 | [完整配置](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json)；原值 `baseline_metrics.fold_mean_balanced_accuracy` |
+| 0.05263157894736842 | 同样四次测试中 Dummy 的平均平衡准确率；在 `model_comparison.csv` 的 `dummy` 行看 `balanced_accuracy`。它不学习传感器与活动的关系 | [同一完整配置](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) 中的 `dummy`；原值 `baseline_metrics.dummy_balanced_accuracy` |
+| 0.5513874769696934 | 先在每次外层测试算 macro-F1，再平均四次得分；`metrics.csv` 的 `f1_macro` | [同一完整配置](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json)；原值 `baseline_metrics.fold_mean_f1_macro` |
+| 0.5702035749465654 | 独立参考合并 9,120 条测试预测后重算的 macro-F1；`metrics.csv` 不直接提供这一项，不要与四折平均值混用 | [同一完整配置](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json)；原值 `baseline_metrics.pooled_oof_macro_f1` |
+| 0.0532894736842105 | 在每名参与者内随机打乱活动标签后重跑的平衡准确率，用于检查明显异常；正常导入配置不会产生这一项 | [单独的检查工具](../tools/cases/check_dsa_controls.py)，使用同一配置、种子 `20261002`；原值 `placebo.balanced_accuracy` |
+
+macro-F1 先分别计算各类的 F1，再对类别取平均；F1 同时考虑漏识别和误识别。四次外层测试和最终全数据选择都选中 Logistic Regression，`C=1.0`。完整逐折分数和选择记录见下文第 3 节；它们也都来自同一完整配置，无需另找配置文件。
+
+### 如何判断自己的结果
+
+先确认数据、配置、分组、预测变量和环境版本一致，再比较导出的完整数字。界面显示可能经过舍入。参考值使用 PsyML `0.3.0`、提交 `de33abf`、Python `3.12.14`、scikit-learn `1.8.0`；当前锁定环境在 Python ≥3.11 上使用 scikit-learn `1.9.0`。软件版本号相同也不代表源码和环境相同。
+
+同环境正式比较规则为指标绝对差 ≤`1e-12`；预处理 `atol=rtol=1e-12`；概率 `atol=1e-10, rtol=1e-8`。这是[比较程序](../tools/cases/compare_dsa.py)的检查规则，不是跨平台逐位相同的保证。macOS 与官方锁定环境的复跑保留了概率及 ROC-AUC 的差异；主预测和上述主指标一致。详情及未确认的原因见[数值差异说明](VALIDATION_DSA_DIAGNOSTICS_ZH.md)。自己的新输出应保存在新目录，不替换已记录的参考结果。
+
+若需要逐行、逐折核对，而不只是查看主指标，按[独立复算与比较命令](../examples/public/dsa_group_nested_v1/README.md)操作。两套程序共用 scikit-learn 的底层模型，因此这检验的是分析步骤是否一致。只有 8 名参与者，结果不能代表其他人群、设备或日常环境，也不支持临床或因果结论。打乱标签检查只运行一次，不是统计置换检验。
+
+以下保留完整方法、逐折结果、历史检查记录和适用范围。
 
 ## 2. 数据与方法
 
@@ -159,7 +175,7 @@
 
 ### 4.1 证据支持什么
 
-本案例支持的结论是：在记录的代码版本、协议与环境中，PsyML 的参与者分组嵌套流程与一份独立重建的 scikit-learn 实现给出相同的切分、选择与预测结果，训练折内预处理与持久化行为可被逐项核对；工程负控没有发现该流程中的组泄漏或选择污染迹象。它也确认了仓库只在本地生成派生数据、不重新分发数据。
+本案例支持的结论是：在记录的代码版本、协议与环境中，PsyML 的参与者分组嵌套流程与一份独立重建的 scikit-learn 实现给出相同的切分、选择与预测结果，训练折内预处理与持久化行为可被逐项核对；工程负控没有发现该流程中的组泄漏或选择污染迹象。分析用 CSV 现已随案例公开，来源与转换说明见[数据下载页](../examples/public/downloads/README.md)。
 
 ### 4.2 与既有研究的区别
 
@@ -178,7 +194,7 @@
 
 ## 5. 数据与代码可用性及复现步骤
 
-- 数据按 CC BY 4.0 从 UCI 官方地址获取；仓库**不重新分发**数据，派生 CSV 只在本地的 Git 忽略目录 `examples/public/data/` 生成。归属与修改说明见 `examples/public/dsa_group_nested_v1/expected/` 与 `tools/cases/prepare_dsa.py`。
+- 原始数据来自 UCI，许可为 CC BY 4.0。[数据下载页](../examples/public/downloads/README.md)提供分析用 CSV、原始 ZIP、转换脚本、作者归属及处理说明。自行转换的输出仍写入本地 Git 忽略目录 `examples/public/data/`。
 - 代码以 Apache License 2.0 发布。案例工具位于 `tools/cases/`，配置在 `examples/public/configs/dsa_group_nested_v1.json`，固定期望值在 `examples/public/dsa_group_nested_v1/expected/`，契约与集成测试在 `tests/test_public_dsa_case_contract.py`。
 - 复现步骤（仓库根目录）：
 
@@ -189,7 +205,7 @@ uv run python tools/cases/prepare_dsa.py --archive <official.zip> --output-dir e
 #      examples/public/dsa_group_nested_v1/README.md
 ```
 
-CLI 与各工具都要求新的空输出目录，已有结果不被覆盖；`input_path`/`output_dir` 按进程当前目录解析。失败条件包括：任一哈希不符、成员集合异常、非有限值或形状/计数错误、分区组交叉、平手被近似打破、指标或概率超容差、保存模型回放不一致、canary BA > 0.10，或出现未审阅的 stderr 警告。不允许通过修改容差、删折、增加迭代、更换 C、替换数据或改选验证方式来让失败"变绿"。
+CLI 与各工具都要求新的空输出目录，已有结果不被覆盖；`input_path`/`output_dir` 按进程当前目录解析。失败条件包括：任一哈希不符、成员集合异常、非有限值或形状/计数错误、分区组交叉、平手被近似打破、指标或概率超容差、保存模型回放不一致、canary BA > 0.10，或出现未审阅的 stderr 警告。这些差异需要保留并查明原因。修改容差、删折、增加迭代、更换 C、数据或验证方法会改变比较条件，不能算作原方案通过。
 
 ## 6. 参考文献
 

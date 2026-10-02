@@ -1,39 +1,55 @@
-# Participant-grouped nested cross-validation of PsyML on public human-activity data: numerical reproduction and cross-platform verification
+# DSA activity classification: download, run and compare
 
-[中文](VALIDATION_DSA_ZH.md) · [Français](VALIDATION_DSA_FR.md)
+[中文](VALIDATION_DSA_ZH.md) · [Français](VALIDATION_DSA_FR.md) · [README](../README.md)
 
-Case `psyml_dsa_group_nested_v1` · PsyML `0.3.0` (commit `de33abfe52ccfee67f461a850edd00a14d2fbfaa`) · 2026-10-01
+This case identifies 19 activities, such as walking and sitting, from body sensors. It contains 9,120 five-second records from 8 participants. The question is whether PsyML keeps each person's records together during training and testing and produces the same results as a separately written scikit-learn program.
 
-## Abstract
+## 1. Download and run
 
-**Aim.** To test the numerical behaviour of PsyML's participant-grouped nested validation workflow on real data: whether splitting, training-fold-only preprocessing, inner selection, out-of-fold prediction, metric calculation and model persistence follow a protocol frozen in advance, and whether an independent implementation reproduces them.
+### Download two files
 
-**Methods.** The data are the UCI *Daily and Sports Activities* (DSA) set: 8 participants, 19 activities, 60 five-second records per participant and activity, 9,120 records in total. Per segment, only the torso three-axis acceleration and three-axis angular rate are used, reduced to per-channel mean and population standard deviation, giving 12 features. The outer design is a 4-fold participant-grouped cross-validation; the inner design is a 3-fold stratified group cross-validation; the candidates are Dummy and logistic regression; selection uses the unweighted mean of inner balanced accuracies. An independent reference implementation never imports PsyML and rebuilds the same protocol with public scikit-learn APIs. Engineering controls cover a group-isolation audit, fixed outer-fold perturbations and a shuffled-label canary.
+- [Analysis CSV: dsa_torso_mean_std.csv, 2.34 MB](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv), with 9,120 rows. It is already converted and ready to import.
+- [Full analysis configuration: dsa_group_nested_v1.json](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json). It includes all candidate models and parameter searches. The `best_parameters_configure.json` produced after a run does not repeat that search.
 
-**Main results.** The primary metric, the fold mean of outer-fold balanced accuracy, is 0.5740131578947368. All 9,120 out-of-fold predictions agree row by row between the two implementations; the training rows, families, parameters and preprocessing statistics of the 54 fits align; saved-model replay matches the independent final model. These values come from the original case package's frozen Linux run. On the macOS (aarch64) re-run, hard predictions were byte-identical; only the probability-derived ROC-AUC differed by about 2.03e-7, with out-of-fold probabilities differing by at most about 1.98e-5. That difference is retained as published.
+Save both files in one folder. If the browser displays their contents, use Save as and keep the `.csv` and `.json` extensions. You do not need Python or a conversion script.
 
-**Scope.** The results support numerical conformance and reproducibility of the tested workflow in this case only; they are not a new algorithm, a performance claim, or a clinical or population-level result, and they do not show that every toolkit feature is verified on every platform.
+The CSV contains each segment's mean and standard deviation for six torso sensor channels: 12 predictors plus record ID, participant ID and activity. [Official source data, conversion scripts, licence and SHA-256](../examples/public/downloads/README.md) are available. The script is optional for readers who want to repeat the conversion independently.
 
-## 1. Introduction
+### Import into PsyML
 
-The correctness of a machine-learning tool is not visible in the final score alone. For researchers, it matters just as much that splits really isolate participants, that preprocessing is fitted inside training folds, that models and parameters are chosen from training-side evidence, that out-of-fold predictions and metrics can be recomputed independently, and that a saved model replays faithfully. Checking these steps on real behavioural data with a fixed protocol exposes data-conversion and grouping problems that synthetic data may not reveal. Splitting by participant rather than by row avoids placing adjacent segments from the same person on both sides of the train/test boundary, which is the basic leakage requirement for this kind of data.
+1. Open PsyML. See the [README](../README.md) for downloads and versions: the available v0.3.0 bundles lack later source fixes, and a new installer is not yet available. This historical reference does not certify those bundles.
+2. On “1 Data & analysis setup”, click “Import configuration…” and select `dsa_group_nested_v1.json`. If asked for the data, select the downloaded `dsa_torso_mean_std.csv`. Check the imported data path; use “Browse…” if you need to select it again. No JSON editing is required.
+3. Check: 9,120 rows; classification; target `activity`; group `subject_id`; 12 predictors starting with `torso_`; grouped K-fold, 4 outer folds, 3 inner folds; seed `20261001`; Dummy and Logistic Regression. Keep `segment_id` and `subject_id` out of the predictors.
+4. On “2 Review & run”, choose a local results folder and click “Run analysis”. Importing alone does not start a run. PsyML creates a new results subfolder.
+5. On “3 Results”, read balanced accuracy and choose “Open complete result folder”. Keep `config.json`, metrics, predictions and environment records for this run.
 
-This report documents such a case: PsyML runs on the public UCI *Daily and Sports Activities* (DSA) data under a protocol frozen in advance and is compared point by point with an independent scikit-learn implementation that does not import PsyML. It is a software-maintenance and workflow-acceptance exercise, **not** a new-method paper, a reproduction of the original paper's benchmark, or a comparison against other tools; it supports no statement about psychological constructs, clinical use, causality or human-factors effects.
+Four outer folds means four tests, each holding out two participants from training. Three inner folds compare candidate settings among the remaining participants before testing the selected setting. This two-stage process is nested validation.
 
-## Data, configuration and GUI reproduction entry
+### Which configuration produces each number?
 
-- **Analysis configuration.** Reproduction uses the case's original full search configuration [`examples/public/configs/dsa_group_nested_v1.json`](../examples/public/configs/dsa_group_nested_v1.json): it contains the full candidate and parameter grids, the group column and the 4-fold outer / 3-fold inner settings. Do not substitute the best-parameters configuration exported after a run (such as `best_parameters_configure.json`), which only fixes the selected parameters and does not repeat the inner search.
-- **Test data.** The required file is `dsa_torso_mean_std.csv` (9,120 rows). This derived CSV is not distributed with the repository and has no direct download address; download the original archive from the official UCI page (DOI <https://doi.org/10.24432/C5C59F>) and generate it from the repository root as described in the [case run instructions](../examples/public/dsa_group_nested_v1/README.md#运行仓库根目录):
+Start with the primary result in the first row. The remaining metrics and separate shuffled-label check are optional deeper checks.
 
-  ```bash
-  uv run python tools/cases/prepare_dsa.py \
-    --archive /path/to/daily_and_sports_activities.zip \
-    --output-dir examples/public/data
-  ```
+These are recorded values from the original Linux case on 2026-10-01. All rows except the shuffled-label check use the full configuration above and the same `dsa_torso_mean_std.csv`. The original values are in [case_summary.json](../examples/public/dsa_group_nested_v1/expected/case_summary.json).
 
-  The file is written to `examples/public/data/dsa_torso_mean_std.csv` (`examples/public/data/` is Git-ignored); `/path/to/...` is only a placeholder for your local copy of the ZIP, not a public download address. The script checks the generated CSV against the frozen hash.
-- **GUI steps.** On page 1 click “Import configuration…”, select that JSON; if the data is reported missing, locate the generated `dsa_torso_mean_std.csv` in the system dialog; then on the “2 Review & run” page verify the settings and click “Run analysis”. These steps are provided for readers to run and check themselves; they are not a claim that the GUI or packaged applications have passed human acceptance.
-- **Case and reference results.** The case directory is [`examples/public/dsa_group_nested_v1/`](../examples/public/dsa_group_nested_v1/README.md); its [`expected/`](../examples/public/dsa_group_nested_v1/expected/README.md) entry holds the frozen expectations and re-run summaries (`case_summary.json`, `golden_hashes.json`, …) for checking results point by point.
+| Recorded value | Meaning and where to look | Configuration or separate step |
+| --- | --- | --- |
+| 0.5740131578947368 | Mean balanced accuracy over four outer tests; `balanced_accuracy` in `metrics.csv`. Balanced accuracy averages the recognition rate of each of the 19 classes | [Full configuration](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json); `baseline_metrics.fold_mean_balanced_accuracy` |
+| 0.05263157894736842 | Mean balanced accuracy of Dummy on those same folds; `balanced_accuracy` in the `dummy` row of `model_comparison.csv`. Dummy does not learn a sensor/activity relationship | `dummy` in the [same configuration](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json); `baseline_metrics.dummy_balanced_accuracy` |
+| 0.5513874769696934 | Compute macro-F1 within each outer test, then average the four scores; `f1_macro` in `metrics.csv` | [Same configuration](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json); `baseline_metrics.fold_mean_f1_macro` |
+| 0.5702035749465654 | Recomputed by the independent reference from all 9,120 test predictions together. This scalar is not directly exported in `metrics.csv`; do not confuse it with the fold mean | [Same configuration](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json); `baseline_metrics.pooled_oof_macro_f1` |
+| 0.0532894736842105 | Balanced accuracy after shuffling activity labels within each participant; an ordinary GUI run does not produce this check | [Separate control tool](../tools/cases/check_dsa_controls.py), same configuration and shuffle seed `20261002`; `placebo.balanced_accuracy` |
+
+Macro-F1 averages the F1 scores of individual classes; F1 accounts for both missed and incorrect identifications. All four outer tests and the final full-data selection chose Logistic Regression with `C=1.0`. The fold scores and selection records in section 3 use this same full configuration, not additional configuration files.
+
+### Comparing a new run
+
+Check data, configuration, grouping, predictors and library versions before comparing complete exported numbers. The interface may round values. The reference used PsyML `0.3.0`, commit `de33abf`, Python `3.12.14` and scikit-learn `1.8.0`; the current lock uses scikit-learn `1.9.0` on Python ≥3.11. A matching software version label alone does not establish the same source or environment.
+
+Same-environment checks require metric absolute differences ≤`1e-12`, preprocessing `atol=rtol=1e-12`, and probability `atol=1e-10, rtol=1e-8`. These are the [comparison tool's](../tools/cases/compare_dsa.py) rules, not a promise of bit-identical results across platforms. The macOS and official-lock reruns retain probability and ROC-AUC differences; hard predictions and the primary values above agree. See the [numerical-difference notes](VALIDATION_DSA_DIAGNOSTICS_EN.md), including the unresolved cause. Save new runs separately from the recorded reference.
+
+For row-by-row and fold-by-fold checks, use the [independent recomputation commands](../examples/public/dsa_group_nested_v1/README.md). Both programs use scikit-learn's underlying models, so they check agreement of the analysis steps. Eight participants do not establish performance in other populations, devices or everyday settings, or support clinical or causal conclusions. The single shuffled-label check is not a statistical permutation test.
+
+The full methods, fold results, historical checks and limitations follow.
 
 ## 2. Data and methods
 
@@ -159,7 +175,7 @@ After the push, the repository's Core CI ([run 36880091260](https://github.com/G
 
 ### 4.1 What the evidence supports
 
-The case supports this: for the recorded code version, protocol and environment, PsyML's participant-grouped nested workflow and an independently rebuilt scikit-learn implementation produce the same splits, selections and predictions; training-fold preprocessing and persistence behaviour can be checked point by point; and the engineering controls found no sign of group leakage or selection contamination in this workflow. It also confirms that the repository generates derived data locally and does not redistribute the dataset.
+The case supports this: for the recorded code version, protocol and environment, PsyML's participant-grouped nested workflow and an independently rebuilt scikit-learn implementation produce the same splits, selections and predictions; training-fold preprocessing and persistence behaviour can be checked point by point; and the engineering controls found no sign of group leakage or selection contamination in this workflow. The prepared CSV is now public; the [download page](../examples/public/downloads/README.md) records its source and transformation.
 
 ### 4.2 Relation to prior work
 
@@ -178,7 +194,7 @@ The native 19-class confusion-matrix export was crowded under its original defau
 
 ## 5. Data and code availability, and reproduction
 
-- The data are obtained under CC BY 4.0 from the official UCI location; the repository **does not redistribute** them, and the derived CSV is generated only in the local Git-ignored `examples/public/data/`. Attribution and the modification note are in `examples/public/dsa_group_nested_v1/expected/` and `tools/cases/prepare_dsa.py`.
+- Original data come from UCI under CC BY 4.0. The [download page](../examples/public/downloads/README.md) provides the prepared CSV, source ZIP, conversion script, attribution and transformation details. Locally rebuilt data still go into the Git-ignored `examples/public/data/` directory.
 - The code is released under the Apache License 2.0. Case tools live in `tools/cases/`, the configuration in `examples/public/configs/dsa_group_nested_v1.json`, pinned expectations in `examples/public/dsa_group_nested_v1/expected/`, and contract/integration tests in `tests/test_public_dsa_case_contract.py`.
 - Reproduction (from the repository root):
 
@@ -189,7 +205,7 @@ uv run python tools/cases/prepare_dsa.py --archive <official.zip> --output-dir e
 #      the full command sequence is in examples/public/dsa_group_nested_v1/README.md
 ```
 
-The CLI and every tool require a new empty output directory; existing results are never overwritten, and `input_path`/`output_dir` resolve against the process working directory. Failure conditions include any hash mismatch, unexpected member set, non-finite value or wrong shape/count, group overlap, an approximated tie break, metrics or probabilities beyond tolerance, inconsistent saved-model replay, canary BA above 0.10, or unreviewed stderr warnings. Failures must not be turned green by changing tolerances, deleting folds, raising iterations, changing C, swapping data or picking another validation.
+The CLI and every tool require a new empty output directory; existing results are never overwritten, and `input_path`/`output_dir` resolve against the process working directory. Failure conditions include any hash mismatch, unexpected member set, non-finite value or wrong shape/count, group overlap, an approximated tie break, metrics or probabilities beyond tolerance, inconsistent saved-model replay, canary BA above 0.10, or unreviewed stderr warnings. Retain and investigate differences. Changing tolerances, folds, iterations, C, data or validation changes the comparison conditions and cannot establish that the original procedure passed.
 
 ## 6. References
 

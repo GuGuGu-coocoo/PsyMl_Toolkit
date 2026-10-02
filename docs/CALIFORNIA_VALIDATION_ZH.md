@@ -1,14 +1,64 @@
-# California Housing：真实窗口与数值符合性历史案例
+# California Housing 回归：下载数据、运行配置、核对结果
 
-[English](CALIFORNIA_VALIDATION_EN.md) · [Français](CALIFORNIA_VALIDATION_FR.md) · [可运行案例与命令](../examples/public/california_random_nested_v1/README.md)
+[English](CALIFORNIA_VALIDATION_EN.md) · [Français](CALIFORNIA_VALIDATION_FR.md) · [返回 README](../README.md)
 
-本文数值与 GUI 操作是 2026-10-02 原始案例的历史记录；仓库整合、合成契约测试或重新比较旧导出都不等于新 GUI 验收。新版本真实窗口测试必须单独记录，不能覆盖原始失败、v1.1 成功或冻结容差。
+这个案例用收入、房龄等 8 个地区特征，预测 1990 年加州人口普查中 20,640 个街区组的房价中位数。这里检查的是 PsyML 与独立 scikit-learn 程序的计算是否一致；这些旧数据不能用来判断今天的房价。
+
+## 下载并在软件里运行
+
+- [下载分析用 CSV：california_housing.csv，2.54 MB](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/california_housing.csv)。数据已按参考分析完成转换，可直接导入。
+- [下载配置：california_config.json](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json)。这是含 `verbose=0` 的原始 v1 配置，也是修复后源码验证使用的配置。
+- [查看官方原始数据、转换脚本、许可和文件校验值](../examples/public/downloads/README.md)。转换脚本已经公开，核对数据处理时可以使用；运行本例不需要执行脚本。
+
+把 CSV 和 JSON 放在同一个本地文件夹。若浏览器直接显示文件内容，使用“另存为”，保留原来的扩展名。
+
+目前可下载的应用仍为 v0.3.0，尚无包含后续源码修复的新安装包。历史参考对应本页注明的源码环境，不能作为现有下载包的验收结果；若要验证修复后的应用，需要相应安装包。软件可下载平台见 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases)。
+
+1. 打开 PsyML，在第 1 页点击“导入配置…”，选择 `california_config.json`。若弹出数据选择窗口，选择刚下载的 `california_housing.csv`；随后核对数据路径，必要时用“浏览…”重选。
+2. 核对：20,640 行；回归；目标 `MedHouseVal`；8 个预测变量；不分组；外层 K 折 5 折、内层 3 折；随机种子 `20261002`；以 RMSE 选择；候选模型为 Dummy、Ridge、Random Forest。完整变量名列在下文的数据说明中。
+3. 在“2 检查与运行”选择本地结果文件夹，点击“运行分析”。不要改候选参数或为了接近参考值更换随机种子。
+4. 完成后到“3 结果”查看 RMSE，点击“打开完整结果文件夹”。保留 `config.json`、`metrics.csv`、`metrics_summary.csv`、`fold_metrics.csv`、预测和环境记录。
+
+五个外层测试每次留出 4,128 行；剩余数据内部再分三次比较模型和参数，选择误差较低的设置。这叫嵌套验证。每行的测试预测都来自没有用该行训练的模型，合起来称为折外预测（OOF）。
+
+## 数字、配置和结果文件
+
+下面是原始 v1 独立参考程序的数值；2026-10-02 修复后源码的真实 GUI 导出已与其逐项核对。每一行都使用同一个 [california_config.json](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/california_random_nested_v1/california_config.json) 和 `california_housing.csv`，不需要分别运行不同配置。
+
+| 参考值 | 含义 | 在哪里核对 |
+| --- | --- | --- |
+| 0.5339815958325378 | 主要结果：五个外层测试 RMSE 的平均值。RMSE 是均方根误差，越低越好，单位为 10 万美元 | 本次 `metrics.csv` 的 `rmse`；[参考均值表](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv)，`rmse/mean` |
+| 0.01850680156369903 | 五个 RMSE 的标准差，描述测试之间的波动；不是置信区间 | 本次 `metrics_summary.csv`；[同一参考表](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv)，`rmse/std` |
+| 0.3610547401259507 | 五个测试的平均绝对误差（MAE）均值，单位同上 | 本次 `metrics.csv` 的 `mae`；[同一参考表](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv)，`mae/mean` |
+| 0.7856663784093894 | 五个测试的 R² 均值；衡量预测相对目标波动的拟合程度，不是“准确率 78.6%” | 本次 `metrics.csv` 的 `r2`；[同一参考表](../examples/public/california_random_nested_v1/expected/historical_metrics_summary.csv)，`r2/mean` |
+| 0.5343022051161513 | 独立参考合并 20,640 条测试预测后重算的 RMSE；`metrics.csv` 不直接提供这一项，与五折平均值不同 | [合并预测参考表](../examples/public/california_random_nested_v1/expected/historical_pooled_metrics.csv)，`procedure/rmse` |
+| 1.153954483920011 / 0.7273658464149191 | 同一配置中的 Dummy / Ridge 各自的外层 RMSE 均值；Dummy 只预测训练数据目标均值，Ridge 是带正则化的线性回归 | 本次 `model_comparison.csv`；[逐模型、逐折参考表](../examples/public/california_random_nested_v1/expected/historical_family_fold_metrics.csv) |
+
+五个外层测试和最终全数据训练均选中 Random Forest。逐折 RMSE 和其他指标见下文“实际结果”，也都属于这份配置。最终模型在全部数据上训练；用它预测原数据不能再算一次独立测试成绩。
+
+## 已记录的原始 v1 验证
+
+[查看本次验证记录：配置与数据校验值、运行环境、270 项检查的汇总及范围](CALIFORNIA_REPAIRED_V1_RECORD.json)。
+
+2026-10-02，修复后的 Linux 源码 GUI 使用原始 v1 配置（保留整数 `verbose=0`），完成导入、保存、重导入、训练及模型加载后的 10 行预测。270 项可观察检查全部通过，未使用 v1.1 兼容修订；外层 RMSE 均值为 0.5339815958325378。GUI 的进度计划为 106 次拟合，未另行记录生产程序每次拟合的调用轨迹。
+
+该次验证的应用代码与公开提交 [948c451](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/commit/948c451bb0e401c7ffe1c9ab65439ebc3521031b) 相同；后续 `a1450df` 仅增加历史文件的换行保护。环境为 Linux x86_64、Python 3.12.14、scikit-learn 1.8.0、NumPy 2.3.5、pandas 2.2.3、SciPy 1.17.0、Godot 4.6.3，数值库单线程。当前官方锁定环境的 scikit-learn 为 1.9.0，不能把两种环境混写为同一次运行。[a1450df 三平台 CI](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36978714686)是自动测试记录，不能代替 macOS、Windows 或安装包的真实窗口验证。
+
+上表链接的历史 CSV 保留了同一原始 v1 独立参考的数值。修复前，原始 v1 的 GUI 运行曾失败；当时省略 `verbose` 的 v1.1 兼容配置另有一次成功记录。下文保留这两段历史，均不改写成这次原始 v1 修复验证。
+
+正式比较使用绝对和相对容差 `atol=rtol=1e-10`，同时核对行、折分、候选模型和有效参数。它不是跨平台结果逐位相同的承诺。界面的舍入数字适合初看，[比较程序与独立参考](../examples/public/california_random_nested_v1/README.md)检查完整导出文件。270/270 只说明这次可观察检查通过；常规导出没有暴露全部内层成员、每次内层拟合的预处理状态或非选中家族的逐行预测。
+
+随机划分会让相邻地区同时进入训练和测试。这个结果不能说明模型能预测新地区、未来市场或因果关系，也不支持住房或信贷决策。原始目标的封顶值保留在数据中。每次新运行都应保留配置、软件与库版本和独立输出目录。
+
+## 历史记录：修复前原始 v1 失败与 v1.1 兼容验证
+
+以下内容记录较早的源码 `a145e07`，与上面的修复后原始 v1 验证分开阅读。历史数值表对应 [california_config_v1_1.json](../examples/public/california_random_nested_v1/california_config_v1_1.json)，配置修订号不代表软件版本。
 
 ## 1 结论与范围
 
 PsyML 0.3.0 的 Linux 源码 GUI 已完成本例的数据与配置导入、设置检查、运行、结果查看、完整预测导出、保存模型加载及10行预测。兼容性修订版 v1.1 的实际导出与独立参考在预先冻结容差下通过270项检查。原始配置没有通过：真实窗口发现了 Random Forest 的 verbose 参数整数类型丢失，失败结果已保留，原始重新核查为195/227项通过、32项失败。
 
-测试固定于提交 a145e07c4b6a4135781725c1390f68192ab8e92c。原始测试没有修改 PsyML 源码或公共仓库。本次仓库整合新增公开复现工具与文档；后续源码修复的验证状态应另行记录。这里验证的是一个有界回归流程，不代表整个工具包、全部参数或其他平台已经通过验证。
+测试固定于提交 a145e07c4b6a4135781725c1390f68192ab8e92c。原始测试没有修改 PsyML 源码或公共仓库。公开复算工具可用于检查其他运行；后续源码修复需要对应版本的验证记录。这里验证的是一个有界回归流程，不代表整个工具包、全部参数或其他平台已经通过验证。
 
 ## 2 数据和方法
 
@@ -79,7 +129,7 @@ v1.1只省略这一设置，令scikit-learn使用相同的默认整数0。修订
 
 ## 4 真实窗口证据和运行条件
 
-原始完整证据包保存数据导入、预处理和折数、候选网格、随机种子、106任务进度、完成结果、指标、OOF预览、加载模型、列兼容性和预测导出的截图。大体积截图、数据、模型与结果树不进入 Git；公开目录保留精简结果、失败标识及原始文件哈希。哈希只在对应原文件可用时证明身份，不表示大体积原始包已公开托管。截图证明界面动作与状态；完整CSV/JSON和比较记录支持数值结论。
+原始完整证据包保存数据导入、预处理和折数、候选网格、随机种子、106任务进度、完成结果、指标、OOF预览、加载模型、列兼容性和预测导出的截图。分析用 CSV 已在[数据下载页](../examples/public/downloads/README.md)提供；大体积截图、模型与结果树不进入 Git；公开目录保留精简结果、失败标识及原始文件哈希。哈希只在对应原文件可用时证明身份，不表示大体积原始包已公开托管。截图证明界面动作与状态；完整CSV/JSON和比较记录支持数值结论。
 
 环境为Linux x86_64、Python3.12.14、scikit-learn1.8.0、NumPy2.3.5、SciPy1.17.0、pandas2.2.3、joblib1.5.3、Matplotlib3.10.8、Godot4.6.3。该历史案例未复跑官方uv.lock环境。这里没有宣称打包版本或macOS/Windows真实窗口已测试。
 

@@ -1,39 +1,55 @@
-# Validation croisée imbriquée groupée par participant de PsyML sur des données publiques d’activité humaine : reproduction numérique et vérification inter-plateformes
+# Classification DSA : télécharger, exécuter et comparer
 
-[中文](VALIDATION_DSA_ZH.md) · [English](VALIDATION_DSA_EN.md)
+[中文](VALIDATION_DSA_ZH.md) · [English](VALIDATION_DSA_EN.md) · [README](../README.md)
 
-Cas `psyml_dsa_group_nested_v1` · PsyML `0.3.0` (commit `de33abfe52ccfee67f461a850edd00a14d2fbfaa`) · 2026-10-01
+Ce cas reconnaît 19 activités, comme marcher ou s’asseoir, à partir de capteurs corporels. Il contient 9 120 enregistrements de cinq secondes provenant de 8 participants. La question est de savoir si PsyML garde ensemble les enregistrements de chaque personne lors de l’entraînement et du test, et obtient les mêmes résultats qu’un programme scikit-learn écrit séparément.
 
-## Résumé
+## 1. Télécharger et exécuter
 
-**Objectif.** Éprouver le comportement numérique du flux de validation imbriquée groupée par participant de PsyML sur des données réelles : les partitions, le prétraitement limité aux plis d’entraînement, la sélection interne, la prédiction hors pli, le calcul des métriques et la persistance du modèle suivent-ils un protocole figé à l’avance, et une implémentation indépendante les reproduit-elle ?
+### Télécharger deux fichiers
 
-**Méthodes.** Les données sont le jeu UCI *Daily and Sports Activities* (DSA) : 8 participants, 19 activités, 60 enregistrements de cinq secondes par participant et activité, soit 9 120 enregistrements. Chaque segment ne fournit que l’accélération et la vitesse angulaire du torse (trois axes chacune), réduites en moyenne et écart-type de population par canal, soit 12 variables. Le plan externe est une validation croisée à 4 plis groupée par participant ; le plan interne une validation croisée stratifiée à 3 plis groupée par participant ; les candidats sont Dummy et la régression logistique ; la sélection utilise la moyenne non pondérée des balanced accuracies internes. Une implémentation de référence indépendante n’importe jamais PsyML et reconstruit le même protocole avec les API publiques de scikit-learn. Des contrôles d’ingénierie couvrent un audit d’isolement des groupes, des perturbations ciblées du pli externe 1 et un canari de labels mélangés.
+- [CSV pour l’analyse : dsa_torso_mean_std.csv, 2,34 Mo](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/main/examples/public/downloads/dsa_torso_mean_std.csv), 9 120 lignes. Il est déjà converti et prêt à importer.
+- [Configuration complète : dsa_group_nested_v1.json](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json). Elle contient tous les modèles et paramètres à comparer. Le fichier `best_parameters_configure.json` produit après une analyse ne répète pas cette recherche.
 
-**Principaux résultats.** La métrique principale, la moyenne des balanced accuracies des plis externes, vaut 0.5740131578947368. Les 9 120 prédictions hors pli concordent ligne à ligne entre les deux implémentations ; les lignes d’entraînement, familles, paramètres et statistiques de prétraitement des 54 ajustements s’alignent ; la relecture du modèle enregistré correspond au modèle final indépendant. Ces valeurs proviennent de l’exécution Linux figée du paquet de cas d’origine. Lors de la reprise macOS (aarch64), les prédictions dures sont identiques octet pour octet ; seule la ROC-AUC dérivée des probabilités diffère d’environ 2.03e-7, les probabilités hors pli différant d’au plus environ 1.98e-5. Cet écart est conservé et publié tel quel.
+Enregistrez les deux fichiers dans un même dossier. Si le navigateur affiche leur contenu, utilisez « Enregistrer sous » en gardant les extensions `.csv` et `.json`. Vous n’avez besoin ni de Python ni d’un script de conversion.
 
-**Portée.** Les résultats ne soutiennent la conformité numérique et la reproductibilité du flux testé que pour ce cas ; ils ne constituent ni un nouvel algorithme, ni une revendication de performance, ni un résultat clinique ou populationnel, et ils ne montrent pas que toutes les fonctions de l’outil sont vérifiées sur toutes les plateformes.
+Le CSV contient, pour chaque segment, la moyenne et l’écart-type de six canaux du torse : 12 prédicteurs, plus les identifiants de segment et de participant et l’activité. Les [données sources officielles, scripts, licence et SHA-256](../examples/public/downloads/README.md) sont consultables. Le script reste facultatif pour qui souhaite refaire la conversion indépendamment.
 
-## 1. Introduction
+### Importer dans PsyML
 
-La justesse d’un outil d’apprentissage automatique ne se lit pas dans le score final. Pour les chercheurs, il importe tout autant que les partitions isolent réellement les participants, que le prétraitement soit ajusté à l’intérieur des plis d’entraînement, que les modèles et paramètres soient choisis sur des preuves d’entraînement, que les prédictions et métriques hors pli puissent être recalculées indépendamment, et qu’un modèle enregistré se rejoue fidèlement. Vérifier ces étapes sur des données comportementales réelles avec un protocole figé expose des problèmes de conversion et de groupement que des données synthétiques peuvent masquer. Séparer par participant plutôt que par ligne évite de placer des segments voisins d’une même personne de part et d’autre de la frontière entraînement/test : c’est l’exigence de base contre les fuites pour ce type de données.
+1. Ouvrez PsyML. Le [README](../README.md) précise les téléchargements et versions : les paquets v0.3.0 disponibles ne contiennent pas les correctifs source ultérieurs, et aucun nouvel installateur n’est encore disponible. Cette référence historique ne certifie pas ces paquets.
+2. À la page 1, cliquez sur « Importer une configuration… » et choisissez `dsa_group_nested_v1.json`. Si le logiciel demande les données, sélectionnez le CSV téléchargé. Vérifiez le chemin importé ; utilisez « Parcourir… » pour le choisir à nouveau si nécessaire. Aucune modification du JSON n’est nécessaire.
+3. Vérifiez : 9 120 lignes ; classification ; cible `activity` ; groupe `subject_id` ; 12 prédicteurs commençant par `torso_` ; K-fold groupé, 4 plis externes, 3 internes ; graine `20261001` ; Dummy et Logistic Regression. Les colonnes `segment_id` et `subject_id` ne doivent pas être des prédicteurs.
+4. À la page 2, choisissez un dossier local et cliquez sur « Exécuter l’analyse ». L’import seul ne lance rien. PsyML crée un nouveau sous-dossier de résultats.
+5. À la page 3, consultez l’exactitude équilibrée et ouvrez le dossier complet. Conservez `config.json`, les métriques, les prédictions et les versions de l’environnement de cette exécution.
 
-Ce rapport documente un tel cas : PsyML est exécuté sur les données publiques UCI *Daily and Sports Activities* (DSA) selon un protocole figé à l’avance, puis comparé point par point à une implémentation scikit-learn indépendante qui n’importe pas PsyML. Il s’agit d’un travail de maintenance logicielle et d’acceptation de flux, **non** d’un article de nouvelle méthode, d’une reproduction du benchmark de l’article original ou d’une comparaison d’outils ; il ne soutient aucune affirmation sur les construits psychologiques, l’usage clinique, la causalité ou les effets humains.
+Quatre plis externes signifient quatre tests, chacun mettant deux participants à l’écart de l’entraînement. Les trois plis internes comparent les réglages chez les participants restants avant de tester le réglage choisi. Ce processus à deux niveaux est la validation imbriquée.
 
-## Entrée de reproduction : données, configuration et GUI
+### Quelle configuration correspond à chaque chiffre ?
 
-- **Configuration d’analyse.** La reproduction utilise la configuration de recherche complète et d’origine du cas : [`examples/public/configs/dsa_group_nested_v1.json`](../examples/public/configs/dsa_group_nested_v1.json). Elle contient l’ensemble des candidats et des grilles de paramètres, la colonne de groupe et les réglages 4 plis externes / 3 plis internes. Ne pas la remplacer par la configuration des meilleurs paramètres exportée après une exécution (par exemple `best_parameters_configure.json`) : celle-ci ne fixe que les paramètres sélectionnés et ne refait pas la recherche interne.
-- **Données de test.** Le fichier requis est `dsa_torso_mean_std.csv` (9 120 lignes). Ce CSV dérivé n’est pas distribué avec le dépôt et n’a pas d’adresse de téléchargement direct ; télécharger l’archive d’origine depuis la page officielle UCI (DOI <https://doi.org/10.24432/C5C59F>) puis générer le CSV depuis la racine du dépôt, comme détaillé dans les [instructions d’exécution du cas](../examples/public/dsa_group_nested_v1/README.md#运行仓库根目录) :
+Commencez par le résultat principal de la première ligne. Les autres métriques et le contrôle par mélange d’étiquettes sont des vérifications facultatives plus détaillées.
 
-  ```bash
-  uv run python tools/cases/prepare_dsa.py \
-    --archive /path/to/daily_and_sports_activities.zip \
-    --output-dir examples/public/data
-  ```
+Ces valeurs ont été enregistrées lors du cas Linux initial du 2026-10-01. Sauf la dernière ligne, elles utilisent la configuration complète ci-dessus et le même `dsa_torso_mean_std.csv`. Les valeurs originales figurent dans [case_summary.json](../examples/public/dsa_group_nested_v1/expected/case_summary.json).
 
-  Le fichier est écrit dans `examples/public/data/dsa_torso_mean_std.csv` (le dossier `examples/public/data/` est ignoré par Git) ; `/path/to/...` n’est qu’un exemple de chemin local vers le ZIP, pas une adresse de téléchargement publique. Le script vérifie le CSV généré par rapport à l’empreinte figée.
-- **Étapes GUI.** Sur la page 1, cliquer sur « Importer une configuration… » et choisir ce JSON ; si les données sont signalées absentes, localiser le fichier `dsa_torso_mean_std.csv` généré à l’étape précédente ; puis, dans l’onglet « 2 Vérification », contrôler les réglages et cliquer sur « Exécuter l’analyse ». Ces étapes permettent aux lecteurs d’exécuter et de vérifier eux-mêmes ; elles ne constituent pas une déclaration d’acceptation humaine du GUI ou des applications empaquetées.
-- **Cas et résultats de référence.** Le répertoire du cas est [`examples/public/dsa_group_nested_v1/`](../examples/public/dsa_group_nested_v1/README.md) ; son entrée [`expected/`](../examples/public/dsa_group_nested_v1/expected/README.md) fournit les attentes figées et les résumés de reprise (`case_summary.json`, `golden_hashes.json`, etc.) pour vérifier les résultats point par point.
+| Valeur enregistrée | Sens et fichier à consulter | Configuration ou étape séparée |
+| --- | --- | --- |
+| 0.5740131578947368 | Moyenne de l’exactitude équilibrée sur quatre tests externes ; `balanced_accuracy` dans `metrics.csv`. Cette métrique moyenne le taux de reconnaissance de chacune des 19 classes | [Configuration complète](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) ; `baseline_metrics.fold_mean_balanced_accuracy` |
+| 0.05263157894736842 | Moyenne de l’exactitude équilibrée de Dummy sur les mêmes plis ; `balanced_accuracy` dans la ligne `dummy` de `model_comparison.csv`. Il n’apprend pas la relation capteurs/activité | `dummy` dans la [même configuration](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) ; `baseline_metrics.dummy_balanced_accuracy` |
+| 0.5513874769696934 | Macro-F1 calculé dans chaque test externe, puis moyenne des quatre scores ; `f1_macro` dans `metrics.csv` | [Même configuration](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) ; `baseline_metrics.fold_mean_f1_macro` |
+| 0.5702035749465654 | Macro-F1 recalculé par la référence indépendante sur les 9 120 prédictions réunies. Cette valeur n’est pas directement exportée dans `metrics.csv` ; elle diffère de la moyenne par pli | [Même configuration](https://raw.githubusercontent.com/GuGuGu-coocoo/PsyMl_Toolkit/a1450dfc374b8a39109c41f2548fdc0dbcad23c1/examples/public/configs/dsa_group_nested_v1.json) ; `baseline_metrics.pooled_oof_macro_f1` |
+| 0.0532894736842105 | Exactitude équilibrée après mélange des étiquettes au sein de chaque participant ; une analyse ordinaire dans l’interface ne produit pas ce contrôle | [Outil de contrôle séparé](../tools/cases/check_dsa_controls.py), même configuration et graine `20261002` ; `placebo.balanced_accuracy` |
+
+Le macro-F1 moyenne les scores F1 des classes ; le F1 tient compte des activités manquées et mal identifiées. Les quatre tests externes et le choix final sur toutes les données ont retenu Logistic Regression, `C=1.0`. Les scores par pli et les choix de la section 3 proviennent de cette même configuration complète.
+
+### Comparer une nouvelle exécution
+
+Vérifiez données, configuration, groupes, prédicteurs et versions avant de comparer les chiffres complets des exports. L’interface peut les arrondir. La référence utilisait PsyML `0.3.0`, commit `de33abf`, Python `3.12.14` et scikit-learn `1.8.0` ; le verrouillage actuel utilise scikit-learn `1.9.0` sur Python ≥3.11. Le numéro du logiciel seul ne garantit pas les mêmes sources ou le même environnement.
+
+Dans un même environnement, les contrôles imposent une différence absolue des métriques ≤`1e-12`, `atol=rtol=1e-12` pour le prétraitement, et `atol=1e-10, rtol=1e-8` pour les probabilités. Ce sont les règles du [comparateur](../tools/cases/compare_dsa.py), sans garantie d’identité bit à bit entre plateformes. Les reprises macOS et de l’environnement verrouillé conservent des écarts de probabilités et de ROC-AUC ; les classes prédites et les valeurs principales ci-dessus concordent. Les [notes numériques](VALIDATION_DSA_DIAGNOSTICS_FR.md) décrivent les écarts et leur cause non résolue. Gardez chaque nouvelle exécution dans un dossier distinct de la référence.
+
+Pour vérifier chaque ligne et chaque pli, suivez les [commandes de recalcul indépendant](../examples/public/dsa_group_nested_v1/README.md). Les deux programmes partagent les modèles scikit-learn sous-jacents : ils vérifient l’accord des étapes d’analyse. Huit participants ne suffisent pas à établir les performances dans d’autres populations, avec d’autres appareils ou dans la vie quotidienne, ni des conclusions cliniques ou causales. Le contrôle unique par mélange d’étiquettes n’est pas un test statistique de permutation.
+
+Les méthodes complètes, les résultats par pli, les contrôles historiques et leurs limites suivent.
 
 ## 2. Données et méthodes
 
@@ -159,7 +175,7 @@ Après la poussée, la CI principale du dépôt ([run 36880091260](https://githu
 
 ### 4.1 Ce que les preuves soutiennent
 
-Le cas soutient ceci : pour la version de code, le protocole et l’environnement enregistrés, le flux imbriqué groupé par participant de PsyML et une implémentation scikit-learn reconstruite indépendamment produisent les mêmes partitions, choix et prédictions ; le prétraitement des plis d’entraînement et la persistance peuvent être vérifiés point par point ; et les contrôles d’ingénierie n’ont montré aucun signe de fuite de groupes ni de contamination de sélection dans ce flux. Il confirme aussi que le dépôt génère les données dérivées localement et ne redistribue pas le jeu de données.
+Le cas soutient ceci : pour la version de code, le protocole et l’environnement enregistrés, le flux imbriqué groupé par participant de PsyML et une implémentation scikit-learn reconstruite indépendamment produisent les mêmes partitions, choix et prédictions ; le prétraitement des plis d’entraînement et la persistance peuvent être vérifiés point par point ; et les contrôles d’ingénierie n’ont montré aucun signe de fuite de groupes ni de contamination de sélection dans ce flux. Le CSV préparé est désormais public ; sa source et sa transformation figurent sur la [page de téléchargement](../examples/public/downloads/README.md).
 
 ### 4.2 Relation avec les travaux antérieurs
 
@@ -178,7 +194,7 @@ L’export natif de la matrice de confusion à 19 classes était dense sous sa d
 
 ## 5. Disponibilité des données et du code, et reproduction
 
-- Les données sont obtenues sous CC BY 4.0 depuis l’emplacement officiel d’UCI ; le dépôt **ne les redistribue pas**, et le CSV dérivé n’est généré que dans le dossier local ignoré par Git `examples/public/data/`. L’attribution et la note de modification se trouvent dans `examples/public/dsa_group_nested_v1/expected/` et `tools/cases/prepare_dsa.py`.
+- Les données originales viennent d’UCI sous CC BY 4.0. La [page de téléchargement](../examples/public/downloads/README.md) fournit le CSV préparé, le ZIP source, le script, l’attribution et les transformations. Les données reconstruites localement restent dans le dossier `examples/public/data/` ignoré par Git.
 - Le code est publié sous Apache License 2.0. Les outils du cas sont dans `tools/cases/`, la configuration dans `examples/public/configs/dsa_group_nested_v1.json`, les attentes figées dans `examples/public/dsa_group_nested_v1/expected/`, et les tests contractuels/d’intégration dans `tests/test_public_dsa_case_contract.py`.
 - Reproduction (depuis la racine du dépôt) :
 
@@ -189,7 +205,7 @@ uv run python tools/cases/prepare_dsa.py --archive <official.zip> --output-dir e
 #      la séquence complète est dans examples/public/dsa_group_nested_v1/README.md
 ```
 
-La CLI et chaque outil exigent un nouveau dossier de sortie vide ; les résultats existants ne sont jamais écrasés, et `input_path`/`output_dir` se résolvent par rapport au répertoire courant du processus. Les conditions d’échec incluent toute empreinte incorrecte, ensemble de membres inattendu, valeur non finie ou forme/comptage erroné, chevauchement de groupes, égalité départagée par approximation, métriques ou probabilités hors tolérance, relecture du modèle incohérente, BA du canari > 0,10, ou avertissements stderr non examinés. Un échec ne doit pas être rendu vert en changeant les tolérances, en supprimant des plis, en augmentant les itérations, en changeant C, en échangeant les données ou en choisissant une autre validation.
+La CLI et chaque outil exigent un nouveau dossier de sortie vide ; les résultats existants ne sont jamais écrasés, et `input_path`/`output_dir` se résolvent par rapport au répertoire courant du processus. Les conditions d’échec incluent toute empreinte incorrecte, ensemble de membres inattendu, valeur non finie ou forme/comptage erroné, chevauchement de groupes, égalité départagée par approximation, métriques ou probabilités hors tolérance, relecture du modèle incohérente, BA du canari > 0,10, ou avertissements stderr non examinés. Conservez les écarts et recherchez leur cause. Modifier les tolérances, plis, itérations, C, données ou validation change les conditions de comparaison et ne démontre pas la réussite du protocole initial.
 
 ## 6. Références
 

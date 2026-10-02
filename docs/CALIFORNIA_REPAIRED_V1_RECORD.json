@@ -1,0 +1,114 @@
+{
+  "case_id": "california_random_nested_v1",
+  "record_type": "compact_record_of_real_gui_verification",
+  "analysis_manifest_generated_at_utc": "2026-10-02T06:26:06.432107+00:00",
+  "configuration": "examples/public/california_random_nested_v1/california_config.json",
+  "configuration_note": "Original v1, including integer random_forest verbose=0. The public template changes only input_path and output_dir from the historical original.",
+  "compatibility_amendment_applied": false,
+  "comparison": {
+    "status": "passed_observed_scope",
+    "passed": true,
+    "n_checks": 270,
+    "n_passed": 270,
+    "n_failed": 0,
+    "tolerances": {
+      "atol": 1e-10,
+      "rtol": 1e-10
+    }
+  },
+  "source": {
+    "recorded_commit": "5f4ebd0c3e50e7850698df4c7fe64e547e75b983",
+    "working_tree_modified": false,
+    "published_equivalent_commit": "948c451bb0e401c7ffe1c9ab65439ebc3521031b",
+    "source_tree_sha": "6eef52f545f395a3125e0f59337b52c589c363c9",
+    "subsequent_commit": "a1450dfc374b8a39109c41f2548fdc0dbcad23c1",
+    "subsequent_change": "Only .gitattributes: preserve historical California file bytes across checkout; no application or test-code change."
+  },
+  "environment": {
+    "psyml": "0.3.0",
+    "python": "3.12.14",
+    "operating_system": {
+      "machine": "x86_64",
+      "release": "6.18.44",
+      "system": "Linux"
+    },
+    "dependencies": {
+      "joblib": "1.5.3",
+      "matplotlib": "3.10.8",
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "scikit-learn": "1.8.0",
+      "scipy": "1.17.0",
+      "threadpoolctl": "3.6.0"
+    },
+    "godot": "4.6.3",
+    "numerical_library_threads": 1,
+    "blas": "OpenBLAS 0.3.30, SkylakeX",
+    "official_lock_environment_used": false
+  },
+  "hashes": {
+    "prepared_csv_sha256": "157b6c0d3acd6d93a50c411d0cd4130d8c719ce5eb17b61f1c45300f2af6fc85",
+    "original_protocol_sha256": "8c421185c4171fc8f8f17822043a2b3616f9c890163fb953a306e80c3e2db0e0",
+    "historical_original_config_sha256": "6545958eadc8a20ed56e267f37ad2a6925ae18d95c2455ac18ca80fae8d935ce",
+    "public_config_sha256": "fc90c8384f55ab301debca93cb285f5fa047b6fe94e64464014558f28798e8f8",
+    "scientific_config_sha256": "cf110e6d4e7cc308ea1fd9cd6a7d277069dbb2268512f85785e204e2597e7da3",
+    "comparator_script_sha256": "e18f91dc2c8352d8c9c9ee5668d6b487b61f72dc1faa8bc1421c582a1275dcd6",
+    "full_comparison_json_sha256": "52ba94ba218fbd00ab4527c3a830f1d5867a87d483d47f41e308f9cbf1b09562",
+    "gui_metrics_csv_sha256": "636e086df22e26fa939be99d9096466ad4e8de1302cc602ecb6e422c447c2ba6",
+    "gui_metrics_summary_csv_sha256": "eddf57b9d530a2903306b2fcecd17d951279347c3d42392b91d93a2be568f650"
+  },
+  "dataset": {
+    "n_rows": 20640,
+    "n_features": 8,
+    "target": "MedHouseVal"
+  },
+  "reference_metrics": {
+    "fold_mean": {
+      "mae": 0.3610547401259507,
+      "r2": 0.7856663784093894,
+      "rmse": 0.5339815958325378
+    },
+    "between_fold_sd_ddof0": {
+      "mae": 0.009053617706927867,
+      "r2": 0.011680882889765775,
+      "rmse": 0.01850680156369903
+    },
+    "pooled_oof": {
+      "mae": 0.3610547401259507,
+      "n_rows": 20640,
+      "r2": 0.7856041590209227,
+      "rmse": 0.5343022051161513,
+      "scope": "procedure"
+    }
+  },
+  "gui_metrics": {
+    "r2": 0.7856663784093894,
+    "mae": 0.3610547401259507,
+    "rmse": 0.5339815958325378
+  },
+  "selection": "Random Forest in all five outer folds and final full-data selection.",
+  "planned_fits": 106,
+  "observed_actions": [
+    "Configuration import, save and reimport",
+    "Full analysis in a real Linux GUI window",
+    "Saved-model load and ten-row prediction with reordered predictors",
+    "Missing MedInc rejected, prediction disabled and previous preview cleared"
+  ],
+  "not_observed_in_gui_exports": [
+    "Production per-inner-fold scores (only candidate mean scores are exported).",
+    "Production inner fold memberships and preprocessing state for all 90 inner fits.",
+    "Production per-family row-level OOF for non-selected families and 15 outer fitted preprocessing states.",
+    "Production fit-call count as a runtime trace (106 is the planned reference count; GUI progress may provide separate evidence)."
+  ],
+  "scope_note": "Numerical agreement of actual GUI exports and final model with independent reference. No blanket claim for unobserved production internals.",
+  "full_artifacts_public": false,
+  "artifact_availability_note": "This compact record and prepared input CSV are public. Full result trees, model binaries and screenshots are not hosted in this repository. Hashes identify retained source artifacts; they are not download links.",
+  "platform_scope": {
+    "linux_source_real_window": true,
+    "macos_real_window": false,
+    "windows_real_window": false,
+    "packaged_application": false
+  },
+  "related_ci": "https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/actions/runs/36978714686",
+  "ci_note": "Automated three-platform checks of a1450df; separate from the real-window GUI comparison."
+}

@@ -1,4 +1,14 @@
-# DSA 公开案例：按参与者分组的嵌套验证
+# DSA activity classification
+
+Download the prepared CSV and full configuration, import the configuration in PsyML, select the CSV if asked, then run from the GUI. You do not need to run the scripts below.
+
+- [中文：下载与结果对照](../../../docs/VALIDATION_DSA_ZH.md)
+- [English: downloads and result comparison](../../../docs/VALIDATION_DSA_EN.md)
+- [Français : téléchargements et comparaison](../../../docs/VALIDATION_DSA_FR.md)
+- [Prepared data, official sources, conversion scripts and licences](../downloads/README.md)
+
+The commands below are optional: rebuild the CSV from its source, run a separately written reference, or compare complete numerical exports. Downloaded prepared CSVs can also be copied into `examples/public/data/` to use the unchanged repository-relative CLI configurations. Normal GUI use only requires selecting the downloaded CSV when prompted.
+
 
 本目录记录 PsyML 在公开 *Daily and Sports Activities*（UCI 256）数据上的一个软件符合性与可复算案例。它用真实行为数据检查软件的切分、训练折内预处理、嵌套选择、折外预测、评估和模型保存/加载行为，并用一个不导入 PsyML 的独立 scikit-learn 流程逐项复算。**它不是新算法、不是论文基准复现，也不支持临床、因果或其他人群的结论。**
 
@@ -14,7 +24,9 @@
 - 协议：外层 `GroupKFold(n_splits=4, shuffle=False)`；内层 `StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=20261001+外层折号)`；每次拟合都新建 `SimpleImputer(median) → StandardScaler → estimator`，只在训练折上拟合；选择指标为内层 balanced accuracy 的未加权均值，严格大于才替换、完全平手保留先出现者；全数据最终模型用同样的内层规则选择后再拟合。完整字段见 [`configs/dsa_group_nested_v1.json`](../configs/dsa_group_nested_v1.json)。
 - 基线记录：主指标为 4 个外折 balanced accuracy 的未加权均值 **0.5740131578947368**（8 人、19 类），四次外折与最终选择均为 `logistic_regression, C=1.0`；同折 Dummy 为 1/19 ≈ 0.0526；人内打乱标签 canary 为 0.0533（预设告警阈值 0.10，未触发）。这些是冻结案例记录值，不是本仓库测试重新产生的数字。
 
-## 运行（仓库根目录）
+<a id="运行仓库根目录"></a>
+
+## 可选：重建数据与独立核对（仓库根目录）
 
 ```bash
 # 1) 可选：从官方 ZIP 重新生成派生 CSV（默认输出 examples/public/data/，该目录被 Git 忽略）
@@ -59,7 +71,7 @@ uv run python tools/cases/check_dsa_controls.py \
 
 | 路径 | 说明 |
 | --- | --- |
-| `../../configs/dsa_group_nested_v1.json` | 冻结科学字段的示例配置（仓库相对路径） |
+| [`../configs/dsa_group_nested_v1.json`](../configs/dsa_group_nested_v1.json) | 冻结科学字段的示例配置（仓库相对路径） |
 | `expected/` | 固定期望值：哈希、结构、指标、折成员、容差与来源说明 |
 | `../../../tools/cases/prepare_dsa.py` | 数据下载后转换（严格枚举、shape/finite/计数校验、逐成员哈希与 manifest） |
 | `../../../tools/cases/reference_dsa.py` | 独立 sklearn 复算（不导入 PsyML） |
