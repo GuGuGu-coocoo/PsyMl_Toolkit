@@ -38,3 +38,15 @@ def test_constant_target_warning_persists_inner_outer_and_reports(tmp_path):
     assert result.metrics["r2"] == 1
     for filename in ["warnings.json", "result.json", "reproducibility_report.md"]:
         assert "ConstantTargetWarning" in (cfg.output_dir / filename).read_text()
+
+
+def test_constant_group_folds_are_flagged_when_global_target_varies(tmp_path):
+    data = pd.DataFrame({"x": range(24), "target": [0.] * 6 + [1.] * 6 + [2.] * 6 + [3.] * 6,
+                         "group": [0] * 6 + [1] * 6 + [2] * 6 + [3] * 6})
+    cfg = config(tmp_path, task="regression", model_name="dummy", group_column="group",
+                 validation_strategy="group_k_fold", n_splits=4)
+    result = run_experiment(cfg, data)
+    records = [r for r in result.fit_warnings if r["category"] == "ConstantTargetWarning"]
+    assert {r["fold"] for r in records if r["scope"] == "outer"} == {1, 2, 3, 4}
+    assert data.target.nunique() == 4
+    assert result.metrics["r2"] == 0
