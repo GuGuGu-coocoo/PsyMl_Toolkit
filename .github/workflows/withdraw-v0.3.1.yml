@@ -1,0 +1,51 @@
+name: Withdraw original v0.3.1
+
+on:
+  push:
+    branches: [withdraw/v0.3.1]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: withdraw-original-v0.3.1
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Preserve exact original assets and release metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/withdraw_v031.py archive --directory tmp/original-v031
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PsyML-original-v0.3.1-2d2308e
+          path: tmp/original-v031/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 90
+
+  withdraw:
+    needs: archive
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: PsyML-original-v0.3.1-2d2308e
+          path: tmp/original-v031
+      - name: Recheck backup and make the known release a draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/withdraw_v031.py withdraw --directory tmp/original-v031
