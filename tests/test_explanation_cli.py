@@ -49,7 +49,8 @@ def base_args(workspace, model="clf_model"):
 def run_cli(args, capsys):
     code = main(args)
     captured = capsys.readouterr()
-    text = captured.out + captured.err
+    # Success JSON is stdout; diagnostics/progress may independently use stderr.
+    text = captured.out if code == 0 else captured.err
     payload = json.loads(text.strip().splitlines()[-1]) if text.strip() else {}
     return code, payload
 
@@ -196,3 +197,17 @@ def test_feature_flag_is_accepted_for_named_models(workspace, tmp_path, capsys):
         capsys)
     assert code == 0 and "error" not in payload
     assert payload["explanation"]["feature_order"] == ["age", "score", "group"]
+
+
+def test_cli_helper_keeps_stderr_progress_separate(monkeypatch, capsys):
+    import sys
+
+    def simulated_command(_args):
+        print('{"status":"completed"}')
+        print("PermutationExplainer explainer: 2it", file=sys.stderr)
+        return 0
+
+    monkeypatch.setitem(globals(), "main", simulated_command)
+    code, payload = run_cli([], capsys)
+    assert code == 0
+    assert payload == {"status": "completed"}
