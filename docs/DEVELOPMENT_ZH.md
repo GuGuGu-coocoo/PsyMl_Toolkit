@@ -82,7 +82,7 @@ Python 预测接口位于 `psyml.prediction`：`load_model(path, trusted=True)`�
 
 `psyml.data.profiling` 是数据检查的纯 helper：`profile_columns` / `column_profile` / `category_summary` / `identifier_signals` 从 DataFrame 生成逐列元数据（非缺失数、唯一数、近似唯一比例、可选取值计数与截断、以及有依据的疑似编号信号）。`protocol.dataframe_preview` 只在 `include_sample=True` 时附带取值，默认不返回值；GUI 第 1 页的 `gui/scripts/data_check_ui.gd` 消费该元数据，不从前 5 行估算，也不自动删除列或改变角色。
 
-`psyml.reporting.interpretation` 的 `build_interpretation` 只聚合 runner 已算出的证据（procedure_results、逐组合折、tuning_rows、leaderboard、validation_summary），不增加任何模型拟合；`write_interpretation_outputs` 写 `result_interpretation.json`、`interpretation_baseline_differences.csv`、`result_interpretation.md`，并由 `result.json.artifacts` 索引。独立验证根目录由 `build_independent_interpretation` 只写概览索引。GUI 摘要在 `gui/scripts/result_interpretation_ui.gd`。核心回归在 `tests/test_profiling.py`、`tests/test_interpretation.py`；GUI 回归在 `gui/tests/test_data_check.gd`、`gui/tests/test_interpretation_results.gd`。基线只比较同验证、同折集合、同指标且已成功运行的 dummy，差值正负方向固定（正=更好），描述性统计不回流选择或调参。分组划分说明仅完善三语研究者术语指南，不涉及 GUI 或划分算法。
+`psyml.reporting.interpretation` 的 `build_interpretation` 只聚合 runner 已算出的证据（procedure_results、逐组合折、tuning_rows、leaderboard、validation_summary），不增加任何模型拟合；`write_interpretation_outputs` 写 `result_interpretation.json`、`interpretation_baseline_differences.csv`、`result_interpretation.md`，并由 `result.json.artifacts` 索引。独立验证根目录由 `build_independent_interpretation` 只写概览索引。GUI 摘要在 `gui/scripts/result_interpretation_ui.gd`。核心回归在 `tests/test_profiling.py`、`tests/test_interpretation.py`；GUI 回归在 `gui/tests/test_data_check.gd`、`gui/tests/test_interpretation_results.gd`。基线只比较同验证、同折集合、同指标且已成功运行的 dummy，差值正负方向固定（正=更好），描述性统计不回流选择或调参。
 
 ### 置换重要性接口
 
@@ -94,7 +94,7 @@ Python 预测接口位于 `psyml.prediction`：`load_model(path, trusted=True)`�
 - `primary_validation: null` 表示分别输出；根目录没有全局最佳模型或统一指标。每种验证保留完整结果或失败记录，不自动挑最高分。
 - 修改配置字段时，同时检查配置类、schema、协议、GUI 导入/保存与测试，兼容既有配置。不得静默丢失固定参数、搜索候选、变量顺序或图形选择。
 - 数据、配置、保存与目录选择均使用系统原生文件窗口。自绘控件需检查悬停、焦点、选中和禁用状态的对比度。
-- 修改可见功能时同步三语文案、README、研究者指南和对应语言截图；语言切换不能改变分析配置。导出图形和底层错误的语言边界见 README。
+- 修改可见功能时同步三语文案、README、研究者指南和对应语言截图；语言切换不能改变分析配置。报告、图形与底层错误的语言说明见[研究者指南](RESEARCHER_GUIDE_ZH.md#output-languages)。
 - `analysis_manifest.json` 记录运行版本；新增运行依赖时同步检查报告记录及独立包的元数据和许可证。更新依赖须同步 `uv.lock`。
 
 ## 测试与提交
@@ -168,7 +168,7 @@ uv run python tools/package_researcher_share.py --windows-zip dist/v0.3.1/PsyML-
 
 分享脚本读取当前核心版本，在仓库根目录生成 `PsyML-Toolkit-Researcher-Share-v0.3.1.zip`，不调用发布接口；另行确认后才生成，并保持为本地直接分享材料，不加入 Release 附件。Windows/ 为程序，TestData/ 为训练、配置及预测资料，Documents/ 为两份中文 PDF，“从这里开始.txt”解释文件夹并引导 Mac 用户到 GitHub。输出目录已存在时先移走或备份；文档更新后重新生成两个输出位置的 PDF。
 
-版本升级时只在 `src/psyml/__init__.py` 修改 `__version__`（`pyproject.toml` 为 dynamic，自动读取；`gui/export_presets.cfg` 保持占位符，数值由 `tools/build_native.py` 在导出时派生），并核对 uv.lock、`tools/build_native.py`、`tools/NATIVE_START_HERE.txt`、PDF 构建器中的版本与链接，以及三语发布说明（`docs/RELEASE_NOTES_<版本>.md`）。检查 BUILD.json 的提交、初始工作区状态和构建生成的差异，用 `tools/verify_release_artifacts.py` 复核 ZIP 内容与本地校验值。界面包内检查覆盖分类/回归训练、模型保存与加载、各 10 行新数据预测（写入本次运行目录的 `predictions.csv`）以及“打开预测结果文件夹”恰指向该运行目录；不替代实际窗口检查。核心 CLI `export-table` 与多格式读写仍保留，不属于该包内检查范围。每项独立功能完成后单独 commit 并立即 push，不累积后一起推送。
+版本升级时只在 `src/psyml/__init__.py` 修改 `__version__`（`pyproject.toml` 为 dynamic，自动读取；`gui/export_presets.cfg` 保持占位符，数值由 `tools/build_native.py` 在导出时派生），并核对 uv.lock、`tools/build_native.py`、`tools/NATIVE_START_HERE.txt`、PDF 构建器中的版本与链接，以及三语发布说明（`docs/RELEASE_NOTES_<版本>.md`）。检查 BUILD.json 的提交、初始工作区状态和构建生成的差异，用 `tools/verify_release_artifacts.py` 复核 ZIP 内容与本地校验值。界面包内检查覆盖分类/回归训练、模型保存与加载、各 10 行新数据预测（写入本次运行目录的 `predictions.csv`）以及“打开预测结果文件夹”恰指向该运行目录；不替代实际窗口检查。核心 CLI `export-table` 与多格式读写仍保留，不属于该包内检查范围。
 
 
 ## 打开应用
@@ -190,7 +190,7 @@ uv run python tools/package_researcher_share.py --windows-zip dist/v0.3.1/PsyML-
 1. 在源码检出根目录启动界面（macOS 可双击 `Launch PsyML.command`），依赖安装见[开发者指南](DEVELOPMENT_ZH.md)；独立应用包不包含开发测试环境。导入 `examples/quickstart/` 的分类或回归配置并运行一次。
 2. **版本小字**：软件名下方应以小字显示当前版本号 `0.3.1`。源码版唯一来源是 `src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic），独立包读取包内由同一常量生成的 `BUILD.json`；开发版 `0.3.1.dev0` 界面显示为 `0.3.1-dev`，正式版本 `0.3.1` 原样显示。
 3. **输出目录与旧结果**：第 2 页新训练结果显示在所选结果根目录的 `training/run_*` 下；第 4 页预测、SHAP 与系数分别落在与第 2 页共享根目录下 `prediction/`、`explanation/`、`coefficients/` 的 `run_*` 新目录，不覆盖已有文件，也不写入隐藏的应用数据目录。旧版本直接放在结果根目录的 `run_*` 目录仍能原位打开、内容不被改写。
-4. **第 4 页结果入口**：三块都提供“打开结果文件夹”（预测为“打开预测结果文件夹”，直接打开本次运行目录而不是 CSV）与“打开瀑布图”；预测产物是可直接打开的 `predictions.csv`。
+4. **第 4 页结果入口：**预测、SHAP 和系数区块各提供结果文件夹入口；预测按钮为“打开预测结果文件夹”，打开本次运行目录。只有 SHAP 区块另提供“打开瀑布图”。预测数据保存为 `predictions.csv`。
 5. **滚动控制与收尾状态**：在长页面与嵌套小表格之间滚动时，从整页起手经过小表格仍继续滚动整页，从小表格起手才滚动该表格，停顿约 250 毫秒后再滚动才重新选择控制层（锁定只作用于滚轮/滑动）；运行收尾阶段应显示“正在整理并写出结果…”且进度条未满，完成后才进入结果页。记录问题时使用“复制完整报错”。
 
 本指南描述源码检出 **0.3.1**（单一版本源）的行为，其中包含 v0.2.0 之后新增的功能与改进（置换重要性、数据检查与结果解读、单样本 SHAP、拟合系数，以及界面与输出流程改进）。独立包与分发 PDF 的版本与可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准；v0.2.0 及更早的独立包与分发 PDF 不包含这些功能与修复，界面与输出布局可能与源码检出不同。版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量；`pyproject.toml` 通过 dynamic 读取它，独立包的 `BUILD.json` 由 `tools/build_native.py` 用同一常量生成，界面小字显示同一值（正式版本 `0.3.1` 原样显示，开发版 `0.3.1.dev0` 显示为 `0.3.1-dev`）。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准，不要用本指南标题推断下载包内容。

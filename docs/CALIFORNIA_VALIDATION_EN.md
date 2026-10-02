@@ -12,7 +12,7 @@ This case predicts median house value for 20,640 California census block groups 
 
 Save the CSV and JSON in one local folder. If the browser displays file contents, use Save as and retain the extensions.
 
-The available application is still v0.3.0; an installer with the later source fixes is not yet available. The historical reference uses the source environment named on this page and does not certify the existing bundles. Checking the repaired application requires its corresponding installer. Available platforms are listed in [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases).
+Use 0.3.1 for the repaired application workflow; [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) lists the versions and assets actually available. Each historical run below identifies its source, library versions and check scope.
 
 1. Open PsyML and click “Import configuration…” on page 1. Select `california_config.json`. If “Configured data not found — select the data file” appears, select `california_housing.csv` in that import dialog. Check the resulting data path. The import restores all configuration settings after reading the preview.
 2. Check: 20,640 rows; regression; target `MedHouseVal`; eight predictors; no group; 5 outer K-fold splits and 3 inner splits; seed `20261002`; RMSE selection; Dummy, Ridge and Random Forest candidates. The data section below lists all predictor names.

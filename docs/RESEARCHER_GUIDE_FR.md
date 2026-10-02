@@ -20,13 +20,17 @@ La pertinence d’un modèle dépend de la question de recherche, de la structur
 - [7. Interprétations erronées et ordre de vérification](#checklist)
 - [8. Implémentation et lectures complémentaires](#references)
 
+<a id="output-languages"></a>
+
+Les rapports automatiques sont disponibles en chinois et en anglais. Les titres des axes des figures exportées, les libellés de classes de remplacement et les erreurs brutes restent en anglais, quelle que soit la langue de l’interface.
+
 <a id="gui-workflow"></a>
 
 ## Parcours dans l’application
 
 ### 1. Ouvrir l’application et importer les données
 
-Décompressez entièrement l’[application téléchargée](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). Sur Mac, ouvrez `PsyML Toolkit.app` ; sous Windows, `PsyML Toolkit.exe` en gardant le dossier `core` voisin. Les [notes de lancement et d’installation des sources](DEVELOPMENT_FR.md#ouvrir-lapplication) précisent les plateformes. Les captures utilisent des données synthétiques pour illustrer l’interface.
+Décompressez entièrement l’[application téléchargée](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). Sur Mac, ouvrez `PsyML Toolkit.app` ; sous Windows, `PsyML Toolkit.exe` en gardant le dossier `core` voisin. Les [notes de lancement et d’installation des sources](DEVELOPMENT_FR.md#ouvrir-lapplication) précisent les plateformes. Les captures utilisent des exemples synthétiques d’une interface antérieure pour montrer les commandes. Importez le JSON actuel, sans recopier les types de paramètres ni les chemins des images.
 
 Commencez par une configuration de classification ou de régression du [démarrage rapide](../examples/quickstart/README.md#français). Pour les cas publics, utilisez la configuration complète et le CSV [DSA](VALIDATION_DSA_FR.md) ou [California](CALIFORNIA_VALIDATION_FR.md).
 
@@ -63,6 +67,8 @@ L’interface indique étape, modèle, validation, pli externe et tâches termin
 Gardez l’enregistrement du meilleur modèle activé avant l’entraînement. Le modèle ajusté est écrit dans `model/best_<modèle>.joblib` ; conservez `model_metadata.json` à côté. Les validations indépendantes sans méthode principale globale n’ont pas de modèle final global. Chargez uniquement des modèles de confiance : joblib/pickle peut exécuter du code.
 
 À la page 4, chargez le modèle de cette exécution et les nouvelles données. Le contrôle des variables requises est automatique. L’ordre des colonnes peut différer et les colonnes supplémentaires sont conservées ; variables absentes, nombres invalides ou valeurs manquantes sans imputation bloquent la prédiction. Si un ancien modèle n’a pas de noms de variables, confirmez l’association manuelle dans l’ordre d’entraînement. Après validation, lancez la prédiction et ouvrez son dossier pour consulter `prediction/run_*/predictions.csv`. La [référence des modèles et prédictions](#results) précise colonnes, métadonnées et portée de l’évaluation.
+
+L’image suivante illustre la prédiction avec Logistic Regression. Chargez le modèle de votre propre analyse ; il n’est pas nécessaire de choisir celui de l’image.
 
 ![Modèle et données à prédire](images/fr/09-prediction.png)
 
@@ -290,7 +296,7 @@ La page 4 vérifie automatiquement le modèle de confiance et les nouvelles donn
 
 Les sorties conservent ordre des lignes et colonnes initiales et ajoutent `predicted_class` ou `predicted_value`. Seuls les classifieurs avec probabilités natives ajoutent `probability_*`. Les classes sont converties en noms de colonnes utilisables ; les collisions ajoutent des suffixes numériques aux nouvelles colonnes. Une cible présente est conservée.
 
-La CLI accepte neuf formats d’entrée et peut exporter les prédictions en CSV, TSV, XLSX, SAV, DTA, XPT ou Parquet ; XLS/SAS7BDAT sont en lecture seule, et les limites des formats statistiques peuvent empêcher l’export, essayez XLSX ou Parquet. La page 4 de l’interface écrit uniquement `predictions.csv`. Gardez modèle et métadonnées ensemble. Corruption, empreinte différente ou version scikit-learn différente provoquent des erreurs. Sans métadonnées, une récupération est tentée sans garantie d’exhaustivité.
+La CLI accepte neuf formats d’entrée et peut exporter les prédictions en CSV, TSV, XLSX, SAV, DTA, XPT ou Parquet ; XLS/SAS7BDAT sont en lecture seule, et les limites des formats statistiques peuvent empêcher l’export, essayez XLSX ou Parquet. La page 4 écrit `predictions.csv` et `prediction_manifest.json`. Le manifeste conserve les SHA-256 du modèle et de l’entrée, les versions, l’ordre réel des variables et les noms et fonctions (`kind`) des colonnes ajoutées ; chaque colonne de probabilité conserve aussi son libellé, son type et son indice de classe d’origine. Les noms des colonnes de probabilité sont sécurisés et les collisions reçoivent un suffixe ; consultez le manifeste pour identifier les classes. Gardez modèle et métadonnées ensemble. Corruption, empreinte différente ou version scikit-learn différente provoquent des erreurs. Sans métadonnées, une récupération est tentée sans garantie d’exhaustivité.
 
 **Emplacement des artefacts de la page 4 et des résultats d’entraînement.** La page 4 partage une racine de résultats avec la page 2 : une nouvelle exécution d’entraînement écrit dans `<racine>/training/run_<horodatage>_<usec>/`, la prédiction dans `<racine>/prediction/run_<horodatage>_<usec>/predictions.csv`, l’explication SHAP et les coefficients dans `explanation/run_*/` et `coefficients/run_*/`. Chaque opération fige un nouveau dossier d’exécution à son démarrage et n’écrase jamais de fichier existant ; **Ouvrir le dossier des prédictions** et **Ouvrir le dossier de résultats** pointent vers ce dossier réel, et **Ouvrir l’image en cascade** vers le `shap_waterfall.png` de cette exécution. Les anciens dossiers d’entraînement `run_*` écrits directement sous la racine restent en place et s’ouvrent normalement, sans migration ni réécriture ; seuls les nouveaux entraînements vont dans `training/`. Une racine absente, relative ou non inscriptible produit une erreur au lieu d’un repli vers le dossier de données masqué de l’application ; changer la racine n’affecte que les opérations suivantes et les artefacts terminés restent sur le disque.
 
@@ -365,7 +371,7 @@ Lecture : `importance` est signée. Pour MAE/RMSE, une valeur positive signifie 
 | `n_splits` / `inner_splits` | Nombres de plis externes / internes ; lignes, classes et groupes doivent permettre le découpage. Le nombre interne effectif peut être réduit |
 | `random_seed` | Contrôle les partitions aléatoires et les estimateurs munis d’une graine ; un `random_state` explicite de l’estimateur la remplace. Une graine identique ne garantit pas l’identité bit à bit entre versions |
 | `n_neighbors` | Nombre entier de voisins de KNN |
-| `n_estimators` / `max_depth` / `min_samples_leaf` | Nombre d’arbres, profondeur maximale, effectif minimal d’une feuille. `null` peut supprimer la limite de profondeur. L’interface traite les candidats entiers comme des effectifs ; les fractions doivent respecter les règles du paramètre |
+| `n_estimators` / `max_depth` / `min_samples_leaf` | Nombre d’arbres, profondeur maximale et effectif minimal d’une feuille. `null` peut signifier une profondeur illimitée. Utilisez des entiers pour les effectifs et des décimaux autorisés pour les proportions ; un décimal de valeur entière n’est pas automatiquement un effectif. Par exemple, `max_features=1` désigne une variable et `1.0` toutes les variables |
 | `C` / `alpha` / `l1_ratio` | Contrôlent la pénalité : C plus petit la renforce généralement, alpha plus grand aussi, l1_ratio mélange L1/L2 ; le sens exact dépend du modèle |
 | `learning_rate` / `learning_rate_init` | Taux d’apprentissage du boosting / taux initial du MLP ; clés non interchangeables |
 | `epsilon` | Tolérance de SVR, pas un intervalle de confiance de l’erreur d’estimation |
@@ -419,6 +425,21 @@ Pour les principes généraux, consulter les références scikit-learn sur les [
 Commencez les essais dans [examples/quickstart/](../examples/quickstart/README.md) : chaque tâche fournit une configuration, 48 lignes d’entraînement et 10 nouvelles lignes à prédire, toutes synthétiques. Suivez la [parcours dans l’application](#gui-workflow) ; enregistrement et prédiction figurent à l’étape 5.
 
 À la page 1, **Importer une configuration…** ouvre un exemple fourni, le `config.json` d’un résultat ou `best_parameters_configure.json`, sans terminal. Réassociez les données correspondantes si leur chemin est introuvable ; les colonnes requises sont vérifiées. Vérifiez variables, validation et paramètres, puis choisissez un dossier local et lancez à la page 2. Chaque exécution crée un nouveau sous-dossier `training/run_*` sans réutiliser le chemin de sortie importé. **Enregistrer la configuration…** conserve les réglages. Relancer les meilleurs paramètres fixes ne reproduit pas la recherche originale et ne constitue pas une validation indépendante.
+
+
+Suivez ces trois écrans pour l’exemple de classification fourni. Chemins et identifiants sont illustratifs ; la sortie actuelle se trouve dans `training/run_*/` sous la racine choisie. Le [démarrage rapide](../examples/quickstart/README.md#français) détaille les fichiers et la prédiction de nouvelles données.
+
+1. Importer la configuration de classification
+
+   ![Importer la configuration de classification](images/fr/06-import-config.png)
+
+2. Choisir un dossier et exécuter
+
+   ![Choisir un dossier et exécuter](images/fr/07-reproduce-run.png)
+
+3. Consulter les résultats et le modèle enregistré
+
+   ![Consulter les résultats et le modèle enregistré](images/fr/08-reproduced-result.png)
 
 ## Provenance des entrées et de l’exécution
 

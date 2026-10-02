@@ -20,13 +20,17 @@ Suitability depends on the research question, data structure and validation desi
 - [7. Common misconceptions and review order](#checklist)
 - [8. Implementation and further reading](#references)
 
+<a id="output-languages"></a>
+
+Automatic reports are available in Chinese and English. Exported plot axis titles, placeholder class labels and raw backend errors use English regardless of the interface language.
+
 <a id="gui-workflow"></a>
 
 ## Application walkthrough
 
 ### 1. Open the app and import data
 
-Extract the complete [application download](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). On Mac, open `PsyML Toolkit.app`; on Windows, open `PsyML Toolkit.exe` with the `core` folder beside it. See [opening and source-installation notes](DEVELOPMENT_EN.md#open-the-application) for platform details. Screenshots use synthetic data to illustrate the interface.
+Extract the complete [application download](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases). On Mac, open `PsyML Toolkit.app`; on Windows, open `PsyML Toolkit.exe` with the `core` folder beside it. See [opening and source-installation notes](DEVELOPMENT_EN.md#open-the-application) for platform details. Screenshots use synthetic examples from an earlier interface to show the controls. Import the current JSON; do not copy parameter types or paths from the images.
 
 Start with a classification or regression configuration from the [quickstart](../examples/quickstart/README.md#english). For public validation, use the full configuration and CSV from [DSA](VALIDATION_DSA_EN.md) or [California](CALIFORNIA_VALIDATION_EN.md).
 
@@ -63,6 +67,8 @@ On “3 Results”, select the validation to inspect, then review warnings, diff
 Keep “Save best model” enabled before training. The fitted model is written to `model/best_<model>.joblib`; keep `model_metadata.json` beside it. Independent validation outputs without a global primary method have no global final model. Load only trusted models: joblib/pickle files can execute code.
 
 On “4 Model & Prediction”, load this run's model and new data. Required-variable checks run automatically. Column order may differ and extra columns are retained; missing features, invalid numbers or missing values without imputation block prediction. For an older model without feature names, confirm the manual mapping in training order. After successful checks, click “Run prediction”, then “Open prediction results folder” to inspect `prediction/run_*/predictions.csv`. [Model and prediction reference](#results) explains columns, metadata and evaluation limits.
+
+The following image uses Logistic Regression to illustrate the prediction page. Load the model saved by your own run; there is no need to switch to the pictured model.
 
 ![Model details and prediction data](images/en/09-prediction.png)
 
@@ -290,7 +296,7 @@ Page 4 automatically checks a trusted model and new table. Only required predict
 
 Outputs preserve original row order and all input columns, adding `predicted_class` or `predicted_value`. Only classifiers with native probabilities add `probability_*`. Class names are made suitable for column names; collisions receive numeric suffixes on new columns. An input target is retained.
 
-The CLI supports nine input formats and can export predictions as CSV, TSV, XLSX, SAV, DTA, XPT or Parquet; XLS/SAS7BDAT are read-only, and statistical-format limits can prevent export, so try XLSX or Parquet. GUI page 4 writes only `predictions.csv`. Keep the model and metadata together. Corruption, hash mismatch or a different scikit-learn version causes errors; missing metadata triggers recovery where possible, without guaranteeing completeness.
+The CLI supports nine input formats and can export predictions as CSV, TSV, XLSX, SAV, DTA, XPT or Parquet; XLS/SAS7BDAT are read-only, and statistical-format limits can prevent export, so try XLSX or Parquet. GUI page 4 writes `predictions.csv` and `prediction_manifest.json`. The manifest records model/input SHA-256 hashes, versions, the actual feature order, and appended-column names and kinds; each probability column also records its original class label, type and index. Probability column names are sanitized and collisions receive suffixes; use the manifest to identify their classes. Keep the model and metadata together. Corruption, hash mismatch or a different scikit-learn version causes errors; missing metadata triggers recovery where possible, without guaranteeing completeness.
 
 **Where page-4 artifacts and training results are written.** Page 4 shares one result root with page 2: a new training run is written to `<result root>/training/run_<timestamp>_<usec>/`, prediction to `<result root>/prediction/run_<timestamp>_<usec>/predictions.csv`, and single-sample SHAP and coefficients to `explanation/run_*/` and `coefficients/run_*/`. Each operation freezes a new run directory at its start and never overwrites existing files; **Open prediction results folder** and **Open results folder** point to that actual run directory, and **Open waterfall image** points to this run's `shap_waterfall.png`. Legacy training folders written directly under the result root as `run_*` stay in place and still open without any migration or rewriting; only new training runs go into `training/`. An unset root, a relative path or an unwritable root reports an error instead of falling back to the hidden application-data folder, and changing the root only affects later operations while completed artifacts stay on disk.
 
@@ -365,7 +371,7 @@ How to read it: `importance` is signed. For MAE/RMSE a positive value means the 
 | `n_splits` / `inner_splits` | Outer / inner fold counts; rows, classes and groups must support the split. The actual inner fold count may be reduced |
 | `random_seed` | Controls random splits and seeded estimators; explicit estimator `random_state` overrides its seed. Equal seeds do not guarantee bitwise identity across dependency versions |
 | `n_neighbors` | KNN neighborhood size, an integer count |
-| `n_estimators` / `max_depth` / `min_samples_leaf` | Tree count, maximum depth, minimum leaf sample requirement. `null` can mean unlimited depth. The GUI treats integral candidates as counts; fractions must satisfy that parameter's rules |
+| `n_estimators` / `max_depth` / `min_samples_leaf` | Tree count, maximum depth and minimum leaf sample requirement. `null` can mean unlimited depth. Use integers for counts and supported floats for proportions; an integral-looking float is not automatically a count. For example, `max_features=1` means one feature, while `1.0` means all features |
 | `C` / `alpha` / `l1_ratio` | Penalty controls: smaller C usually strengthens regularization; larger alpha usually strengthens it; l1_ratio mixes L1/L2. Exact meanings depend on the model |
 | `learning_rate` / `learning_rate_init` | Boosting learning rate / initial MLP learning rate; the configuration keys are not interchangeable |
 | `epsilon` | SVR tolerance parameter, not a confidence range for estimation error |
@@ -419,6 +425,21 @@ For general principles, consult scikit-learn's [metrics](https://scikit-learn.or
 Start user testing in [examples/quickstart/](../examples/quickstart/README.md): each task has a configuration, 48 training rows and 10 new prediction rows, all synthetic. Follow the [application walkthrough](#gui-workflow); model saving and prediction are covered in step 5.
 
 On page 1, **Import configuration…** opens a bundled example, a result folder’s `config.json`, or `best_parameters_configure.json`; no terminal is required. Relink the corresponding data if its path is unavailable; required columns are checked. Review variables, validation and parameters, then choose a local output folder and run on page 2. Each run creates a new `training/run_*` subfolder instead of reusing the imported output path. **Save configuration…** saves current settings. Rerunning fixed best parameters neither reproduces the original search nor provides independent validation.
+
+
+Use these three screens for the bundled classification run. Screenshot paths and run IDs are illustrative; current output goes under `training/run_*/` in your selected root. The [quickstart](../examples/quickstart/README.md#english) lists the files and new-data prediction steps.
+
+1. Import the classification configuration
+
+   ![Import the classification configuration](images/en/06-import-config.png)
+
+2. Choose a results folder and run
+
+   ![Choose a results folder and run](images/en/07-reproduce-run.png)
+
+3. Read results and locate the saved model
+
+   ![Read results and locate the saved model](images/en/08-reproduced-result.png)
 
 ## Input and execution provenance
 

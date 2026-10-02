@@ -12,7 +12,7 @@ Ce cas prédit la valeur médiane des logements de 20 640 zones de recensement c
 
 Enregistrez le CSV et le JSON dans un même dossier local. Si le navigateur affiche leur contenu, utilisez « Enregistrer sous » en conservant les extensions.
 
-L’application disponible reste v0.3.0 ; aucun installateur contenant les correctifs source ultérieurs n’est encore disponible. La référence historique utilise l’environnement source indiqué sur cette page et ne certifie pas les paquets existants. Vérifier l’application corrigée nécessite son installateur. Les plateformes proposées figurent dans [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases).
+Utilisez 0.3.1 pour le parcours applicatif corrigé ; [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) indique les versions et fichiers disponibles. Chaque exécution historique ci-dessous précise sources, bibliothèques et contrôles.
 
 1. Ouvrez PsyML et cliquez sur « Importer une configuration… » à la page 1. Choisissez `california_config.json`. Si « Données introuvables — sélectionnez le fichier de données » apparaît, choisissez `california_housing.csv` dans ce dialogue d’import. Vérifiez le chemin obtenu. L’import rétablit tous les réglages de la configuration après lecture de l’aperçu.
 2. Vérifiez : 20 640 lignes ; régression ; cible `MedHouseVal` ; huit prédicteurs ; aucun groupe ; 5 plis K-fold externes et 3 internes ; graine `20261002` ; sélection selon le RMSE ; candidats Dummy, Ridge et Random Forest. Tous les noms de variables figurent plus bas.

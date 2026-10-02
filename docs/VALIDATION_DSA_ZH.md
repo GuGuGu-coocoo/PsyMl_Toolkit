@@ -17,7 +17,7 @@ CSV 将每段躯干六个传感器通道的均值和标准差整理成 12 个预
 
 ### 导入软件并运行
 
-1. 打开 PsyML。应用下载和版本说明见 [README](../README.md)：现有 v0.3.0 下载包尚不包含后续源码修复，新版安装包尚未提供。本页历史参考不能作为该下载包的验收结果。
+1. 打开 PsyML。复现修复后的应用流程请使用 0.3.1；实际可下载的版本与附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 为准。下文历史结果各自保留原来的源码与环境版本。
 2. 在“1 数据与分析设置”点击“导入配置…”，选下载的 `dsa_group_nested_v1.json`。若出现“找不到配置中的数据，请重新选择数据文件”，在这个导入弹窗中选 `dsa_torso_mean_std.csv`。成功后核对实际数据路径；软件会在读取预览后恢复配置中的全部设置，不需要手改 JSON。
 3. 核对：9,120 行；分类；目标 `activity`；分组 `subject_id`；12 个 `torso_` 开头的预测变量；分组 K 折、外层 4 折、内层 3 折；随机种子 `20261001`；Dummy 和 Logistic Regression 两个候选模型。不要把 `segment_id` 或 `subject_id` 勾成预测变量。
 4. 打开“2 检查与运行”，选择电脑上的结果文件夹，点击“运行分析”。导入配置本身不会启动运行。软件会创建新的结果子文件夹。
@@ -60,7 +60,7 @@ macro-F1 先分别计算各类的 F1，再对类别取平均；F1 同时考虑�
 
 先确认数据、配置、分组、预测变量和环境版本一致，再比较导出的完整数字。界面显示可能经过舍入。参考值使用 PsyML `0.3.0`、提交 `de33abf`、Python `3.12.14`、scikit-learn `1.8.0`；当前锁定环境在 Python ≥3.11 上使用 scikit-learn `1.9.0`。软件版本号相同也不代表源码和环境相同。
 
-同环境正式比较规则为指标绝对差 ≤`1e-12`；预处理 `atol=rtol=1e-12`；概率 `atol=1e-10, rtol=1e-8`。这是[比较程序](../tools/cases/compare_dsa.py)的检查规则，不是跨平台逐位相同的保证。macOS 与官方锁定环境的复跑保留了概率及 ROC-AUC 的差异；主预测和上述主指标一致。详情及未确认的原因见[数值差异说明](VALIDATION_DSA_DIAGNOSTICS_ZH.md)。自己的新输出应保存在新目录，不替换已记录的参考结果。
+同环境正式比较规则为指标绝对差 ≤`1e-12`；预处理 `atol=rtol=1e-12`；概率 `atol=1e-10, rtol=1e-8`。这是[比较程序](../tools/cases/compare_dsa.py)的检查规则，不是跨平台逐位相同的保证。macOS 与官方锁定环境的复跑保留了概率及 ROC-AUC 的差异；主预测和上述主指标一致。历史差异与未确认的原因保留在下方技术记录中。自己的新输出应保存在新目录，不替换已记录的参考结果。
 
 若需要逐行、逐折核对，而不只是查看主指标，按[独立复算与比较命令](../examples/public/dsa_group_nested_v1/README.md)操作。两套程序共用 scikit-learn 的底层模型，因此这检验的是分析步骤是否一致。只有 8 名参与者，结果不能代表其他人群、设备或日常环境，也不支持临床或因果结论。打乱标签检查只运行一次，不是统计置换检验。
 
@@ -170,7 +170,7 @@ macro-F1 先分别计算各类的 F1，再对类别取平均；F1 同时考虑�
 - 唯一差异出现在由概率导出的 `roc_auc_ovr_weighted`（涉及 `fold_metrics.csv`、`metrics.csv` 与 `metrics_summary.csv` 的 mean/std/min）：外层 1、2 各约 2.03e-7，外层 3、4 为 0。折外概率最大绝对差为 1.9762588500393807e-05（逐折最大值：1.98e-5、8.70e-6、6.56e-6、5.23e-6；173,280 个概率单元中 97,415 个超过 1e-10）。
 - 对齐与定位核查：两侧概率列顺序均为 `probability_1..19`，最终模型 `classes_` 均为 1..19；`row_index` 序列与 `fold/observed/predicted/model` 完全一致。把**冻结的概率矩阵**在 macOS 上重新计算 ROC-AUC，与冻结报告值只差 ≤1.11e-16，说明指标计算本身跨平台一致；差异跟随拟合概率——两个最终模型的系数最大差约 3.07e-5、截距最大差约 7.08e-5、全数据概率最大差约 3.03e-6。
 - 官方 `uv.lock` 环境（scikit-learn 1.9.0、pandas 3.0.5 等，见 3.6 与附录 C）于 2026-10-02 完成同一案例的完整复跑：同一环境内 26 数值 + 4 结构 + 2 导出核验通过；其主预测、概率、系数与全部指标表与 macOS parity 复跑**完全一致**（概率最大差 0、系数最大差 0、指标表逐字节相同）。因此与冻结 Linux 基线的差异仍是同一条已记录的平台相关差异，本案例未观察到由依赖版本变化引入的新差异。
-- 数值路径诊断（Linux 受控 OpenBLAS 内核对照与 macOS（aarch64）只读核查）见[诊断附录](VALIDATION_DSA_DIAGNOSTICS_ZH.md)：仅切换内核或对输入做 1 ulp 级扰动即可重现同量级差异，macOS 复跑的两折各为恰好一对严格排序翻转（折 1 类别 6、折 2 类别 13）；**原 Mac 具体根因仍未确认**，折 1 的变化未被 Linux 对照复现。
+- 数值路径诊断（Linux 受控 OpenBLAS 内核对照与 macOS（aarch64）只读核查）见诊断附录：仅切换内核或对输入做 1 ulp 级扰动即可重现同量级差异，macOS 复跑的两折各为恰好一对严格排序翻转（折 1 类别 6、折 2 类别 13）；**原 Mac 具体根因仍未确认**，折 1 的变化未被 Linux 对照复现。
 - 原始 Mac 差异的具体根因尚未确认。受控诊断支持拟合数值路径敏感性，但不能将原始差异唯一归因于某个库、指令路径或预处理步骤。本案例不宣称跨平台数值等价，容差与基线均未因此修改。
 - canary 的 BA 与打乱 CSV 哈希均与冻结值一致；外折特征 +1000 后预测改变 2,122 条，与 Linux 结果相同。运行后按冻结的 423 个仓库文件清单复核，无 Python/GUI/测试/锁文件差异；仅本整合有意编辑的 3 个公开文档不同。
 
@@ -232,6 +232,10 @@ CLI 与各工具都要求新的空输出目录，已有结果不被覆盖；`inp
 6. scikit-learn developers. Cross-validation: evaluating estimator performance（分组交叉验证）.<https://scikit-learn.org/stable/modules/cross_validation.html>
 7. Collins, G. S., et al. TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods. *BMJ*, 385, e078378. <https://www.bmj.com/content/385/bmj-2023-078378>
 
+## 可选技术资料
+
+历史跨平台概率与 ROC-AUC 差异的受控诊断见[数值差异诊断附录](VALIDATION_DSA_DIAGNOSTICS_ZH.md)。该附录保留内核对照、排序分析和未确定的原因，供需要进一步核查的读者使用。
+
 ## 附录
 
 ### A. 冻结协议要点
@@ -253,7 +257,7 @@ CLI 与各工具都要求新的空输出目录，已有结果不被覆盖；`inp
 
 ### C. 环境
 
-案例 parity 环境：Python 3.12.14；NumPy 2.3.5；pandas 2.2.3；scikit-learn 1.8.0；SciPy 1.17.0；joblib 1.5.3；matplotlib 3.10.8；pyreadstat 1.3.6；`OPENBLAS_NUM_THREADS`、`OMP_NUM_THREADS`、`MKL_NUM_THREADS` 均为 1；未安装 pyarrow 与 SHAP。该环境为隔离 venv 中以 `--no-deps` 安装固定源码，未重建官方 `uv.lock`。macOS 复跑使用相同 parity 版本；数值后端与诊断摘要见[诊断附录](VALIDATION_DSA_DIAGNOSTICS_ZH.md)。仓库本地 `.venv` 与官方 `uv.lock` 环境的测试结果见 3.6。官方 `uv.lock` 环境的完整案例复跑（2026-10-02）使用 Python 3.12.13、NumPy 2.5.2、pandas 3.0.5、scikit-learn 1.9.0、SciPy 1.18.1、joblib 1.6.0、matplotlib 3.11.1、pyarrow 23.0.1；`uv.lock` 未被修改（SHA-256 `9951e0701e2a0c7bd85614d3a0fd642b9407da6d98fa955bac97397626ebce56`），该环境与 macOS parity 运行输出完全一致，与冻结基线的差异为同一条平台相关差异。
+案例 parity 环境：Python 3.12.14；NumPy 2.3.5；pandas 2.2.3；scikit-learn 1.8.0；SciPy 1.17.0；joblib 1.5.3；matplotlib 3.10.8；pyreadstat 1.3.6；`OPENBLAS_NUM_THREADS`、`OMP_NUM_THREADS`、`MKL_NUM_THREADS` 均为 1；未安装 pyarrow 与 SHAP。该环境为隔离 venv 中以 `--no-deps` 安装固定源码，未重建官方 `uv.lock`。macOS 复跑使用相同 parity 版本；数值后端与诊断摘要见诊断附录。仓库本地 `.venv` 与官方 `uv.lock` 环境的测试结果见 3.6。官方 `uv.lock` 环境的完整案例复跑（2026-10-02）使用 Python 3.12.13、NumPy 2.5.2、pandas 3.0.5、scikit-learn 1.9.0、SciPy 1.18.1、joblib 1.6.0、matplotlib 3.11.1、pyarrow 23.0.1；`uv.lock` 未被修改（SHA-256 `9951e0701e2a0c7bd85614d3a0fd642b9407da6d98fa955bac97397626ebce56`），该环境与 macOS parity 运行输出完全一致，与冻结基线的差异为同一条平台相关差异。
 
 ### D. 验收工具的行为与失败入口
 
@@ -265,7 +269,7 @@ CLI 与各工具都要求新的空输出目录，已有结果不被覆盖；`inp
 
 ### E. 保留的差异、警告与失败记录
 
-- 跨平台差异：`roc_auc_ovr_weighted` 约 2.03e-7 与外折概率最大约 1.98e-5 被保留并公开；原因尚未确认（见 3.5），未以此调整任何容差或基线。数值路径诊断见[诊断附录](VALIDATION_DSA_DIAGNOSTICS_ZH.md)（Linux 内核对照 + macOS（aarch64）核查；受控实验重现同量级差异，原 Mac 具体根因仍未确认）。
+- 跨平台差异：`roc_auc_ovr_weighted` 约 2.03e-7 与外折概率最大约 1.98e-5 被保留并公开；原因尚未确认（见 3.5），未以此调整任何容差或基线。数值路径诊断见诊断附录（Linux 内核对照 + macOS（aarch64）核查；受控实验重现同量级差异，原 Mac 具体根因仍未确认）。
 - 混淆图修复（2026-10-02）：原生导出改为按类别数自适应布局；布局/场景与数值不变性测试通过，修复后的 19 类图与各场景图已实际视觉检查；历史拥挤记录保留在 4.4。该修复只影响图片，不改变混淆矩阵 CSV、预测、指标或选择。
 - 比较器缺陷修复记录：首版辅助函数曾把参考诊断列误判为不一致并把 `inf` 序列化进 JSON 导致运行中断；随后发现"必需列依赖生产表列名"以及"诊断/复算缺列抛异常使报告写不出"两处问题，均已修复并补充回归测试与整流程集成测试。
 - 案例包首轮便携复跑曾因字体缓存目录不可写而在严格 stderr 门槛处退出 1，随后只调整子进程缓存路径并完整重跑通过；该记录属于运行器环境配置，不是训练逻辑错误。

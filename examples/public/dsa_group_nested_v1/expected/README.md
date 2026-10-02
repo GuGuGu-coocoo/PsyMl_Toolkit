@@ -35,9 +35,9 @@ fits the 9,120-row case.
   re-derived from the repository tests. `case_summary.json` documents that
   provenance explicitly.
 - Hashes identify files; they are not signatures and do not establish trust.
-- The derived CSV and the 9,120 out-of-fold prediction tables are intentionally
-  not committed: the repository does not redistribute the data and ignores
-  `**/results/`. Only small, reviewable expectations live here.
+- The byte-identical [prepared input CSV](../../downloads/README.md) is now public.
+  The full 9,120-row out-of-fold prediction tables remain outside this repository,
+  which ignores `**/results/`. Only small reference records live in this directory.
 - A failure at the same environment and pinned code must be investigated; a
   difference on another platform or dependency set must be reported as a new
   result, never used to overwrite these values or relax the tolerances. The

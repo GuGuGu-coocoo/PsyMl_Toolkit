@@ -12,7 +12,7 @@
 
 把 CSV 和 JSON 放在同一个本地文件夹。若浏览器直接显示文件内容，使用“另存为”，保留原来的扩展名。
 
-目前可下载的应用仍为 v0.3.0，尚无包含后续源码修复的新安装包。历史参考对应本页注明的源码环境，不能作为现有下载包的验收结果；若要验证修复后的应用，需要相应安装包。软件可下载平台见 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases)。
+复现修复后的应用流程请使用 0.3.1；实际可下载的版本与附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 为准。下文分别标明每次历史运行的源码、库版本和检查范围。
 
 1. 打开 PsyML，在第 1 页点击“导入配置…”，选择 `california_config.json`。若出现“找不到配置中的数据，请重新选择数据文件”，在这个导入弹窗中选 `california_housing.csv`。成功后核对实际数据路径；软件会在读取预览后恢复配置中的全部设置。
 2. 核对：20,640 行；回归；目标 `MedHouseVal`；8 个预测变量；不分组；外层 K 折 5 折、内层 3 折；随机种子 `20261002`；以 RMSE 选择；候选模型为 Dummy、Ridge、Random Forest。完整变量名列在下文的数据说明中。

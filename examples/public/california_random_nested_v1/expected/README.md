@@ -21,7 +21,8 @@ They are **historical records**, not newly generated full-data test results.
   integer `0` accepted and floating `0.0` rejected; not a new software result.
 - `historical_hashes.json`: original case-relative names, bytes and SHA-256
   for relevant artifacts and the separately preserved complete case ZIP.
-  The ZIP/data/models/full audit traces/screenshots are not in Git. Hashes prove
+  The [prepared input CSV](../../downloads/README.md) is now public. The full case
+  ZIP, models, audit traces and screenshots are not in Git. Hashes prove
   identity when the corresponding original files are available, not public
   availability of those large artifacts.
 - `integration_verification.json`: separately dated repository-tool checks

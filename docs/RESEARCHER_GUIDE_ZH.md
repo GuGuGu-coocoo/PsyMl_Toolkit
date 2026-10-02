@@ -20,13 +20,17 @@
 - [7. 常见误解与核查顺序](#checklist)
 - [8. 实现依据与延伸阅读](#references)
 
+<a id="output-languages"></a>
+
+自动报告提供中文和英文版本；导出图形的坐标轴标题、类别占位标签及底层错误使用英文，不随界面语言切换。
+
 <a id="gui-workflow"></a>
 
 ## 软件操作步骤
 
 ### 1. 打开应用和导入数据
 
-完整解压[应用下载包](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases)。Mac 打开 `PsyML Toolkit.app`；Windows 打开 `PsyML Toolkit.exe`，保留旁边的 `core` 文件夹。平台、首次启动与源码启动说明见[开发者指南](DEVELOPMENT_ZH.md#打开应用)。截图使用合成数据，展示界面操作。
+完整解压[应用下载包](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases)。Mac 打开 `PsyML Toolkit.app`；Windows 打开 `PsyML Toolkit.exe`，保留旁边的 `core` 文件夹。平台、首次启动与源码启动说明见[开发者指南](DEVELOPMENT_ZH.md#打开应用)。截图沿用早期版本的合成示例，用于查找按钮；请导入当前 JSON，不照抄图片中的参数类型或路径。
 
 第一次使用可从[快速开始](../examples/quickstart/README.md#中文)导入分类或回归配置；公开数据验证请使用 [DSA](VALIDATION_DSA_ZH.md) 或 [California](CALIFORNIA_VALIDATION_ZH.md) 的完整配置和 CSV。
 
@@ -63,6 +67,8 @@
 训练前保留“保存最佳模型”勾选。运行完成后，模型位于 `model/best_<模型名>.joblib`，与 `model_metadata.json` 放在一起。未指定全局主要验证的独立输出没有全局最终模型。只加载可信模型，joblib/pickle 文件可以执行代码。
 
 在“4 模型与预测”加载本次模型和新数据，软件会自动检查所需变量。列顺序可以不同，多余列会保留；缺列、非法数值或无法填补的缺失值会阻止预测。旧模型没有变量名时，按训练顺序完成手动变量映射。检查通过后点击“运行预测”，再用“打开预测结果文件夹”查看 `prediction/run_*/predictions.csv`。[保存模型与预测结果](#results)说明输出列、元数据和评估边界。
+
+下图用 Logistic Regression 示意预测页面。实际操作时加载本次分析保存的模型，不必改成图中的模型。
 
 ![模型信息与预测数据](images/zh/09-prediction.png)
 
@@ -290,7 +296,7 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 
 预测结果保留原始行顺序和全部输入列，新增 `predicted_class`（分类）或 `predicted_value`（回归）；只有原生支持概率的分类模型新增 `probability_*`。类别名称会转换为可用列名，重名时新增列带数字后缀。目标列即使存在也只保留。
 
-CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV、DTA、XPT 或 Parquet；XLS、SAS7BDAT 仅支持读取，统计格式限制可能使导出失败，可改用 XLSX 或 Parquet。GUI 第 4 页只写 `predictions.csv`。模型与元数据应成对保留；损坏、校验不匹配或 scikit-learn 版本不一致会报错，缺少元数据时尝试恢复信息但不保证完整。
+CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV、DTA、XPT 或 Parquet；XLS、SAS7BDAT 仅支持读取，统计格式限制可能使导出失败，可改用 XLSX 或 Parquet。GUI 第 4 页写入 `predictions.csv`，同时生成 `prediction_manifest.json`。清单记录模型与输入文件的 SHA-256、版本、实际特征顺序，以及新增列的名称和用途（`kind`）；概率列还记录对应的原始类别标签、类型和索引。概率列名经过安全化处理，名称冲突会加后缀；请用清单确认它代表哪个类别。模型与元数据应成对保留；损坏、校验不匹配或 scikit-learn 版本不一致会报错，缺少元数据时尝试恢复信息但不保证完整。
 
 **第 4 页产物与训练结果的输出位置。** 第 4 页与第 2 页共享同一个结果根目录：新的训练结果写入 `<结果根目录>/training/run_<时间>_<usec>/`，预测写入 `<结果根目录>/prediction/run_<时间>_<usec>/predictions.csv`，单样本 SHAP 与系数分别写入 `explanation/run_*/`、`coefficients/run_*/`。每次操作开始时冻结一个新运行目录，不覆盖已有文件；“打开预测结果文件夹”“打开结果文件夹”指向该次实际运行目录，“打开瀑布图”指向本次的 `shap_waterfall.png`。旧版本直接写在结果根目录下的 `run_*` 训练目录保持原位、仍可正常打开，不搬家、不改写；只有新训练才进入 `training/`。未选择根目录、路径为相对路径或根目录不可写时直接显示错误，不会回退到隐藏的应用数据目录。更改根目录只影响后续操作，已完成的产物保留在磁盘。
 
@@ -365,7 +371,7 @@ CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV�
 | `n_splits` / `inner_splits` | 外层 / 内层折数；可用样本、类别和组数必须支持切分，内层实际折数可能减少 |
 | `random_seed` | 控制随机切分和设定了种子的估计器；显式模型 `random_state` 可覆盖估计器种子。种子相同不保证跨依赖版本逐位一致 |
 | `n_neighbors` | KNN 邻居数；计数取整数 |
-| `n_estimators` / `max_depth` / `min_samples_leaf` | 树数、最大树深、叶节点最小样本要求。`null` 可表示不限制树深；GUI 整数值候选按计数处理，合法小数比例须与参数规则一致 |
+| `n_estimators` / `max_depth` / `min_samples_leaf` | 树数、最大树深、叶节点最小样本要求。`null` 可表示不限制树深。计数用整数，比例用参数支持的小数；不要把整值小数一律当作计数。例如 `max_features=1` 是一个特征，`1.0` 是全部特征 |
 | `C` / `alpha` / `l1_ratio` | 惩罚控制参数；C 较小通常惩罚更强，alpha 较大通常惩罚更强，l1_ratio 调节 L1/L2 比例；具体含义依模型而定 |
 | `learning_rate` / `learning_rate_init` | 提升模型学习率 / MLP 初始学习率，不能互换配置键 |
 | `epsilon` | SVR 的容忍区间宽度参数，不是估计误差的置信范围 |
@@ -420,6 +426,21 @@ CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV�
 用户测试从 [examples/quickstart/](../examples/quickstart/README.md) 开始：分类和回归分别提供配置、48 行训练数据与 10 行新预测数据，全部为合成数据。操作顺序见 [软件操作步骤](#gui-workflow)，保存模型与预测见第 5 步。
 
 应用第 1 页的“导入配置…”可读取附带示例、结果目录的 `config.json`，或固定参数文件 `best_parameters_configure.json`；无需命令行。数据路径失效时，重新选择对应数据；程序会核对所需列。检查变量、验证与参数后，在第 2 页选择你电脑上的输出目录并运行。每次建立新的 `training/run_*` 结果子目录，导入的输出路径不会被沿用。“保存配置…”可保存当前设置。固定最佳参数的再运行不重现原搜索，也不是独立验证。
+
+
+按下面三张图完成内置分类样例的训练。图中路径与运行编号仅作示意；本次输出位于所选根目录下的 `training/run_*/`。完整文件与新数据预测步骤见[快速开始](../examples/quickstart/README.md#中文)。
+
+1. 导入分类配置
+
+   ![导入分类配置](images/zh/06-import-config.png)
+
+2. 选择结果目录并运行
+
+   ![选择结果目录并运行](images/zh/07-reproduce-run.png)
+
+3. 查看结果与保存模型
+
+   ![查看结果与保存模型](images/zh/08-reproduced-result.png)
 
 ## 输入与执行溯源
 

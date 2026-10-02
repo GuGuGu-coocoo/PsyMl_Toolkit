@@ -1,8 +1,10 @@
-# 用户测试入口 / GUI quick start / Test de l’interface
+# 快速开始 / Quick start / Démarrage rapide
+
+[中文](#中文) · [English](#english) · [Français](#français)
 
 ## 中文
 
-这是用户试用所需的完整资料夹。请整体保留或复制这个资料夹，不要只复制 JSON。全部数据为合成数据，仅用于检查软件流程。
+用这些文件完成第一次训练和新数据预测。请保留或复制整个资料夹，让 JSON 与训练 CSV 放在一起。全部数据为合成数据，用来熟悉软件流程。
 
 | 文件 | 用途 | 在哪里使用 |
 | --- | --- | --- |
@@ -13,13 +15,22 @@
 | [regression_train.csv](regression_train.csv) | 48 行回归训练数据，含目标 target | 配置导入时自动读取，无需另外打开 |
 | [regression_predict.csv](regression_predict.csv) | 10 行新样本，无目标列 | 第 4 页“加载预测数据…” |
 
-先打开含“4 模型与预测”的新版 GUI；macOS 源码版可在项目根目录双击 `Launch PsyML.command`。独立应用请使用 0.3.0 或更新版本。
+打开 PsyML Toolkit（独立应用 0.3.0 或更新版本）。下面沿用早期版本的合成分类截图，帮助查找按钮。请导入当前 JSON，不照抄图中的参数类型、路径或运行编号；本次结果以 `training/run_*/` 中的实际路径为准。
 
-建议先测分类：
+先完成分类分析：
 
 1. 第 1 页点击“导入配置…”，选择 `classification_config.json`。对话框默认定位到此资料夹。训练数据和设置一起恢复，预测变量为 score/category；不要导入 `_predict.csv` 来训练。
+
+   ![第 1 步：导入分类配置，恢复训练数据和变量设置](../../docs/images/zh/06-import-config.png)
+
 2. 保持“保存最佳模型”勾选（第 1 页右侧向下滚动，随机种子下方）。到第 2 页选择结果保存位置并运行。
+
+   ![第 2 步：选择结果文件夹并运行分析](../../docs/images/zh/07-reproduce-run.png)
+
 3. 第 3 页点击“打开完整结果文件夹”，在本次训练运行目录 `training/run_*/` 的 `model/` 中找到 `best_decision_tree.joblib`，保留旁边的 `model_metadata.json`。
+
+   ![第 3 步：查看结果和本次保存模型的位置](../../docs/images/zh/08-reproduced-result.png)
+
 4. 第 4 页确认模型来源可信，点击“加载模型…”选择上述模型；点击“加载预测数据…”选择 `classification_predict.csv`。首次打开该数据对话框也默认定位到此资料夹。
 5. 自动检查通过后点击“运行预测”，应得到 10 行结果，保留 sample_id/category/score，并追加 predicted_class、probability_0、probability_1。结果写入本次运行目录 `prediction/run_*/predictions.csv`；点击“打开预测结果文件夹”打开该目录，界面不再提供另存对话框（需要其他表格格式时可用命令行 `psyml export-table`）。
 6. 再导入 `regression_config.json`，重复训练；加载其 `best_ridge.joblib` 和 `regression_predict.csv`。应得到 10 行结果，追加 predicted_value，不生成概率列。
@@ -34,7 +45,7 @@
 
 ### 单样本 SHAP 解释测试（可选，需 explain 依赖）
 
-按上文训练分类或回归并加载其保存模型与 `_predict.csv`。在第 4 页“解释单个样本（近似 SHAP）”区，把“加载背景参考数据…”也选择同一个 `_predict.csv`，样本行号填 1，背景行数 10、排列轮数 2；分类再选择要解释的类别。点击“解释这个样本”，首次可能较慢，可随时取消。完成后应看到基值、输出、重建误差、按绝对值排序的贡献表，以及从基值逐项累加到输出的**累计瀑布图**（正负方向、原始变量名与值、TopN 与“其余 N 项之和”），只保留“打开瀑布图”与“打开结果文件夹”两个入口，没有复制或另存导出。产物写入所选结果根目录的 `explanation/run_*/`：`shap_explanation.json`、`shap_contributions.csv`、`shap_waterfall.png`、`shap_explanation_notes.md`。切换行/类别/设置或离开页面只清除界面，已完成的产物保留在磁盘。贡献是有限排列的近似 SHAP（`base + Σφ = 所选输出`，容差 1e-7/1e-6），不是精确 SHAP、不是因果，也不代表外层测试性能；首版仅支持 logistic/decision tree/random forest（分类）与 linear/ridge/lasso/elastic net/decision tree/random forest（回归），且仅接受带 PsyML 导出元数据的保存模型。未安装 `uv sync --extra explain` 时该区不可用，普通预测不受影响。
+按上文训练分类或回归并加载其保存模型与 `_predict.csv`。在第 4 页“解释单个样本（近似 SHAP）”区，把“加载背景参考数据…”也选择同一个 `_predict.csv`，样本行号填 1，背景行数 10、排列轮数 2；分类再选择要解释的类别。点击“解释这个样本”，首次可能较慢，可随时取消。完成后应看到基值、输出、重建误差、按绝对值排序的贡献表，以及从基值逐项累加到输出的**累计瀑布图**（正负方向、原始变量名与值、TopN 与“其余 N 项之和”），只保留“打开瀑布图”与“打开结果文件夹”两个入口，没有复制或另存导出。产物写入所选结果根目录的 `explanation/run_*/`：`shap_explanation.json`、`shap_contributions.csv`、`shap_waterfall.png`、`shap_explanation_notes.md`。切换行/类别/设置或离开页面只清除界面，已完成的产物保留在磁盘。贡献是有限排列的近似 SHAP（`base + Σφ = 所选输出`，容差 1e-7/1e-6），不是精确 SHAP、不是因果，也不代表外层测试性能；首版仅支持 logistic/decision tree/random forest（分类）与 linear/ridge/lasso/elastic net/decision tree/random forest（回归），且仅接受带 PsyML 导出元数据的保存模型。独立应用已包含所需解释依赖。只有源码环境需要另行安装 `explain` 扩展（`uv sync --extra explain`）；缺少扩展时该区不可用，普通预测不受影响。
 
 ### 拟合系数与截距测试（不需要 explain 依赖）
 
@@ -42,7 +53,7 @@
 
 ## English
 
-Keep or copy this entire folder so each JSON stays beside its training CSV. All data is synthetic and intended only for software testing.
+Use these files for your first training run and new-data prediction. Keep or copy the whole folder so each JSON stays beside its training CSV. All data is synthetic and intended for learning the workflow.
 
 | File | Purpose | Use |
 | --- | --- | --- |
@@ -53,9 +64,22 @@ Keep or copy this entire folder so each JSON stays beside its training CSV. All 
 | [regression_train.csv](regression_train.csv) | 48 training rows including target | Loaded automatically by the configuration |
 | [regression_predict.csv](regression_predict.csv) | 10 new samples without target | Page 4: Load prediction data… |
 
-Open the updated GUI with page 4, Model & Prediction (on macOS, source users can double-click `Launch PsyML.command` in the project root). Use standalone version 0.3.0 or later.
+Open PsyML Toolkit (standalone version 0.3.0 or later). The screenshots reuse an earlier synthetic classification example to show the controls. Import the current JSON; do not copy pictured parameter types, paths or run IDs. Use this run’s actual paths under `training/run_*/`.
 
-Import the classification JSON on page 1. Keep **Save best model** enabled, below Random seed in the lower settings area. Choose an output folder and run on page 2. On page 3, open the result folder; keep this run's `training/run_*/model/best_decision_tree.joblib` with `model_metadata.json`. On page 4, trust and load that model, then load `classification_predict.csv`. The configuration and first prediction-data dialogs start in this folder. When automatic checks pass, run the prediction: expect 10 rows with original sample_id/category/score plus predicted_class and probability_0/probability_1, written to this run's `prediction/run_*/predictions.csv`; **Open prediction results folder** opens that run folder, and there is no save-as dialog (for other table formats use the `psyml export-table` command line).
+1. On page 1, choose **Import configuration…** and select `classification_config.json`. Its training data and settings load together. Keep **Save best model** enabled below Random seed in the lower settings area.
+
+   ![Step 1: import the classification configuration and restore its data and settings](../../docs/images/en/06-import-config.png)
+
+2. On page 2, choose a local results folder and click **Run analysis**.
+
+   ![Step 2: choose the results folder and run the analysis](../../docs/images/en/07-reproduce-run.png)
+
+3. On page 3, open the complete result folder. Keep this run's `training/run_*/model/best_decision_tree.joblib` together with `model_metadata.json`.
+
+   ![Step 3: read the results and locate the model saved by this run](../../docs/images/en/08-reproduced-result.png)
+
+4. On page 4, confirm that the model is trusted, load that model, then load `classification_predict.csv`. The configuration and first prediction-data dialogs start in this folder.
+5. When automatic checks pass, run prediction. Expect 10 rows with the original sample_id/category/score plus predicted_class and probability_0/probability_1, written to this run's `prediction/run_*/predictions.csv`. **Open prediction results folder** opens that run folder; no save-as dialog is needed. For other table formats, the optional `psyml export-table` command is available.
 
 Repeat with the regression JSON, its saved `best_ridge.joblib`, and `regression_predict.csv`: 10 rows, with predicted_value and no probability columns. Do not train on the `_predict.csv` files. Their feature order differs from training, and extra sample_id values test column preservation. Predictors require only score/category; no target/group column is needed. Exact predictions may vary with settings and dependency versions; this is not a validation of real-world model quality.
 
@@ -75,7 +99,7 @@ Load the regression `best_ridge.joblib` or a logistic classification model (a co
 
 ## Français
 
-Conservez ou copiez ce dossier entier pour garder chaque JSON à côté de son CSV d’entraînement. Toutes les données sont synthétiques, destinées uniquement aux tests du logiciel.
+Utilisez ces fichiers pour votre premier entraînement et la prédiction de nouvelles données. Conservez ou copiez le dossier entier pour garder chaque JSON avec son CSV d’entraînement. Les données sont synthétiques et servent à apprendre le parcours.
 
 | Fichier | Utilité | Utilisation |
 | --- | --- | --- |
@@ -86,9 +110,22 @@ Conservez ou copiez ce dossier entier pour garder chaque JSON à côté de son C
 | [regression_train.csv](regression_train.csv) | 48 lignes d’entraînement avec target | Chargé automatiquement par le JSON |
 | [regression_predict.csv](regression_predict.csv) | 10 nouveaux exemples sans cible | Page 4 : Charger les données à prédire… |
 
-Ouvrez la version avec la page 4, Modèle et prédiction (sources macOS : double-cliquez sur `Launch PsyML.command` à la racine). Utilisez une application autonome 0.3.0 ou ultérieure.
+Ouvrez PsyML Toolkit (application autonome 0.3.0 ou ultérieure). Les captures reprennent un ancien exemple synthétique de classification pour montrer les commandes. Importez le JSON actuel sans recopier les types de paramètres, chemins ou identifiants de l’image ; utilisez ceux de votre dossier `training/run_*/`.
 
-Importez le JSON de classification à la page 1. Gardez l’enregistrement du meilleur modèle activé, sous la graine aléatoire en bas des réglages. Choisissez le dossier de sortie et lancez à la page 2. À la page 3, ouvrez les résultats ; gardez `model/best_decision_tree.joblib` de cette exécution (`training/run_*/model/`) avec `model_metadata.json`. À la page 4, confirmez la confiance, chargez ce modèle puis `classification_predict.csv`. Les dialogues de configuration et de première sélection des données à prédire commencent ici. Après vérification automatique, lancez la prédiction : 10 lignes, colonnes sample_id/category/score conservées, plus predicted_class et probability_0/probability_1, écrites dans `prediction/run_*/predictions.csv` de cette exécution ; **Ouvrir le dossier des prédictions** ouvre ce dossier, et il n'y a plus de dialogue d'enregistrement (pour d'autres formats de tableau, utilisez la ligne de commande `psyml export-table`).
+1. À la page 1, cliquez sur **Importer une configuration…** et choisissez `classification_config.json`. Données et réglages sont restaurés ensemble. Gardez l’enregistrement du meilleur modèle activé, sous la graine aléatoire en bas des réglages.
+
+   ![Étape 1 : importer la configuration et restaurer les données et réglages](../../docs/images/fr/06-import-config.png)
+
+2. À la page 2, choisissez un dossier local de résultats et cliquez sur **Exécuter l’analyse**.
+
+   ![Étape 2 : choisir le dossier de résultats et exécuter l’analyse](../../docs/images/fr/07-reproduce-run.png)
+
+3. À la page 3, ouvrez le dossier complet des résultats. Conservez `training/run_*/model/best_decision_tree.joblib` de cette exécution avec `model_metadata.json`.
+
+   ![Étape 3 : consulter les résultats et trouver le modèle de cette exécution](../../docs/images/fr/08-reproduced-result.png)
+
+4. À la page 4, confirmez la confiance dans le modèle, chargez-le puis ouvrez `classification_predict.csv`. Les dialogues de configuration et de première sélection des données à prédire commencent dans ce dossier.
+5. Après les contrôles automatiques, lancez la prédiction : 10 lignes avec sample_id/category/score conservés, plus predicted_class et probability_0/probability_1, dans `prediction/run_*/predictions.csv`. **Ouvrir le dossier des prédictions** ouvre ce dossier ; aucun dialogue d’enregistrement n’est nécessaire. La commande facultative `psyml export-table` permet d’autres formats de sortie.
 
 Recommencez avec le JSON de régression, son `best_ridge.joblib` et `regression_predict.csv` : 10 lignes, predicted_value ajouté, sans probabilités. Ne pas entraîner sur les fichiers `_predict.csv`. Leur ordre de variables diffère et sample_id teste la conservation des colonnes supplémentaires. Seuls score/category sont requis, sans cible ni groupe. Les valeurs prédites peuvent varier selon les réglages et versions ; ceci ne valide pas les performances réelles.
 
@@ -100,7 +137,7 @@ Importez `classification_permutation_config.json` ou `regression_permutation_con
 
 ### Test d'explication SHAP d'un échantillon (facultatif, extension explain requise)
 
-Entraînez la classification ou la régression ci-dessus, puis chargez son modèle enregistré et `_predict.csv`. Dans le bloc **Expliquer un échantillon (SHAP approximatif)** de la page 4, choisissez aussi le même `_predict.csv` comme référence, la ligne 1, 10 lignes de référence et 2 cycles ; en classification, choisissez la classe. Cliquez sur **Expliquer cet échantillon** ; le premier calcul peut être lent et annulable. Vous verrez la valeur de base, la sortie, l'erreur de reconstruction, les contributions triées par valeur absolue et une **cascade cumulative** de la base à la sortie (sens signé, noms/valeurs d'origine, top N plus « autres N (somme) »), avec uniquement **Ouvrir l'image en cascade** et **Ouvrir le dossier de résultats** ; aucune copie ni export. Les artefacts sont enregistrés dans `explanation/run_*/` du dossier de résultats choisi : `shap_explanation.json`, `shap_contributions.csv`, `shap_waterfall.png` et `shap_explanation_notes.md` ; changer ligne/classe/réglages ou quitter la page ne vide que l'affichage et conserve les artefacts terminés. Ce sont des SHAP approximatifs par permutations finies (`base + Σφ = sortie choisie`, tolérance 1e-7/1e-6), non exacts, non causaux et non une performance de test externe ; la première version couvre logistic/decision tree/random forest (classification) et linear/ridge/lasso/elastic net/decision tree/random forest (régression), et n'accepte que les modèles avec métadonnées d'export PsyML. Sans `uv sync --extra explain`, cette section est indisponible et la prédiction ordinaire fonctionne.
+Entraînez la classification ou la régression ci-dessus, puis chargez son modèle enregistré et `_predict.csv`. Dans le bloc **Expliquer un échantillon (SHAP approximatif)** de la page 4, choisissez aussi le même `_predict.csv` comme référence, la ligne 1, 10 lignes de référence et 2 cycles ; en classification, choisissez la classe. Cliquez sur **Expliquer cet échantillon** ; le premier calcul peut être lent et annulable. Vous verrez la valeur de base, la sortie, l'erreur de reconstruction, les contributions triées par valeur absolue et une **cascade cumulative** de la base à la sortie (sens signé, noms/valeurs d'origine, top N plus « autres N (somme) »), avec uniquement **Ouvrir l'image en cascade** et **Ouvrir le dossier de résultats** ; aucune copie ni export. Les artefacts sont enregistrés dans `explanation/run_*/` du dossier de résultats choisi : `shap_explanation.json`, `shap_contributions.csv`, `shap_waterfall.png` et `shap_explanation_notes.md` ; changer ligne/classe/réglages ou quitter la page ne vide que l'affichage et conserve les artefacts terminés. Ce sont des SHAP approximatifs par permutations finies (`base + Σφ = sortie choisie`, tolérance 1e-7/1e-6), non exacts, non causaux et non une performance de test externe ; la première version couvre logistic/decision tree/random forest (classification) et linear/ridge/lasso/elastic net/decision tree/random forest (régression), et n'accepte que les modèles avec métadonnées d'export PsyML. Les applications autonomes incluent les dépendances d’explication. Seuls les environnements source nécessitent l’extension `explain` (`uv sync --extra explain`) ; sans elle, cette section est indisponible, mais la prédiction ordinaire fonctionne.
 
 ### Test des coefficients ajustés (sans extension explain)
 
