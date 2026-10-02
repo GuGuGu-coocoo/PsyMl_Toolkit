@@ -21,7 +21,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / "tools"
 FIXTURE_ROOT = ROOT / "tmp" / "test_build_native"
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 COMMIT = "a" * 40
 PLATFORM_SUFFIXES = {"macOS": "macOS-arm64", "Windows": "Windows-x64"}
 
@@ -93,6 +93,7 @@ def _write_package(directory: Path, platform: str, *, build_overrides: dict | No
         "platform": suffix,
         "python": "3.12.13",
         "commit": COMMIT,
+        "lock_sha256": hashlib.sha256((ROOT / "uv.lock").read_bytes()).hexdigest(),
         "working_tree_modified": False,
         "source_changes": [],
         "post_build_changes": [],
@@ -451,6 +452,8 @@ def test_release_rejects_dirty_or_unknown_post_build_source(fixture_dir, changes
 @pytest.mark.parametrize("overrides,expected", [
     ({"source_changes": [" M src/psyml/runner.py"]}, "source_changes"),
     ({"reused_core": True}, "reused_core"),
+    ({"lock_sha256": "b" * 64}, "lock_sha256"),
+    ({"lock_sha256": None}, "lock_sha256"),
 ])
 def test_release_rejects_inconsistent_provenance(fixture_dir, overrides, expected):
     module = _load("verify_release_artifacts")
@@ -466,9 +469,9 @@ def test_developer_build_commands_keep_explain_smokes_and_current_destinations(l
     assert "uv run --locked --group build --extra explain python tools/build_native.py" in text
     for flag in ["--permutation-smoke", "--explain-smoke", "--coefficients-smoke"]:
         assert flag in text
-    assert "--output-dir dist/v0.3.0/docs" in text
+    assert "--output-dir dist/v0.3.1/docs" in text
     assert "--output-dir output/pdf" in text
-    assert "--windows-zip dist/v0.3.0/PsyML-Toolkit-0.3.0-Windows-x64.zip" in text
+    assert "--windows-zip dist/v0.3.1/PsyML-Toolkit-0.3.1-Windows-x64.zip" in text
     assert "PsyML-Toolkit-Researcher-Share-v0.2.0.zip" not in text
     assert "`tools/licenses/`" in text and "`licenses/`" in text
 
@@ -534,3 +537,19 @@ def test_native_build_records_final_status_after_smoke_and_blocks_new_source_cha
         assert document["lock_sha256"] == hashlib.sha256(b"locked dependencies").hexdigest()
         assert document["reused_core"] is True
     assert calls == ["source_status", "gui_smoke", "source_status"]
+
+
+def test_release_rejects_corruption_in_unchecked_runtime_member(fixture_dir):
+    module = _load("verify_release_artifacts")
+    path = _write_package(fixture_dir, "Windows")
+    member = f"PsyML-Toolkit-{VERSION}-Windows-x64/core/_internal/runtime.txt"
+    with zipfile.ZipFile(path) as archive:
+        info = archive.getinfo(member)
+        offset = info.header_offset + 30 + len(info.filename.encode()) + len(info.extra)
+    payload = bytearray(path.read_bytes())
+    payload[offset] ^= 0xFF
+    path.write_bytes(payload)
+    path.with_name(path.name + ".sha256").write_text(
+        hashlib.sha256(payload).hexdigest() + "  " + path.name + "\n")
+    errors = module.verify_platform(fixture_dir, "Windows", VERSION, COMMIT)
+    assert any("CRC/decompression integrity failure" in error for error in errors), errors

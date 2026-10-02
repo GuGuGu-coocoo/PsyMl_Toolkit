@@ -1,4 +1,4 @@
-"""Render the Chinese README section and researcher guide into release PDFs.
+"""Render the Chinese README and complete researcher guide into release PDFs.
 
 Requires reportlab and an embeddable TrueType font with Chinese/Latin/math glyphs.
 Example: uv run --with reportlab python tools/build_release_pdfs.py --font /path/font.ttf
@@ -92,7 +92,7 @@ def render(source: Path, text: str, target: Path, title: str,
     notice = notice_for_label(label)
     if notice is not None:
         story.append(Paragraph(notice, small))
-    if source.name == "README.md":
+    if source.name == "README_ZH.md":
         story.append(Paragraph("打开应用并完成第一次分析", heading[2]))
         story.append(Paragraph(
             "1. 完整解压本版本的独立应用包。Mac 双击 PsyML Toolkit.app；Windows 双击 PsyML Toolkit.exe，"
@@ -162,7 +162,7 @@ def render(source: Path, text: str, target: Path, title: str,
                 cells.append([Paragraph(inline(c.strip(), base), small)
                               for c in row.strip("|").split("|")])
             count = len(cells[0])
-            widths = [175, 324] if count == 2 else [160, 165, 174]
+            widths = {2: [175, 324], 3: [160, 165, 174]}.get(count, [WIDTH / count] * count)
             table = Table(cells, colWidths=widths, repeatRows=1, hAlign="LEFT")
             table.setStyle(TableStyle([
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -210,16 +210,15 @@ def main() -> None:
         args.base_ref = args.label
     pdfmetrics.registerFont(TTFont("PsyMLCJK", str(args.font)))
     pdfmetrics.registerFontFamily("PsyMLCJK", normal="PsyMLCJK", bold="PsyMLCJK")
-    readme = ROOT / "README.md"
+    readme = ROOT / "README_ZH.md"
     guide = ROOT / "docs/RESEARCHER_GUIDE_ZH.md"
     suffix = "" if args.label == CURRENT_LABEL else "_" + args.label
-    chinese = readme.read_text(encoding="utf-8").split('<a id="chinese"></a>')[1]
-    chinese = chinese.split('<a id="english"></a>')[0].replace("## 中文", "", 1)
+    chinese = readme.read_text(encoding="utf-8")
     render(readme, chinese, args.output_dir / f"README_ZH{suffix}.pdf", "中文版使用说明",
            args.label, args.base_ref)
     guide_text = guide.read_text(encoding="utf-8").split("\n", 1)[1]
     render(guide, guide_text, args.output_dir / f"RESEARCHER_GUIDE_ZH{suffix}.pdf",
-           "模型、指标、结果与术语", args.label, args.base_ref)
+           "研究者完整使用指南", args.label, args.base_ref)
     manifest = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in [Path(__file__), readme, guide, *sorted((ROOT / "docs/images/zh").glob("*.png"))]}
     (args.output_dir / f"sources{suffix}.json").write_text(json.dumps(manifest, indent=2) + "\n")

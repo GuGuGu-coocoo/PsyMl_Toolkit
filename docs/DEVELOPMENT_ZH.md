@@ -2,7 +2,7 @@
 
 [README](../README_ZH.md) · [English](DEVELOPMENT_EN.md) · [Français](DEVELOPMENT_FR.md)
 
-本文面向修改代码、参与维护或构建应用的开发者。研究者直接使用 GUI，无需安装开发工具或执行本文命令。当前代码版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量（`pyproject.toml` 通过 hatch 的 dynamic 读取同一值；当前源码为正式版本 `0.3.0`，界面原样显示；开发版 `0.3.0.dev0` 显示为 `0.3.0-dev`）。独立包与分发 PDF 的可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准；v0.2.0 及更早的下载包不含源码检出的新功能与第二轮修复。
+本文面向修改代码、参与维护或构建应用的开发者。研究者直接使用 GUI，无需安装开发工具或执行本文命令。当前代码版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量（`pyproject.toml` 通过 hatch 的 dynamic 读取同一值；当前源码为正式版本 `0.3.1`，界面原样显示；开发版 `0.3.1.dev0` 显示为 `0.3.1-dev`）。独立包与分发 PDF 的可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准；v0.2.0 及更早的下载包不含源码检出的新功能与第二轮修复。
 
 ## 环境与启动
 
@@ -124,7 +124,7 @@ uv pip install -e ".[explain]"   # pip/venv 等价写法
 
 ```bash
 uv sync --locked --group dev --group build --extra explain
-uv run --locked --group build --extra explain python tools/build_native.py --output-dir dist/v0.3.0 \
+uv run --locked --group build --extra explain python tools/build_native.py --output-dir dist/v0.3.1 \
     --permutation-smoke --explain-smoke --coefficients-smoke
 ```
 
@@ -132,53 +132,55 @@ uv run --locked --group build --extra explain python tools/build_native.py --out
 
 构建前先核对操作系统、原生 64 位 Python 与 Python/Godot 可执行文件头；导出后再核对 GUI 和冻结核心的真实架构与包名一致（Mach-O arm64 或 PE x64）。以上安装和运行命令均保留 explain extra，并运行交付所需的三项可选包内 smoke。BUILD.json 记录初始源码状态、提交、uv.lock SHA-256，以及全部 smoke 完成后的最终状态。新增源码修改、提交变化或锁文件变化会中止打包。构建后源码变更允许清单明确为空：dist/、tmp/、gui/.godot/ 已被忽略；Godot 若改写源码或导入配置，应审查并提交后重建，不对 GUI 目录整批放行。初始脏工作区或复用核心的包仅供本地调试，不能通过发布校验。
 
-**原生导出只走 `tools/build_native.py`。** `gui/export_presets.cfg` 中的 macOS/Windows 版本字段（`application/short_version`、`application/version`、`application/file_version`、`application/product_version`）保存的是占位符 `@PSYML_MACOS_VERSION@` / `@PSYML_WINDOWS_VERSION@`，不是可发布的版本号；直接用 Godot 编辑器的导出功能会失败或写出错误版本。`build_native.py` 在一次导出期间用 `src/psyml/__init__.py` 的单一常量派生数值版本（正式版 `0.3.0` 与开发版 `0.3.0.dev0` 都导出为 macOS `0.3.0`、Windows `0.3.0.0`），导出结束后在 `finally` 中恢复模板，成功或失败都不留下被改写的预设文件。因此原生导出统一通过该脚本触发，不要绕过它直接使用 Godot 预设。
+**原生导出只走 `tools/build_native.py`。** `gui/export_presets.cfg` 中的 macOS/Windows 版本字段（`application/short_version`、`application/version`、`application/file_version`、`application/product_version`）保存的是占位符 `@PSYML_MACOS_VERSION@` / `@PSYML_WINDOWS_VERSION@`，不是可发布的版本号；直接用 Godot 编辑器的导出功能会失败或写出错误版本。`build_native.py` 在一次导出期间用 `src/psyml/__init__.py` 的单一常量派生数值版本（正式版 `0.3.1` 与开发版 `0.3.1.dev0` 都导出为 macOS `0.3.1`、Windows `0.3.1.0`），导出结束后在 `finally` 中恢复模板，成功或失败都不留下被改写的预设文件。因此原生导出统一通过该脚本触发，不要绕过它直接使用 Godot 预设。
 
 [Core CI](../.github/workflows/ci.yml) 检查三个操作系统；[独立包工作流](../.github/workflows/native-test-build.yml) 可手动触发，也会在推送 `desktop-test` 分支时自动构建 Windows 测试包。推送到该分支会消耗构建资源，提交前应确认需要生成测试包。工作流仅保存构建产物，不创建 release。
 
 ### 发布附件与本地研究者分享包
 
-0.3.0 的 GitHub Release 只上传 Windows-x64 与 macOS-arm64 两个独立应用 ZIP，发布说明保持中英法三语（见 [RELEASE_NOTES_0.3.0.md](RELEASE_NOTES_0.3.0.md)）。构建脚本仍生成 SHA-256 供本地验证，不上传校验附件或额外源码 ZIP；发布候选的校验清单由 `tools/verify_release_artifacts.py` 在本地复核。GitHub 自动提供的 Source code 留给开发者。`tools/package_release.py` 是可选的本地源码归档工具，需要干净工作区和最新 PDF；不要把它的输出混入应用附件。历史参考：v0.2.0 的 Release 采用同一规则。
+仅针对本版的 [v0.3.1 工作流](../.github/workflows/release-v0.3.1.yml) 在 `release/v0.3.1` 构建候选；检查候选与 PDF 后，另建指向同一 main 提交的 `publish/v0.3.1` 分支，才发布两个已校验的独立应用 ZIP。发布任务拒绝已有标签或 Release，上传后与无凭据公开下载后均核对 SHA-256，不覆盖附件。候选 PDF、源码哈希与校验清单保留为工作流产物；该工作流只针对 v0.3.1。
 
-先核对 README 与研究者指南对应 0.3.0，再生成 PDF；下方字体路径须替换为支持中文且允许嵌入的 TrueType 字体。`dist/v0.3.0/docs/sources.json` 记录本次发布候选的内容来源哈希；来源改变后应重新生成并逐页渲染检查。PDF 的默认标签来自核心版本（`v0.3.0`）；重新生成历史版本时显式传 `--label v0.2.0 --base-ref v0.2.0`，该文档会被标为历史版本而不是当前正式版。
+0.3.1 的 GitHub Release 只上传 Windows-x64 与 macOS-arm64 两个独立应用 ZIP，发布说明保持中英法三语（见 [RELEASE_NOTES_0.3.1.md](RELEASE_NOTES_0.3.1.md)）。构建脚本仍生成 SHA-256 供本地验证，不上传校验附件或额外源码 ZIP；发布候选的校验清单由 `tools/verify_release_artifacts.py` 在本地复核。GitHub 自动提供的 Source code 留给开发者。`tools/package_release.py` 是可选的本地源码归档工具，需要干净工作区和最新 PDF；不要把它的输出混入应用附件。历史参考：v0.2.0 的 Release 采用同一规则。
+
+先核对 README 与研究者指南对应 0.3.1，再生成 PDF；下方字体路径须替换为支持中文且允许嵌入的 TrueType 字体。`dist/v0.3.1/docs/sources.json` 记录本次发布候选的内容来源哈希；来源改变后应重新生成并逐页渲染检查。PDF 的默认标签来自核心版本（`v0.3.1`）；重新生成历史版本时显式传 `--label v0.2.0 --base-ref v0.2.0`，该文档会被标为历史版本而不是当前正式版。
 
 ```bash
 uv run --with reportlab python tools/build_release_pdfs.py --font /path/to/chinese-font.ttf \
-    --output-dir dist/v0.3.0/docs
+    --output-dir dist/v0.3.1/docs
 ```
 
-把同一干净提交构建的两个平台 ZIP 与各自 .sha256 放入 `dist/v0.3.0/`。生成并检查 PDF 后，创建 `SHA256SUMS`，列出两个 ZIP 和两份 PDF 的 SHA-256 与相对路径，再执行完整校验。例如下面的跨平台 Python 命令会写出所需四项：
+把同一干净提交构建的两个平台 ZIP 与各自 .sha256 放入 `dist/v0.3.1/`。生成并检查 PDF 后，创建 `SHA256SUMS`，列出两个 ZIP 和两份 PDF 的 SHA-256 与相对路径，再执行完整校验。例如下面的跨平台 Python 命令会写出所需四项：
 
 ```bash
-uv run python -c "import hashlib; from pathlib import Path; d=Path('dist/v0.3.0'); names=['PsyML-Toolkit-0.3.0-macOS-arm64.zip','PsyML-Toolkit-0.3.0-Windows-x64.zip','docs/README_ZH.pdf','docs/RESEARCHER_GUIDE_ZH.pdf']; (d/'SHA256SUMS').write_text(''.join(hashlib.sha256((d/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in names), encoding='utf-8')"
-uv run python tools/verify_release_artifacts.py --directory dist/v0.3.0 --platform all
+uv run python -c "import hashlib; from pathlib import Path; d=Path('dist/v0.3.1'); names=['PsyML-Toolkit-0.3.1-macOS-arm64.zip','PsyML-Toolkit-0.3.1-Windows-x64.zip','docs/README_ZH.pdf','docs/RESEARCHER_GUIDE_ZH.pdf']; (d/'SHA256SUMS').write_text(''.join(hashlib.sha256((d/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in names), encoding='utf-8')"
+uv run python tools/verify_release_artifacts.py --directory dist/v0.3.1 --platform all
 ```
 
-`tools/verify_release_artifacts.py` 读取 ZIP 实际内容（BUILD.json 版本/提交/构建前后干净源码、非空必要资源/许可证/运行时、core 与 GUI 的真实可执行架构、安全路径）、对应 SHA-256 与（`all` 模式）两份非空中文 PDF 和发布清单 `SHA256SUMS`，不依赖日志中的成功字符串。`all` 模式要求 `dist/v0.3.0/` 同时存在两个平台 ZIP、`docs/README_ZH.pdf`、`docs/RESEARCHER_GUIDE_ZH.pdf`、`docs/sources.json` 与列全四件产物的 `SHA256SUMS`；单平台模式只要求该平台的 ZIP 与 `.sha256`，可在 Windows 包下载前先核验 Mac 包。
+`tools/verify_release_artifacts.py` 读取 ZIP 实际内容（BUILD.json 版本/提交/构建前后干净源码、非空必要资源/许可证/运行时、core 与 GUI 的真实可执行架构、安全路径）、对应 SHA-256 与（`all` 模式）两份非空中文 PDF 和发布清单 `SHA256SUMS`，不依赖日志中的成功字符串。`all` 模式要求 `dist/v0.3.1/` 同时存在两个平台 ZIP、`docs/README_ZH.pdf`、`docs/RESEARCHER_GUIDE_ZH.pdf`、`docs/sources.json` 与列全四件产物的 `SHA256SUMS`；单平台模式只要求该平台的 ZIP 与 `.sha256`，可在 Windows 包下载前先核验 Mac 包。
 
-单独确认需要本地分享包后，在 `output/pdf/` 生成当前 PDF；`package_researcher_share.py` 固定读取此目录，它与发布候选使用的 `dist/v0.3.0/docs/` 是两个输出位置：
+单独确认需要本地分享包后，在 `output/pdf/` 生成当前 PDF；`package_researcher_share.py` 固定读取此目录，它与发布候选使用的 `dist/v0.3.1/docs/` 是两个输出位置：
 
 ```bash
 uv run --with reportlab python tools/build_release_pdfs.py --font /path/to/chinese-font.ttf \
     --output-dir output/pdf
-uv run python tools/package_researcher_share.py --windows-zip dist/v0.3.0/PsyML-Toolkit-0.3.0-Windows-x64.zip
+uv run python tools/package_researcher_share.py --windows-zip dist/v0.3.1/PsyML-Toolkit-0.3.1-Windows-x64.zip
 ```
 
-分享脚本读取当前核心版本，在仓库根目录生成 `PsyML-Toolkit-Researcher-Share-v0.3.0.zip`，不调用发布接口；另行确认后才生成，并保持为本地直接分享材料，不加入 Release 附件。Windows/ 为程序，TestData/ 为训练、配置及预测资料，Documents/ 为两份中文 PDF，“从这里开始.txt”解释文件夹并引导 Mac 用户到 GitHub。输出目录已存在时先移走或备份；文档更新后重新生成两个输出位置的 PDF。
+分享脚本读取当前核心版本，在仓库根目录生成 `PsyML-Toolkit-Researcher-Share-v0.3.1.zip`，不调用发布接口；另行确认后才生成，并保持为本地直接分享材料，不加入 Release 附件。Windows/ 为程序，TestData/ 为训练、配置及预测资料，Documents/ 为两份中文 PDF，“从这里开始.txt”解释文件夹并引导 Mac 用户到 GitHub。输出目录已存在时先移走或备份；文档更新后重新生成两个输出位置的 PDF。
 
 版本升级时只在 `src/psyml/__init__.py` 修改 `__version__`（`pyproject.toml` 为 dynamic，自动读取；`gui/export_presets.cfg` 保持占位符，数值由 `tools/build_native.py` 在导出时派生），并核对 uv.lock、`tools/build_native.py`、`tools/NATIVE_START_HERE.txt`、PDF 构建器中的版本与链接，以及三语发布说明（`docs/RELEASE_NOTES_<版本>.md`）。检查 BUILD.json 的提交、初始工作区状态和构建生成的差异，用 `tools/verify_release_artifacts.py` 复核 ZIP 内容与本地校验值。界面包内检查覆盖分类/回归训练、模型保存与加载、各 10 行新数据预测（写入本次运行目录的 `predictions.csv`）以及“打开预测结果文件夹”恰指向该运行目录；不替代实际窗口检查。核心 CLI `export-table` 与多格式读写仍保留，不属于该包内检查范围。每项独立功能完成后单独 commit 并立即 push，不累积后一起推送。
 
 
 ## 打开应用
 
-请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。v0.3.0 独立应用 ZIP（`macOS-arm64`、`Windows-x64`）从同一提交构建，实际可下载的附件与平台以 [v0.3.0 Release](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.3.0) 页面为准；更早的正式版本仍保留在同一 Releases 页面。应用包包含运行环境；GitHub 自动生成的 Source code 压缩包仅含源码，开发安装见[开发者指南](../docs/DEVELOPMENT_ZH.md)。
+请在 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 查看可下载的版本和平台。v0.3.1 独立应用 ZIP（`macOS-arm64`、`Windows-x64`）从同一提交构建，实际可下载的附件与平台以 [v0.3.1 Release](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases/tag/v0.3.1) 页面为准；更早的正式版本仍保留在同一 Releases 页面。应用包包含运行环境；GitHub 自动生成的 Source code 压缩包仅含源码，开发安装见[开发者指南](../docs/DEVELOPMENT_ZH.md)。
 
-**源码检出与下载包。** 本源码检出为正式版本 **0.3.0**（单一版本源），包含 v0.2.0 之后新增的功能与改进（置换重要性、数据检查与结果解读、单样本 SHAP、拟合系数，以及界面与输出流程改进）。下载包与分发 PDF 按各版本自身提供，请以 Releases 页面列出的附件和所用版本内的说明与界面为准；v0.2.0 及更早的下载包不含这些功能与修复，界面、输出布局和截图仍为旧版。版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic），独立包 `BUILD.json` 由 `tools/build_native.py` 用同一常量生成。源码版在 macOS 可在项目根目录双击 `Launch PsyML.command` 启动（依赖安装见[开发者指南](../docs/DEVELOPMENT_ZH.md)）。
+**源码检出与下载包。** 本源码检出为正式版本 **0.3.1**（单一版本源），包含 v0.2.0 之后新增的功能与改进（置换重要性、数据检查与结果解读、单样本 SHAP、拟合系数，以及界面与输出流程改进）。下载包与分发 PDF 按各版本自身提供，请以 Releases 页面列出的附件和所用版本内的说明与界面为准；v0.2.0 及更早的下载包不含这些功能与修复，界面、输出布局和截图仍为旧版。版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic），独立包 `BUILD.json` 由 `tools/build_native.py` 用同一常量生成。源码版在 macOS 可在项目根目录双击 `Launch PsyML.command` 启动（依赖安装见[开发者指南](../docs/DEVELOPMENT_ZH.md)）。
 
 - **macOS（Apple 芯片）**：完整解压对应应用包，双击 `PsyML Toolkit.app`。
 - **Windows（Intel/AMD x64）**：完整解压对应应用包，双击 `PsyML Toolkit.exe`。请保留旁边的 `core` 文件夹，不要只移动 EXE。
 - 应用内含 Python、分析依赖和界面运行时；使用时无需命令行、额外安装或联网下载。用户测试资料统一在 `examples/quickstart/`，通过 GUI 的“导入配置…”开始。
-- 软件名下方以小字显示当前版本：独立包读取包内 `BUILD.json`，源码版读取 `src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic，读取同一常量）；当前正式版本 `0.3.0` 原样显示，开发发布 `0.3.0.dev0` 显示为 `0.3.0-dev`，版本值不硬编码。
+- 软件名下方以小字显示当前版本：独立包读取包内 `BUILD.json`，源码版读取 `src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic，读取同一常量）；当前正式版本 `0.3.1` 原样显示，开发发布 `0.3.1.dev0` 显示为 `0.3.1-dev`，版本值不硬编码。
 - 应用尚未使用商业开发者证书签名/公证。首次打开时系统可能显示安全确认；macOS 可在“系统设置 → 隐私与安全性”确认打开，Windows 可核对来源后在安全提示中确认。请遵守所在机构的电脑管理要求。
 
 ## 源码版行为核对
@@ -186,12 +188,12 @@ uv run python tools/package_researcher_share.py --windows-zip dist/v0.3.0/PsyML-
 独立应用包与源码检出可能包含不同的修复；以下 5 点帮助你在源码版核对行为。
 
 1. 在源码检出根目录启动界面（macOS 可双击 `Launch PsyML.command`），依赖安装见[开发者指南](DEVELOPMENT_ZH.md)；独立应用包不包含开发测试环境。导入 `examples/quickstart/` 的分类或回归配置并运行一次。
-2. **版本小字**：软件名下方应以小字显示当前版本号 `0.3.0`。源码版唯一来源是 `src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic），独立包读取包内由同一常量生成的 `BUILD.json`；开发版 `0.3.0.dev0` 界面显示为 `0.3.0-dev`，正式版本 `0.3.0` 原样显示。
+2. **版本小字**：软件名下方应以小字显示当前版本号 `0.3.1`。源码版唯一来源是 `src/psyml/__init__.py` 的 `__version__`（`pyproject.toml` 为 dynamic），独立包读取包内由同一常量生成的 `BUILD.json`；开发版 `0.3.1.dev0` 界面显示为 `0.3.1-dev`，正式版本 `0.3.1` 原样显示。
 3. **输出目录与旧结果**：第 2 页新训练结果显示在所选结果根目录的 `training/run_*` 下；第 4 页预测、SHAP 与系数分别落在与第 2 页共享根目录下 `prediction/`、`explanation/`、`coefficients/` 的 `run_*` 新目录，不覆盖已有文件，也不写入隐藏的应用数据目录。旧版本直接放在结果根目录的 `run_*` 目录仍能原位打开、内容不被改写。
 4. **第 4 页结果入口**：三块都提供“打开结果文件夹”（预测为“打开预测结果文件夹”，直接打开本次运行目录而不是 CSV）与“打开瀑布图”；预测产物是可直接打开的 `predictions.csv`。
 5. **滚动控制与收尾状态**：在长页面与嵌套小表格之间滚动时，从整页起手经过小表格仍继续滚动整页，从小表格起手才滚动该表格，停顿约 250 毫秒后再滚动才重新选择控制层（锁定只作用于滚轮/滑动）；运行收尾阶段应显示“正在整理并写出结果…”且进度条未满，完成后才进入结果页。记录问题时使用“复制完整报错”。
 
-本指南描述源码检出 **0.3.0**（单一版本源）的行为，其中包含 v0.2.0 之后新增的功能与改进（置换重要性、数据检查与结果解读、单样本 SHAP、拟合系数，以及界面与输出流程改进）。独立包与分发 PDF 的版本与可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准；v0.2.0 及更早的独立包与分发 PDF 不包含这些功能与修复，界面与输出布局可能与源码检出不同。版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量；`pyproject.toml` 通过 dynamic 读取它，独立包的 `BUILD.json` 由 `tools/build_native.py` 用同一常量生成，界面小字显示同一值（正式版本 `0.3.0` 原样显示，开发版 `0.3.0.dev0` 显示为 `0.3.0-dev`）。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准，不要用本指南标题推断下载包内容。
+本指南描述源码检出 **0.3.1**（单一版本源）的行为，其中包含 v0.2.0 之后新增的功能与改进（置换重要性、数据检查与结果解读、单样本 SHAP、拟合系数，以及界面与输出流程改进）。独立包与分发 PDF 的版本与可下载附件以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 页面为准；v0.2.0 及更早的独立包与分发 PDF 不包含这些功能与修复，界面与输出布局可能与源码检出不同。版本只有一个维护来源：`src/psyml/__init__.py` 的 `__version__` 常量；`pyproject.toml` 通过 dynamic 读取它，独立包的 `BUILD.json` 由 `tools/build_native.py` 用同一常量生成，界面小字显示同一值（正式版本 `0.3.1` 原样显示，开发版 `0.3.1.dev0` 显示为 `0.3.1-dev`）。运行环境与依赖版本以结果中的 `analysis_manifest.json` 为准，不要用本指南标题推断下载包内容。
 
 ## 批量预测命令行
 

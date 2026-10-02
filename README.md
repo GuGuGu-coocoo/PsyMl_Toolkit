@@ -21,7 +21,7 @@ PsyML Toolkit is a desktop app for researchers to compare machine-learning model
 
 For a first run, follow the [bundled-data quickstart](examples/quickstart/README.md#english): import its configuration, choose a results folder and run. The app includes its runtime, so this path requires no Python installation or terminal commands.
 
-The available v0.3.0 installers predate the source fixes used in the linked validation records; a matching updated installer is not yet available.
+The current source is v0.3.1 and includes the fixes used in the linked validation records. Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for downloads; each validation record retains its actual source version and environment.
 
 ## Contents
 

@@ -7,7 +7,7 @@ from the artifacts themselves; a success string in a log is never enough.
 
 Usage::
 
-    .venv/bin/python tools/verify_release_artifacts.py --directory dist/v0.3.0 --platform all
+    .venv/bin/python tools/verify_release_artifacts.py --directory dist/v0.3.1 --platform all
 
 ``all`` requires both platform ZIPs, non-empty ``docs/README_ZH.pdf`` and
 ``docs/RESEARCHER_GUIDE_ZH.pdf`` generated from the current sources, and a
@@ -25,6 +25,7 @@ import re
 import struct
 import subprocess
 import zipfile
+import zlib
 from pathlib import Path
 from typing import BinaryIO
 
@@ -33,7 +34,7 @@ from psyml import __version__ as CORE_VERSION
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORM_SUFFIXES = {"macOS": "macOS-arm64", "Windows": "Windows-x64"}
 PDF_NAMES = ("README_ZH.pdf", "RESEARCHER_GUIDE_ZH.pdf")
-PDF_SOURCES = ("README.md", "docs/RESEARCHER_GUIDE_ZH.md")
+PDF_SOURCES = ("README_ZH.md", "docs/RESEARCHER_GUIDE_ZH.md")
 MANIFEST_NAMES = ("SHA256SUMS", "SHA256SUMS.txt")
 SMOKE_MARKER = "PSYML_NATIVE_BUNDLE_OK"
 _HEX = re.compile(r"^[0-9a-f]{64}$")
@@ -249,6 +250,7 @@ def check_build_json(archive: zipfile.ZipFile, member: str, version: str,
         "version": version,
         "commit": commit,
         "platform": suffix,
+        "lock_sha256": sha256_file(ROOT / "uv.lock"),
     }
     for key, value in expected.items():
         if document.get(key) != value:
@@ -344,6 +346,12 @@ def verify_platform(directory: Path, platform: str, version: str, commit: str) -
         errors.append(f"unreadable archive {archive_name}: {error}")
         return errors
     with archive:
+        try:
+            bad_member = archive.testzip()
+        except (OSError, RuntimeError, zipfile.BadZipFile, zlib.error) as error:
+            return [f"archive CRC/decompression integrity failure: {error}"]
+        if bad_member is not None:
+            return [f"archive CRC/decompression integrity failure: {bad_member}"]
         names = {info.filename for info in archive.infolist()}
         check_member_safety(archive, root, errors)
         check_required_members(archive, required, errors)
@@ -453,7 +461,7 @@ def verify_manifest(directory: Path, expected: dict[str, str]) -> list[str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True,
-                        help="Directory holding the release artifacts, for example dist/v0.3.0")
+                        help="Directory holding the release artifacts, for example dist/v0.3.1")
     parser.add_argument("--platform", choices=[*PLATFORM_SUFFIXES, "all"], default="all",
                         help="Verify one platform ZIP or the complete release candidate")
     parser.add_argument("--version", default=CORE_VERSION,

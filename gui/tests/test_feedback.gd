@@ -231,9 +231,9 @@ func _check_version_label(main) -> void:
 	var source_version: String = main._version_from_core_module(
 		main._read_text_file(main._project_file("src/psyml/__init__.py"))
 	)
-	assert(source_version == "0.3.0", "the maintained core constant is the single source")
+	assert(source_version == "0.3.1", "the maintained core constant is the single source")
 	var source_display: String = main._display_version(source_version)
-	assert(source_display == "0.3.0", "a final release is displayed unchanged")
+	assert(source_display == "0.3.1", "a final release is displayed unchanged")
 	# A source checkout has no BUILD.json; resolution falls back to the core
 	# module instead of the removed pyproject.toml fallback.
 	assert(main._resolve_version() == source_version)

@@ -20,7 +20,7 @@ PsyML Toolkit 是面向研究者的桌面机器学习工具，用来比较模型
 
 第一次使用可以照着[内置数据快速开始](examples/quickstart/README.md#中文)：导入配置，选择结果文件夹，运行分析。应用自带运行环境，这个流程不用安装 Python，也不用输入命令。
 
-目前可下载的 v0.3.0 安装包早于验证记录使用的源码修复，包含这些修复的新安装包尚未提供。
+当前源码版本为 v0.3.1，已包含下述验证记录所用的修复。下载版本以 [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) 为准；各验证记录保留其实际源码版本与运行环境。
 
 ## 目录
 

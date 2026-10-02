@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 __all__ = ["ExperimentConfig", "ExperimentResult", "run_experiment"]
 # The single maintained version constant; pyproject.toml reads it through hatch.
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 
 def __getattr__(name: str) -> Any:

@@ -20,7 +20,7 @@ PsyML Toolkit est une application de bureau pour comparer des modèles d’appre
 
 Pour une première analyse, suivez le [démarrage avec les données fournies](examples/quickstart/README.md#français) : importez la configuration, choisissez un dossier de résultats et lancez l’analyse. L’environnement est inclus ; ce parcours ne demande ni installation de Python ni commande dans un terminal.
 
-Les installateurs v0.3.0 disponibles sont antérieurs aux correctifs source utilisés dans les relevés de validation ; aucun nouvel installateur correspondant n’est encore proposé.
+Les sources actuelles v0.3.1 incluent les correctifs utilisés dans les relevés de validation. Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) pour les téléchargements ; chaque relevé conserve sa version source et son environnement réels.
 
 ## Sommaire
 
