@@ -384,6 +384,33 @@ def _draw_confusion_matrix(
     return image
 
 
+def _class_distribution_style(class_count: int) -> dict[str, Any]:
+    """Keep every category label readable as the number of classes grows."""
+    if class_count < 1:
+        raise ValueError("A class distribution needs at least one class")
+    return {
+        "figure_size": (max(6.4, 1.2 + 0.32 * class_count), 5.2),
+        "tick_fontsize": 10.0 if class_count <= 8 else 9.0,
+        "rotation": 0.0 if class_count <= 8 else 90.0,
+    }
+
+
+def _draw_class_distribution(
+    axis: Any,
+    values: Any,
+    labels: list[str],
+    style: dict[str, Any],
+) -> None:
+    """Draw unchanged observed/predicted counts with adaptive category ticks."""
+    positions = list(range(len(values)))
+    axis.bar([x - .2 for x in positions], values.sum(axis=1), .4, label="Observed")
+    axis.bar([x + .2 for x in positions], values.sum(axis=0), .4, label="Predicted")
+    axis.set_xticks(positions, labels, rotation=style["rotation"], ha="center")
+    axis.tick_params(axis="x", labelsize=style["tick_fontsize"])
+    axis.set(ylabel="Count", title="Held-out class distribution")
+    axis.legend()
+
+
 def _write_figure(
     figures_dir: Path,
     config: ExperimentConfig,
@@ -403,7 +430,15 @@ def _write_figure(
     for name in selected:
         if name not in {"residuals", "residual_distribution", "class_distribution"}:
             continue
-        figure, axis = plt.subplots(figsize=(6.4, 5.2))
+        distribution_style = (
+            _class_distribution_style(len(confusion))
+            if name == "class_distribution" and confusion is not None
+            else None
+        )
+        figure_size = (
+            distribution_style["figure_size"] if distribution_style else (6.4, 5.2)
+        )
+        figure, axis = plt.subplots(figsize=figure_size)
         if name == "residuals":
             axis.scatter(predictions["predicted"], residual, alpha=0.7)
             axis.axhline(0, linestyle="--", color="black")
@@ -413,12 +448,8 @@ def _write_figure(
             axis.set(xlabel="Observed - predicted", ylabel="Count", title="Held-out residual distribution")
         elif confusion is not None:
             values = confusion.to_numpy()
-            positions = list(range(len(values)))
-            axis.bar([x - .2 for x in positions], values.sum(axis=1), .4, label="Observed")
-            axis.bar([x + .2 for x in positions], values.sum(axis=0), .4, label="Predicted")
-            axis.set_xticks(positions, [f"Class {x + 1}" for x in positions])
-            axis.set(ylabel="Count", title="Held-out class distribution")
-            axis.legend()
+            labels = [f"Class {index + 1}" for index in range(len(values))]
+            _draw_class_distribution(axis, values, labels, distribution_style)
         figure.tight_layout()
         figure.savefig(figures_dir / f"{name}.png", dpi=160)
         plt.close(figure)

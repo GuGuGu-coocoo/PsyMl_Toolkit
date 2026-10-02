@@ -282,10 +282,15 @@ def figure_caption(
             "Error bars: between-fold SD of fold means (ddof=1); descriptive spread "
             "across folds, not a confidence interval."
         )
-    else:
+    elif successful_folds < 2:
         error_note = (
             "Between-fold SD unavailable (fewer than two successful folds); "
             "no error bars drawn."
+        )
+    else:
+        error_note = (
+            "Between-fold SD unavailable (requires at least two contributing folds "
+            "and a finite SD); no error bars drawn."
         )
     return {"title": title, "xlabel": xlabel, "error_note": error_note}
 
@@ -312,9 +317,22 @@ def _write_figure(
     values = frame["fold_mean_equal_weight"].to_numpy(dtype=float)
     positions = np.arange(len(frame))
     errors = frame["between_fold_std"].to_numpy(dtype=float)
-    # Error bars only make sense when at least two folds contribute; a single
-    # fold has no between-fold spread and must not imply one.
-    draw_errors = len(values) >= 2 and np.all(np.isfinite(errors))
+    # Count contributing folds, not plotted variables. A valid SD for one
+    # variable must remain visible, and an unavailable SD for another variable
+    # must not hide it. Older callers may supply only the validation fold count.
+    fold_counts = (
+        frame["n_folds_successful"].to_numpy(dtype=float)
+        if "n_folds_successful" in frame
+        else np.full(len(frame), successful_folds, dtype=float)
+    )
+    eligible_errors = (
+        (successful_folds >= 2)
+        & (fold_counts >= 2)
+        & np.isfinite(fold_counts)
+        & np.isfinite(errors)
+        & (errors >= 0)
+    )
+    draw_errors = bool(np.any(eligible_errors))
     height = max(4.0, 0.45 * len(frame) + 1.6)
     # Prefer a CJK-capable family so Unicode variable names stay readable; keep
     # the DejaVu fallback for Latin and symbols.
@@ -335,6 +353,11 @@ def _write_figure(
         planned_folds=planned_folds,
         between_fold_std_available=draw_errors,
     )
+    if draw_errors and not np.all(eligible_errors):
+        caption["error_note"] += (
+            "\nOnly variables with at least two contributing folds and a finite SD "
+            "have error bars."
+        )
     with matplotlib.rc_context(settings):
         figure, axis = plt.subplots(figsize=(9.0, height))
         left = np.where(values >= 0, 0.0, values)
@@ -342,9 +365,9 @@ def _write_figure(
         axis.barh(positions, width, left=left, color="#5261c9", alpha=0.9)
         if draw_errors:
             axis.errorbar(
-                values,
-                positions,
-                xerr=errors,
+                values[eligible_errors],
+                positions[eligible_errors],
+                xerr=errors[eligible_errors],
                 fmt="none",
                 ecolor="#20232b",
                 elinewidth=1.0,
@@ -356,7 +379,7 @@ def _write_figure(
         axis.set_xlabel(caption["xlabel"])
         axis.set_title(caption["title"])
         axis.grid(axis="x", alpha=0.25)
-        figure.tight_layout()
+        figure.tight_layout(rect=(0, 0.06 if np.all(eligible_errors) else 0.09, 1, 1))
         figure.text(
             0.01,
             0.01,
