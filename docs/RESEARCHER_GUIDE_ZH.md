@@ -213,7 +213,7 @@ R² 分母为零时，上面的普通公式不适用。当前调用遵循 scikit
 | 最终参数能否重用？ | `best_parameters.json`、`best_parameters_configure.json` | 前者保存实际有效超参数（含默认值）；后者是固定最终模型与参数、关闭搜索的可运行配置 |
 | 怎样复现原始分析设计？ | `config.json`、`analysis_config.json`、`study_config.json` | 保留原始搜索设计；三者用于兼容不同接口。重跑前核对 input_path 并改用新空 output_dir |
 | 配置字段是什么？ | `configuration_guide.md` | 中英文简短解释；JSON 本身不加注释 |
-| 哪些观测预测错了？ | `predictions.csv`、分类的 `confusion_matrix.csv` | `observed` 为真值、`predicted` 为预测；文件数据输入时 `row_index` 是从 0 开始的数据行索引，不是含表头的电子表格行号 |
+| 哪些观测预测错了？ | `predictions.csv`、分类的 `confusion_matrix.csv` | `observed` 为真值、`predicted` 为预测；`row_index` 是原始输入中从 0 开始的唯一行位置，在删行前分配，适用于文件与 DataFrame；忽略 pandas/Parquet 储存的索引，不计算表头 |
 | 环境与样本量能否对上？ | `analysis_manifest.json` | 比较输入/分析行数、特征数、数据指纹和依赖版本；输入特征数不等于独热编码后的列数 |
 | 如何准备研究报告？ | `methods_summary_zh.md` / `methods_summary.md`、`reproducibility_report_zh.md` / `reproducibility_report.md` | 中英文离线摘要与报告是待核查草稿，不是已审核论文文本 |
 | 保存模型在哪里？ | `model/best_<模型名>.joblib`、`model/model_metadata.json` | 仅开启保存的主要验证运行生成；供第 4 页加载，不是再次训练用的 JSON |
@@ -379,3 +379,9 @@ CLI 支持 9 种输入格式，并可将预测导出为 CSV、TSV、XLSX、SAV�
 3. **输出目录与旧结果**：第 2 页新训练结果显示在所选结果根目录的 `training/run_*` 下；第 4 页预测、SHAP 与系数分别落在与第 2 页共享根目录下 `prediction/`、`explanation/`、`coefficients/` 的 `run_*` 新目录，不覆盖已有文件，也不写入隐藏的应用数据目录。旧版本直接放在结果根目录的 `run_*` 目录仍能原位打开、内容不被改写。
 4. **第 4 页结果入口**：三块都提供“打开结果文件夹”（预测为“打开预测结果文件夹”，直接打开本次运行目录而不是 CSV）与“打开瀑布图”；预测产物是可直接打开的 `predictions.csv`。
 5. **滚动控制与收尾状态**：在长页面与嵌套小表格之间滚动时，从整页起手经过小表格仍继续滚动整页，从小表格起手才滚动该表格，停顿约 250 毫秒后再滚动才重新选择控制层（锁定只作用于滚轮/滑动）；运行收尾阶段应显示“正在整理并写出结果…”且进度条未满，完成后才进入结果页。记录问题时使用“复制完整报错”。
+
+### 输入与执行溯源
+
+分析读取私有临时快照，对实际解析的字节计算哈希，加载后删除临时副本。源文件之后改变或被删除会给出提示，不会替换原输入哈希；独立验证共用同一快照。`analysis_manifest.json` 记录源码/构建提交与修改状态、锁文件身份、SciPy/joblib/threadpoolctl 版本、已加载数值后端和线程设置；无法取得的身份标记为 unknown。固定 `model_params` 仅适用于单模型，多家族请使用各模型的自定义网格。
+
+R² 保留 scikit-learn 的 `force_finite=True` 约定：评分分区目标恒定时，完美预测记为 1，否则记为 0。这些值保留于汇总和 R² 选择，并附上下文 `ConstantTargetWarning`；不能按通常的解释方差比例理解。MAE/RMSE 仍按误差解释。
