@@ -11,6 +11,8 @@ from sklearn.model_selection import (
     train_test_split,
 )
 
+from psyml.data.counts import observed_class_counts
+
 
 def split_train_test(
     features: pd.DataFrame,
@@ -36,7 +38,7 @@ def split_train_test(
         )
     stratify = None
     if task == "classification":
-        class_counts = target.value_counts(dropna=False)
+        class_counts = observed_class_counts(target, dropna=False)
         if len(class_counts) > 1 and class_counts.min() >= 2:
             stratify = target
     return train_test_split(

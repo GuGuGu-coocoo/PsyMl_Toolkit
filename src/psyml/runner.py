@@ -26,6 +26,7 @@ from sklearn.model_selection import ParameterGrid, ParameterSampler
 from sklearn.pipeline import Pipeline
 
 from psyml.config import ExperimentConfig
+from psyml.data.counts import observed_class_counts
 from psyml.data.io import load_dataframe, validate_dataset
 from psyml.evaluation.metrics import (
     classification_confusion_matrix,
@@ -404,7 +405,7 @@ def _risk_warnings(
                 "not isolate groups."
             )
     if config.task == "classification":
-        counts = target.value_counts()
+        counts = observed_class_counts(target)
         if counts.max() >= 4 * counts.min():
             warnings.append(
                 "The target classes are imbalanced; inspect balanced and macro metrics."
@@ -490,7 +491,7 @@ def _inner_splits(
         n_splits = min(config.inner_splits, int(groups.nunique()))
         strategy = "stratified_group_k_fold" if config.task == "classification" else "group_k_fold"
     elif config.task == "classification":
-        n_splits = min(config.inner_splits, int(target.value_counts().min()))
+        n_splits = min(config.inner_splits, int(observed_class_counts(target).min()))
         strategy = "stratified_k_fold"
     else:
         n_splits = min(config.inner_splits, len(features))
