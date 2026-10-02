@@ -35,7 +35,7 @@ from psyml.evaluation.permutation import (
     extract_feature_encoding,
     permutation_importance,
 )
-from psyml.models.catalog import quick_parameter_grid, supported_models
+from psyml.models.catalog import quick_parameter_grid, supported_models, validate_model_parameters
 from psyml.models.coefficients import (
     COEFFICIENT_SCHEMA_VERSION,
     build_coefficient_report,
@@ -161,6 +161,35 @@ class _ProgressTracker:
     def skip(self, tasks: int) -> None:
         """Account for planned upper-bound work that the winning model did not need."""
         self.completed_tasks += max(tasks, 0)
+
+
+def _validate_parameter_inputs(config: ExperimentConfig) -> None:
+    """Reject invalid parameters before any output folder or fit is created.
+
+    Fixed parameters apply to every selected model only when exactly one model
+    is selected, mirroring ``_parameter_candidates``; custom grid values are
+    checked one by one. Numbers keep the type the user wrote, so a whole-number
+    decimal that scikit-learn only accepts as an integer fails here with the
+    parameter name instead of silently becoming a different model.
+    """
+    models = config.selected_models()
+    fixed = dict(config.model_params) if len(models) == 1 else {}
+    for model_name in models:
+        if fixed:
+            validate_model_parameters(
+                config.task, model_name, fixed, source="fixed parameter"
+            )
+        if config.tuning_mode == "custom":
+            for parameter, values in config.parameter_grids.get(model_name, {}).items():
+                if not isinstance(values, list):
+                    continue
+                for value in values:
+                    validate_model_parameters(
+                        config.task,
+                        model_name,
+                        {parameter: value},
+                        source="grid value",
+                    )
 
 
 def _build_pipeline(
@@ -719,6 +748,7 @@ def run_experiment(
         raise ValueError(
             "Supply either frame or input_path, not both; source provenance must be unambiguous"
         )
+    _validate_parameter_inputs(config)
     if config.resolved_primary_validation() is None:
         return _run_independent_validations(config, frame, progress_callback)
     return _run_prioritized(config, frame, progress_callback)

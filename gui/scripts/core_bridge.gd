@@ -48,7 +48,18 @@ static func parse_json_document(text: String):
 	var json := JSON.new()
 	if json.parse(text) != OK:
 		return null
-	return json.data
+	# JSON decoding flattens every number to float, which loses the
+	# integer/decimal distinction scikit-learn parameters depend on
+	# (`max_features=1` selects one feature, `max_features=1.0` selects all).
+	# Re-read the same document as a Variant literal so `1` stays an int and
+	# `1.0` stays a float; the strict JSON pass above rejects anything that is
+	# not plain JSON.
+	var typed = str_to_var(text)
+	if typed == null and json.data != null:
+		# Valid JSON that the Variant reader cannot represent (rare escape
+		# corner); fall back to the flat JSON value rather than failing.
+		return json.data
+	return typed
 
 
 static func utf8_complete_prefix_length(buffer: PackedByteArray) -> int:

@@ -234,8 +234,8 @@ func apply_configuration(config: Dictionary, preview: Dictionary) -> void:
 func enrich(config: Dictionary) -> Dictionary:
 	if test_fraction.value <= 0 or test_fraction.value >= 1:
 		return {"error": main.tr("TEST_FRACTION") + " : 0 < x < 1"}
-	var params = JSON.parse_string(fixed_parameters.text)
-	var extras = JSON.parse_string(extra_grids.text)
+	var params = CoreBridge.parse_json_document(fixed_parameters.text)
+	var extras = CoreBridge.parse_json_document(extra_grids.text)
 	if not params is Dictionary or not extras is Dictionary:
 		return {"error": main.tr("INVALID_JSON_OBJECT")}
 	config.model_params = params

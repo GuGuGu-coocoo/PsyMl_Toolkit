@@ -13,6 +13,20 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_reported_godot_float_grid_and_fixed_parameter_recipe(tmp_path):
+    # Integer parameters must be written as integers; whole-number decimals are
+    # rejected before any output instead of being silently rounded.
+    float_grid = ExperimentConfig(
+        task="classification", target_column="target", model_name="decision_tree",
+        model_names=["decision_tree"], input_path=ROOT / "examples/synthetic/classification.csv",
+        output_dir=tmp_path / "float-grid", feature_columns=["score", "category"],
+        group_column="participant", validation_strategy="k_fold", n_splits=5,
+        inner_splits=3, tuning_mode="custom",
+        parameter_grids={"decision_tree": {"max_depth": [5.0]}},
+    )
+    with pytest.raises(ValueError, match="max_depth"):
+        run_experiment(float_grid)
+    assert not float_grid.output_dir.exists()
+
     config = ExperimentConfig(
         task="classification", target_column="target", model_name="decision_tree",
         model_names=["decision_tree"], input_path=ROOT / "examples/synthetic/classification.csv",
@@ -20,7 +34,7 @@ def test_reported_godot_float_grid_and_fixed_parameter_recipe(tmp_path):
         group_column="participant", validation_strategy="k_fold", n_splits=5,
         inner_splits=3, max_candidates=20, tuning_mode="custom", selection_metric="f1_macro",
         parameter_grids={"decision_tree": {
-            "max_depth": [None, 5.0, 10.0], "min_samples_leaf": [1.0, 3.0, 5.0],
+            "max_depth": [None, 5, 10], "min_samples_leaf": [1, 3, 5],
         }}, figure_types=["confusion_matrix", "class_distribution"],
     )
     run_experiment(config)
@@ -37,9 +51,11 @@ def test_reported_godot_float_grid_and_fixed_parameter_recipe(tmp_path):
         assert (config.output_dir / value).is_file(), key
     assert "best_parameters" in (config.output_dir / "reproducibility_report.md").read_text(encoding="utf-8")
     assert "不保证绝对正确" in (config.output_dir / "methods_summary_zh.md").read_text(encoding="utf-8")
-    assert config.parameter_grids["decision_tree"]["min_samples_leaf"][0] == 1.0
-    assert isinstance(config.parameter_grids["decision_tree"]["min_samples_leaf"][0], float)
-    assert isinstance(config.parameter_grids["decision_tree"]["min_samples_leaf"][1], int)
+    assert config.parameter_grids["decision_tree"]["min_samples_leaf"] == [1, 3, 5]
+    assert all(
+        isinstance(value, int)
+        for value in config.parameter_grids["decision_tree"]["min_samples_leaf"]
+    )
 
 
 def test_plot_selection_and_empty_selection(tmp_path):

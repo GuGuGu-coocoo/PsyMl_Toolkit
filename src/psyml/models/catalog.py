@@ -1,5 +1,7 @@
 """Lightweight catalog of supported estimator names."""
 
+from typing import Any
+
 CLASSIFICATION_MODELS = {
     "knn",
     "random_forest",
@@ -100,22 +102,68 @@ def quick_parameter_grid(task: str, model_name: str) -> dict[str, list[object]]:
     }
 
 
-# JSON clients such as Godot decode all numbers as doubles. These fields use
-# integer counts; genuine fractions for min_samples_* remain fractions.
-INTEGER_PARAMETERS = {
-    "n_neighbors", "n_estimators", "max_depth", "min_samples_leaf", "min_samples_split",
-    "max_leaf_nodes", "max_iter", "random_state", "cv", "n_jobs", "degree", "n_components",
-}
+def validate_model_parameters(
+    task: str,
+    model_name: str,
+    params: dict[str, Any],
+    *,
+    source: str,
+) -> None:
+    """Reject estimator parameters that scikit-learn cannot accept as written.
+
+    PsyML preserves JSON number types exactly: ``1`` is an integer count and
+    ``1.0`` is a decimal fraction, and for parameters such as ``max_features``
+    the two select different models. Nothing is rounded or silently replaced;
+    invalid input raises a ``ValueError`` that names the parameter, the received
+    value and its type before any fitting or output writing starts.
+    """
+    from psyml.models.factory import build_model
+
+    estimator = build_model(task, model_name, 0, {})
+    allowed = set(estimator.get_params())
+    unknown = sorted(set(params) - allowed)
+    if unknown:
+        names = ", ".join(unknown)
+        raise ValueError(f"Unknown parameters for {model_name}: {names}")
+    for parameter, value in params.items():
+        _validate_single_parameter(estimator, model_name, parameter, value, source=source)
 
 
-def normalize_parameter(parameter: str, value: object) -> object:
-    """Restore integral JSON counts without rounding or changing fractional values."""
-    # 1.0 is a valid fraction for sklearn min_samples_*, whereas counts >= 2
-    # cannot be fractions. Keep existing Python/CLI fraction semantics intact.
-    if parameter in {"min_samples_leaf", "min_samples_split"} and value == 1.0 and isinstance(value, float):
-        return value
-    if parameter in INTEGER_PARAMETERS and isinstance(value, float) and value.is_integer():
-        return int(value)
-    if parameter == "hidden_layer_sizes" and isinstance(value, list):
-        return [int(v) if isinstance(v, float) and v.is_integer() else v for v in value]
-    return value
+def _validate_single_parameter(
+    estimator: Any, model_name: str, parameter: str, value: Any, *, source: str
+) -> None:
+    try:
+        estimator.set_params(**{parameter: value})
+    except ValueError as error:
+        raise ValueError(
+            f"{model_name}: the {source} '{parameter}' = {value!r} cannot be applied: {error}"
+        ) from error
+    validator = getattr(estimator, "_validate_params", None)
+    if validator is None:
+        return
+    try:
+        validator()
+    except ValueError as error:
+        raise ValueError(
+            f"{model_name}: the {source} '{parameter}' = {value!r} "
+            f"({type(value).__name__}) is not accepted by scikit-learn: {error}"
+            f"{_integer_form_hint(estimator, parameter, value)}"
+        ) from error
+
+
+def _integer_form_hint(estimator: Any, parameter: str, value: Any) -> str:
+    """Point whole-number decimals to the integer form when that form is valid."""
+    if not isinstance(value, float) or not value.is_integer():
+        return ""
+    validator = getattr(estimator, "_validate_params", None)
+    if validator is None:
+        return ""
+    try:
+        estimator.set_params(**{parameter: int(value)})
+        validator()
+    except ValueError:
+        return ""
+    return (
+        f" PsyML preserves JSON number types: write {int(value)} (without a decimal "
+        "point) if you meant the integer count, then save the configuration again."
+    )

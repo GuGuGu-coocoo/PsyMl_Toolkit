@@ -56,19 +56,8 @@ class ExperimentConfig:
     permutation_repeats: int = 10
 
     def __post_init__(self) -> None:
-        from psyml.models.catalog import normalize_parameter
-
         if not isinstance(self.model_params, dict) or not isinstance(self.parameter_grids, dict):
             raise TypeError("model_params and parameter_grids must be JSON objects")
-        object.__setattr__(self, "model_params", {
-            key: normalize_parameter(key, value) for key, value in self.model_params.items()
-        })
-        object.__setattr__(self, "parameter_grids", {
-            model: {key: [normalize_parameter(key, value) for value in values]
-                    if isinstance(values, list) else values for key, values in grid.items()}
-            if isinstance(grid, dict) else grid
-            for model, grid in self.parameter_grids.items()
-        })
         if not isinstance(self.save_best_model, bool):
             raise TypeError("save_best_model must be a boolean")
         if not isinstance(self.permutation_importance, bool):

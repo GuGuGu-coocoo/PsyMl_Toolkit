@@ -34,6 +34,7 @@ GROUPS: tuple[Group, ...] = (
     ("parameter_context", "test_parameter_context.gd", "PSYML_PARAMETER_CONTEXT_OK"),
     ("independent_results", "test_independent_results.gd", "PSYML_INDEPENDENT_RESULTS_OK"),
     ("config_import", "test_config_import.gd", "PSYML_CONFIG_IMPORT_OK"),
+    ("parameter_types", "test_parameter_types.gd", "PSYML_PARAMETER_TYPES_OK"),
     ("prediction", "test_prediction.gd", "PSYML_PREDICTION_UI_OK"),
     ("permutation", "test_permutation.gd", "PSYML_PERMUTATION_OK"),
     ("data_check", "test_data_check.gd", "PSYML_DATA_CHECK_OK"),

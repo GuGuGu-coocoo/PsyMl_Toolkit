@@ -937,19 +937,15 @@ func _parameter_grid_payload() -> Dictionary:
 		var controls: Dictionary = parameter_controls[key]
 		if not controls.enabled.button_pressed:
 			continue
-		var parsed = JSON.parse_string(controls.values.text)
+		var parsed = CoreBridge.parse_json_document(controls.values.text)
 		if not parsed is Array or parsed.is_empty():
 			return {"error": tr("INVALID_PARAMETER_VALUES") % key}
 		var parts := str(key).split("::", false, 1)
 		if not grids.has(parts[0]):
 			grids[parts[0]] = {}
-		# Godot JSON parses numbers as floats. Serialize integer count candidates
-		# as integers; fractional min_samples candidates below 1 remain fractions.
-		var count_parameters := ["n_neighbors", "n_estimators", "max_depth", "min_samples_leaf", "min_samples_split", "max_leaf_nodes", "max_iter", "random_state", "cv", "n_jobs", "degree", "n_components"]
-		if parts[1] in count_parameters:
-			for index in range(parsed.size()):
-				if parsed[index] is float and is_finite(parsed[index]) and parsed[index] == floor(parsed[index]):
-					parsed[index] = int(parsed[index])
+		# Keep the number type exactly as written: an integer is a count and a
+		# decimal is a fraction for parameters such as max_features and
+		# min_samples_leaf, where the two forms select different models.
 		grids[parts[0]][parts[1]] = parsed
 	return {"grids": grids}
 

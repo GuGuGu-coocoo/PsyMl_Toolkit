@@ -270,12 +270,12 @@ CUSTOM_CASES = [
     ("classification", "lda", {"solver": solver, "shrinkage": shrinkage})
     for solver, shrinkage in product(["lsqr", "eigen"], ["auto", 0.2])
 ] + [
-    (task, "decision_tree", {"max_depth": 3.0, "min_samples_leaf": 0.1,
+    (task, "decision_tree", {"max_depth": 3, "min_samples_leaf": 0.1,
                               "min_samples_split": 0.2, "max_features": features})
     for task, features in product(["classification", "regression"], [None, "sqrt", 0.5])
 ] + [
-    (task, "mlp", {"solver": solver, "activation": "tanh", "hidden_layer_sizes": [6.0, 3.0],
-                   "max_iter": 30.0, "early_stopping": early})
+    (task, "mlp", {"solver": solver, "activation": "tanh", "hidden_layer_sizes": [6, 3],
+                   "max_iter": 30, "early_stopping": early})
     for task, solver, early in product(["classification", "regression"],
                                        ["adam", "sgd", "lbfgs"], [False, True])
 ] + [
