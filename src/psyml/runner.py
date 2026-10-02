@@ -280,7 +280,8 @@ def _validate_parameter_inputs(config: ExperimentConfig) -> None:
     parameter name instead of silently becoming a different model.
     """
     models = config.selected_models()
-    fixed = dict(config.model_params) if len(models) == 1 else {}
+    config.validate_fixed_parameters()
+    fixed = dict(config.model_params)
     for model_name in models:
         if fixed:
             validate_model_parameters(
@@ -448,7 +449,8 @@ def _prepare_data(
 
 
 def _parameter_candidates(config: ExperimentConfig, model_name: str) -> list[dict[str, Any]]:
-    base = dict(config.model_params) if len(config.selected_models()) == 1 else {}
+    config.validate_fixed_parameters()
+    base = dict(config.model_params)
     if config.tuning_mode == "none":
         return [base]
     grid = (

@@ -10,6 +10,7 @@ def import_configuration(path: Path, input_override: Path | None = None) -> dict
     """Validate before changing the GUI; resolve portable paths from the config location."""
     path = path.absolute()
     config = load_config(path)
+    config.validate_fixed_parameters()
     unknown_models = set(config.selected_models()) - set(supported_models(config.task))
     if unknown_models:
         raise ValueError("Unsupported models: " + ", ".join(sorted(unknown_models)))

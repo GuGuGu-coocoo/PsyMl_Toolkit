@@ -173,6 +173,15 @@ class ExperimentConfig:
                         f"parameter grid value for {model}.{parameter} must be a non-empty list"
                     )
 
+    def validate_fixed_parameters(self) -> None:
+        """A fixed parameter object has one unambiguous model-family scope."""
+        if len(self.selected_models()) > 1 and self.model_params:
+            raise ValueError(
+                "Non-empty model_params requires exactly one selected model. "
+                "For multiple models, leave model_params empty and use per-model "
+                "parameter_grids with tuning_mode='custom'."
+            )
+
     def selected_models(self) -> list[str]:
         """Return the ordered model selection while preserving old configurations."""
         return list(self.model_names) if self.model_names is not None else [self.model_name]
