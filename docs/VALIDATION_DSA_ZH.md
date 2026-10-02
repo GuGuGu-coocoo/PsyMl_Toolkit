@@ -20,6 +20,21 @@
 
 本报告记录一个此类案例：在公开的 UCI *Daily and Sports Activities*（DSA）数据上，以事先冻结的协议运行 PsyML，并与不导入 PsyML 的独立 scikit-learn 实现逐项核对。它属于软件维护与流程验收，**不是**新方法论文、不是原论文基准复现，也不是同类工具比较；不涉及心理构念测量、临床、因果或人因效果结论。
 
+## 数据、配置与 GUI 复现入口
+
+- **分析配置。** 复现使用案例原始的完整搜索配置 [`examples/public/configs/dsa_group_nested_v1.json`](../examples/public/configs/dsa_group_nested_v1.json)：其中包含完整候选与参数网格、分组列以及外层 4 折/内层 3 折设置。不要用运行后导出的最佳参数配置（如 `best_parameters_configure.json`）替代，后者只固定选出的参数，不重新执行内层搜索。
+- **测试数据。** 所需文件为 `dsa_torso_mean_std.csv`（9,120 行）。该派生 CSV 未随仓库分发，也没有直接下载地址；请从 UCI 官方页面下载原始压缩包（DOI <https://doi.org/10.24432/C5C59F>），再按[案例运行说明](../examples/public/dsa_group_nested_v1/README.md#运行仓库根目录)在仓库根目录生成：
+
+  ```bash
+  uv run python tools/cases/prepare_dsa.py \
+    --archive /path/to/daily_and_sports_activities.zip \
+    --output-dir examples/public/data
+  ```
+
+  生成位置为 `examples/public/data/dsa_torso_mean_std.csv`（`examples/public/data/` 被 Git 忽略）；`/path/to/...` 只是本地 ZIP 路径的占位符，不是公开下载地址。脚本会按冻结哈希校验生成的 CSV。
+- **GUI 操作。** 在应用第 1 页点击“导入配置…”，选择上述 JSON；若提示数据不存在，在系统窗口中定位上一步生成的 `dsa_torso_mean_std.csv`；随后在“2 检查与运行”页核对设置并点击“运行分析”。这些步骤供读者自行运行与核对，不构成 GUI 或打包应用已通过人工验收的声明。
+- **案例与参考结果。** 案例目录为 [`examples/public/dsa_group_nested_v1/`](../examples/public/dsa_group_nested_v1/README.md)，其 [`expected/`](../examples/public/dsa_group_nested_v1/expected/README.md) 入口给出冻结期望值与复跑摘要（`case_summary.json`、`golden_hashes.json` 等），便于逐项核对结果。
+
 ## 2. 数据与方法
 
 ### 2.1 数据来源、许可与归属

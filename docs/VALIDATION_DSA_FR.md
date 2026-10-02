@@ -20,6 +20,21 @@ La justesse d’un outil d’apprentissage automatique ne se lit pas dans le sco
 
 Ce rapport documente un tel cas : PsyML est exécuté sur les données publiques UCI *Daily and Sports Activities* (DSA) selon un protocole figé à l’avance, puis comparé point par point à une implémentation scikit-learn indépendante qui n’importe pas PsyML. Il s’agit d’un travail de maintenance logicielle et d’acceptation de flux, **non** d’un article de nouvelle méthode, d’une reproduction du benchmark de l’article original ou d’une comparaison d’outils ; il ne soutient aucune affirmation sur les construits psychologiques, l’usage clinique, la causalité ou les effets humains.
 
+## Entrée de reproduction : données, configuration et GUI
+
+- **Configuration d’analyse.** La reproduction utilise la configuration de recherche complète et d’origine du cas : [`examples/public/configs/dsa_group_nested_v1.json`](../examples/public/configs/dsa_group_nested_v1.json). Elle contient l’ensemble des candidats et des grilles de paramètres, la colonne de groupe et les réglages 4 plis externes / 3 plis internes. Ne pas la remplacer par la configuration des meilleurs paramètres exportée après une exécution (par exemple `best_parameters_configure.json`) : celle-ci ne fixe que les paramètres sélectionnés et ne refait pas la recherche interne.
+- **Données de test.** Le fichier requis est `dsa_torso_mean_std.csv` (9 120 lignes). Ce CSV dérivé n’est pas distribué avec le dépôt et n’a pas d’adresse de téléchargement direct ; télécharger l’archive d’origine depuis la page officielle UCI (DOI <https://doi.org/10.24432/C5C59F>) puis générer le CSV depuis la racine du dépôt, comme détaillé dans les [instructions d’exécution du cas](../examples/public/dsa_group_nested_v1/README.md#运行仓库根目录) :
+
+  ```bash
+  uv run python tools/cases/prepare_dsa.py \
+    --archive /path/to/daily_and_sports_activities.zip \
+    --output-dir examples/public/data
+  ```
+
+  Le fichier est écrit dans `examples/public/data/dsa_torso_mean_std.csv` (le dossier `examples/public/data/` est ignoré par Git) ; `/path/to/...` n’est qu’un exemple de chemin local vers le ZIP, pas une adresse de téléchargement publique. Le script vérifie le CSV généré par rapport à l’empreinte figée.
+- **Étapes GUI.** Sur la page 1, cliquer sur « Importer une configuration… » et choisir ce JSON ; si les données sont signalées absentes, localiser le fichier `dsa_torso_mean_std.csv` généré à l’étape précédente ; puis, dans l’onglet « 2 Vérification », contrôler les réglages et cliquer sur « Exécuter l’analyse ». Ces étapes permettent aux lecteurs d’exécuter et de vérifier eux-mêmes ; elles ne constituent pas une déclaration d’acceptation humaine du GUI ou des applications empaquetées.
+- **Cas et résultats de référence.** Le répertoire du cas est [`examples/public/dsa_group_nested_v1/`](../examples/public/dsa_group_nested_v1/README.md) ; son entrée [`expected/`](../examples/public/dsa_group_nested_v1/expected/README.md) fournit les attentes figées et les résumés de reprise (`case_summary.json`, `golden_hashes.json`, etc.) pour vérifier les résultats point par point.
+
 ## 2. Données et méthodes
 
 ### 2.1 Source, licence et attribution

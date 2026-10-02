@@ -20,6 +20,21 @@ The correctness of a machine-learning tool is not visible in the final score alo
 
 This report documents such a case: PsyML runs on the public UCI *Daily and Sports Activities* (DSA) data under a protocol frozen in advance and is compared point by point with an independent scikit-learn implementation that does not import PsyML. It is a software-maintenance and workflow-acceptance exercise, **not** a new-method paper, a reproduction of the original paper's benchmark, or a comparison against other tools; it supports no statement about psychological constructs, clinical use, causality or human-factors effects.
 
+## Data, configuration and GUI reproduction entry
+
+- **Analysis configuration.** Reproduction uses the case's original full search configuration [`examples/public/configs/dsa_group_nested_v1.json`](../examples/public/configs/dsa_group_nested_v1.json): it contains the full candidate and parameter grids, the group column and the 4-fold outer / 3-fold inner settings. Do not substitute the best-parameters configuration exported after a run (such as `best_parameters_configure.json`), which only fixes the selected parameters and does not repeat the inner search.
+- **Test data.** The required file is `dsa_torso_mean_std.csv` (9,120 rows). This derived CSV is not distributed with the repository and has no direct download address; download the original archive from the official UCI page (DOI <https://doi.org/10.24432/C5C59F>) and generate it from the repository root as described in the [case run instructions](../examples/public/dsa_group_nested_v1/README.md#运行仓库根目录):
+
+  ```bash
+  uv run python tools/cases/prepare_dsa.py \
+    --archive /path/to/daily_and_sports_activities.zip \
+    --output-dir examples/public/data
+  ```
+
+  The file is written to `examples/public/data/dsa_torso_mean_std.csv` (`examples/public/data/` is Git-ignored); `/path/to/...` is only a placeholder for your local copy of the ZIP, not a public download address. The script checks the generated CSV against the frozen hash.
+- **GUI steps.** On page 1 click “Import configuration…”, select that JSON; if the data is reported missing, locate the generated `dsa_torso_mean_std.csv` in the system dialog; then on the “2 Review & run” page verify the settings and click “Run analysis”. These steps are provided for readers to run and check themselves; they are not a claim that the GUI or packaged applications have passed human acceptance.
+- **Case and reference results.** The case directory is [`examples/public/dsa_group_nested_v1/`](../examples/public/dsa_group_nested_v1/README.md); its [`expected/`](../examples/public/dsa_group_nested_v1/expected/README.md) entry holds the frozen expectations and re-run summaries (`case_summary.json`, `golden_hashes.json`, …) for checking results point by point.
+
 ## 2. Data and methods
 
 ### 2.1 Source, licence and attribution
