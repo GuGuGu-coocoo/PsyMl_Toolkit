@@ -56,9 +56,11 @@ def test_missing_target_is_counted_and_prediction_indices_survive(tmp_path):
         ),
         data,
     )
-    assert set(result.predictions.row_index) == set(data.index) - {101, 105}
+    # row_index is the stable input position, not the caller's pandas labels.
+    assert set(result.predictions.row_index) == set(range(len(data))) - {1, 5}
+    assert result.predictions.row_index.is_unique
     assert (
-        result.predictions.observed.tolist() == data.loc[result.predictions.row_index, "y"].tolist()
+        result.predictions.observed.tolist() == data.iloc[result.predictions.row_index]["y"].tolist()
     )
     assert any("target" in w and "1" in w for w in result.warnings)
 

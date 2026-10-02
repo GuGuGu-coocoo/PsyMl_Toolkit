@@ -27,6 +27,7 @@ from sklearn.pipeline import Pipeline
 from psyml.config import ExperimentConfig
 from psyml.data.counts import observed_class_counts
 from psyml.data.io import load_dataframe, validate_dataset
+from psyml.data.provenance import bind_input_snapshot, source_change_warning
 from psyml.evaluation.metrics import (
     classification_confusion_matrix,
     classification_metrics,
@@ -868,6 +869,7 @@ def run_experiment(
             "Supply either frame or input_path, not both; source provenance must be unambiguous"
         )
     _validate_parameter_inputs(config)
+    frame = bind_input_snapshot(config, frame, loader=load_dataframe)
     if config.resolved_primary_validation() is None:
         return _run_independent_validations(config, frame, progress_callback)
     return _run_prioritized(config, frame, progress_callback)
@@ -1367,6 +1369,9 @@ def _run_prioritized(
     output_dir = Path(config.output_dir)
     fit_warning_records = fit_warnings.records()
     warnings.extend(fit_warnings.lines())
+    changed = source_change_warning(config, source_frame)
+    if changed:
+        warnings.append(changed)
     write_results(
         output_dir,
         config,

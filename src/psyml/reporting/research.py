@@ -14,6 +14,7 @@ from typing import Any
 import pandas as pd
 
 from psyml.config import ExperimentConfig
+from psyml.data.provenance import SNAPSHOT_KEY
 
 
 def _package_version(distribution: str) -> str:
@@ -26,13 +27,12 @@ def _package_version(distribution: str) -> str:
 def _sha256(config: ExperimentConfig, frame: pd.DataFrame) -> tuple[str, str] | None:
     if not config.include_data_hash:
         return None
-    digest = hashlib.sha256()
-    if config.input_path is not None and Path(config.input_path).is_file():
-        with Path(config.input_path).open("rb") as source:
-            for chunk in iter(lambda: source.read(1024 * 1024), b""):
-                digest.update(chunk)
-        return digest.hexdigest(), "source_file_bytes"
-    digest.update(frame.to_csv(index=False, lineterminator="\n").encode("utf-8"))
+    snapshot = frame.attrs.get(SNAPSHOT_KEY)
+    if snapshot:
+        return snapshot["sha256"], snapshot["hash_basis"]
+    # Direct report callers may only supply a DataFrame. Never hash a later file
+    # and label it as the input that produced this in-memory snapshot.
+    digest = hashlib.sha256(frame.to_csv(index=False, lineterminator="\n").encode("utf-8"))
     return digest.hexdigest(), "canonical_in_memory_csv"
 
 
@@ -86,6 +86,10 @@ def _manifest(
             "machine": platform.machine(),
         },
         "dependencies": dependencies,
+        "input_snapshot": {
+            key: value for key, value in frame.attrs.get(SNAPSHOT_KEY, {}).items()
+            if key not in {"sha256", "hash_basis"}
+        },
         "data": {
             "source_kind": "file" if config.input_path is not None else "in_memory",
             "input_rows": len(frame),
