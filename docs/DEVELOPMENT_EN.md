@@ -112,7 +112,7 @@ uv sync --extra explain
 uv pip install -e ".[explain]"   # pip/venv equivalent
 ```
 
-`pyproject.toml` pins version-appropriate SHAP releases per Python (3.10 → 0.49.x, 3.11 → 0.51.x, 3.12 → 0.52.x). `uv.lock` records them without upgrading unrelated dependencies such as scikit-learn. `tools/build_native.py` bundles shap/numba/llvmlite into the core, copies their licenses into `tools/licenses/`, and `--explain-smoke` checks bundled classification/regression explanation and reconstruction.
+`pyproject.toml` pins version-appropriate SHAP releases per Python (3.10 → 0.49.x, 3.11 → 0.51.x, 3.12 → 0.52.x). `uv.lock` records them without upgrading unrelated dependencies such as scikit-learn. `tools/build_native.py` bundles shap/numba/llvmlite into the core, copies the maintained notices from `tools/licenses/` into the package’s `licenses/` directory, and `--explain-smoke` checks bundled classification/regression explanation and reconstruction.
 
 ## Fitted coefficients (no extra dependency)
 
@@ -123,11 +123,14 @@ uv pip install -e ".[explain]"   # pip/venv equivalent
 [build_native.py](../tools/build_native.py) freezes the core with PyInstaller and exports Godot on the target OS. Matching Godot export templates are required. Targets are Apple Silicon macOS and Windows x64; a build made on macOS does not validate Windows.
 
 ```bash
-uv sync --locked --group dev --group build
-uv run --group build python tools/build_native.py
+uv sync --locked --group dev --group build --extra explain
+uv run --locked --group build --extra explain python tools/build_native.py --output-dir dist/v0.3.0 \
+    --permutation-smoke --explain-smoke --coefficients-smoke
 ```
 
 The script rebuilds the same named output directory under `dist/`, checks classification and regression with the bundled runtime, and writes a ZIP and SHA-256. `--reuse-core` is only for local GUI debugging when core/dependencies are unchanged; rebuild fully for delivery. Verify versions, lockfile, architecture, licenses, extracted-app startup and native dialogs. Apps without commercial signing/notarization may trigger OS prompts.
+
+The build checks the OS, native 64-bit Python and the Python/Godot executable headers before building, then checks the exported GUI and frozen core against the named target (Mach-O arm64 or PE x64). The commands above retain the explain extra in both installation and execution and run all three optional bundled-core smoke tests required for delivery. BUILD.json records the initial source status, commit, uv.lock SHA-256 and final status after smoke. Packaging aborts on newly modified source files or a changed commit/lockfile. The post-build source-change allowlist is intentionally empty: dist/, tmp/ and gui/.godot/ are already ignored. Review and commit any Godot source/import changes, then rebuild; do not blanket-allow GUI changes. A pre-existing dirty checkout or a reused core is suitable only for local debugging and fails release verification.
 
 **Native export goes through `tools/build_native.py` only.** The macOS/Windows version fields in `gui/export_presets.cfg` (`application/short_version`, `application/version`, `application/file_version`, `application/product_version`) hold the placeholders `@PSYML_MACOS_VERSION@` / `@PSYML_WINDOWS_VERSION@`, not publishable version numbers; exporting directly from the Godot editor fails or writes wrong versions. `build_native.py` derives numeric export versions from the single `src/psyml/__init__.py` constant for the duration of one export (both the official `0.3.0` and the development `0.3.0.dev0` export as macOS `0.3.0`, Windows `0.3.0.0`) and restores the template in a `finally` block, so neither success nor failure leaves a modified preset. Always trigger native export through that script instead of using the Godot preset directly.
 
@@ -137,17 +140,30 @@ The script rebuilds the same named output directory under `dist/`, checks classi
 
 The 0.3.0 GitHub Release uploads only the Windows-x64 and macOS-arm64 application ZIPs, with Chinese, English and French notes (see [RELEASE_NOTES_0.3.0.md](RELEASE_NOTES_0.3.0.md)). Build scripts still generate SHA-256 files for local verification; do not upload them or an extra source ZIP, and verify the release candidate locally with `tools/verify_release_artifacts.py`. GitHub provides automatic Source code downloads. `tools/package_release.py` is an optional local source archiver requiring a clean checkout and current PDFs; keep its output out of application assets. Historical reference: the v0.2.0 Release followed the same rules.
 
-First verify the README and researcher guide against 0.3.0, then generate PDFs. Replace the font path below with an embeddable Chinese-capable TrueType font. `output/pdf/sources.json` records source hashes; regenerate and visually inspect every page after source changes. The PDF label defaults to the core version (`v0.3.0`); regenerating a historical document requires an explicit `--label v0.2.0 --base-ref v0.2.0`, and the file is then marked as historical instead of current.
+First verify the README and researcher guide against 0.3.0, then generate PDFs. Replace the font path below with an embeddable Chinese-capable TrueType font. `dist/v0.3.0/docs/sources.json` records source hashes for this release candidate; regenerate and visually inspect every page after source changes. The PDF label defaults to the core version (`v0.3.0`); regenerating a historical document requires an explicit `--label v0.2.0 --base-ref v0.2.0`, and the file is then marked as historical instead of current.
 
 ```bash
 uv run --with reportlab python tools/build_release_pdfs.py --font /path/to/chinese-font.ttf \
     --output-dir dist/v0.3.0/docs
-uv run python tools/verify_release_artifacts.py --directory dist/v0.3.0 --platform all
-uv run python tools/package_researcher_share.py --windows-zip dist/PsyML-Toolkit-0.2.0-Windows-x64.zip
 ```
 
-`tools/verify_release_artifacts.py` reads the real ZIP contents (BUILD.json version/commit/clean source, core and app resources, required licenses, safe paths), the matching SHA-256 files and, in `all` mode, the two non-empty Chinese PDFs and the `SHA256SUMS` release manifest; it never relies on a success string in a log. `all` mode requires both platform ZIPs plus `docs/README_ZH.pdf`, `docs/RESEARCHER_GUIDE_ZH.pdf`, `docs/sources.json` and a `SHA256SUMS` listing all four artifacts in `dist/v0.3.0/`; single-platform mode needs only that platform's ZIP and `.sha256`, so the Mac package can be gated before the Windows download arrives.
+Place both ZIPs and their .sha256 sidecars from the same clean commit in `dist/v0.3.0/`. After generating and inspecting the PDFs, create `SHA256SUMS` with the SHA-256 and relative path of both ZIPs and both PDFs, then run the full verifier. For example, this cross-platform Python command writes the four required entries:
 
-The sharing script never calls release APIs. It creates `PsyML-Toolkit-Researcher-Share-v0.2.0.zip` at the root for direct sharing only; **never upload it to Release**, and it is not a release asset - generate one only after separate confirmation. In the v0.2.0 kit (the most recently generated), Windows/ contains the app, TestData/ the training, configuration and prediction files, Documents/ the two Chinese PDFs, and 从这里开始.txt explains folders and steps and directs Mac users to GitHub. If the destination exists, move or back up the old kit before rebuilding; do not reuse stale PDFs.
+```bash
+uv run python -c "import hashlib; from pathlib import Path; d=Path('dist/v0.3.0'); names=['PsyML-Toolkit-0.3.0-macOS-arm64.zip','PsyML-Toolkit-0.3.0-Windows-x64.zip','docs/README_ZH.pdf','docs/RESEARCHER_GUIDE_ZH.pdf']; (d/'SHA256SUMS').write_text(''.join(hashlib.sha256((d/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in names), encoding='utf-8')"
+uv run python tools/verify_release_artifacts.py --directory dist/v0.3.0 --platform all
+```
+
+`tools/verify_release_artifacts.py` reads the real ZIP contents (BUILD.json version/commit/initial and final clean source, nonempty required resources/licenses/runtime, actual core and GUI executable architecture, safe paths), the matching SHA-256 files and, in `all` mode, the two non-empty Chinese PDFs and the `SHA256SUMS` release manifest; it never relies on a success string in a log. `all` mode requires both platform ZIPs plus `docs/README_ZH.pdf`, `docs/RESEARCHER_GUIDE_ZH.pdf`, `docs/sources.json` and a `SHA256SUMS` listing all four artifacts in `dist/v0.3.0/`; single-platform mode needs only that platform's ZIP and `.sha256`, so the Mac package can be gated before the Windows download arrives.
+
+For a separately requested local sharing kit, generate current PDFs in `output/pdf/`, the directory read by `package_researcher_share.py`. This is a separate destination from the release-candidate PDFs in `dist/v0.3.0/docs/`:
+
+```bash
+uv run --with reportlab python tools/build_release_pdfs.py --font /path/to/chinese-font.ttf \
+    --output-dir output/pdf
+uv run python tools/package_researcher_share.py --windows-zip dist/v0.3.0/PsyML-Toolkit-0.3.0-Windows-x64.zip
+```
+
+The sharing script reads the current core version and creates `PsyML-Toolkit-Researcher-Share-v0.3.0.zip` at the repository root. It never calls release APIs; generate it only after separate confirmation and keep it out of Release attachments. Windows/ contains the app, TestData/ the training/configuration/prediction files, Documents/ the two Chinese PDFs, and 从这里开始.txt explains the folders and directs Mac users to GitHub. Move or back up any existing kit before rebuilding. Regenerate both PDF destinations after document changes.
 
 When changing versions, modify only `__version__` in `src/psyml/__init__.py` (`pyproject.toml` is dynamic and follows automatically; `gui/export_presets.cfg` keeps its placeholders while `tools/build_native.py` derives the numeric values at export time). Also check uv.lock, `tools/build_native.py`, `tools/NATIVE_START_HERE.txt`, PDF-builder versions/links and trilingual release notes (`docs/RELEASE_NOTES_<version>.md`). Inspect BUILD.json commit, initial checkout status and generated changes, and verify archives against local hashes with `tools/verify_release_artifacts.py`. Bundled GUI smoke tests cover classification/regression training, saving/loading, ten new predictions each (written as `predictions.csv` in that run's folder) and that the open action targets exactly that run folder, without replacing real-window inspection. The core CLI `export-table` and multi-format read/write remain supported and are outside this bundled smoke check. Commit each independent completed feature and push immediately; do not accumulate pushes.

@@ -38,7 +38,7 @@ uv run python tools/launch_gui.py
 
 ## 核心接口
 
-GUI 通过本机子进程调用 Python 核心；开发模式使用虚拟环境，独立应用使用包内 `psyml-core`。不要把分析逻辑复制到界面脚本中。
+GUI 通过本机子进程调用 Python 核心；开发模式使用虚拟环境，独立应用使用包内 `psyml-core`。分析逻辑统一维护在 Python 核心；GUI 负责配置、调用和结果展示。
 
 ```bash
 uv run psyml --help
@@ -112,7 +112,7 @@ uv sync --extra explain
 uv pip install -e ".[explain]"   # pip/venv 等价写法
 ```
 
-`pyproject.toml` 按 Python 版本固定 SHAP（3.10 → 0.49.x，3.11 → 0.51.x，3.12 → 0.52.x），`uv.lock` 记录且不升级 scikit-learn 等无关依赖。`tools/build_native.py` 会把 shap/numba/llvmlite 打包进核心、把许可证复制到 `tools/licenses/`，`--explain-smoke` 检查包内分类/回归解释与重建。
+`pyproject.toml` 按 Python 版本固定 SHAP（3.10 → 0.49.x，3.11 → 0.51.x，3.12 → 0.52.x），`uv.lock` 记录且不升级 scikit-learn 等无关依赖。`tools/build_native.py` 会把 shap/numba/llvmlite 打包进核心、把 `tools/licenses/` 中维护的许可证复制到应用包的 `licenses/` 目录，`--explain-smoke` 检查包内分类/回归解释与重建。
 
 ## 拟合系数（无额外依赖）
 
@@ -123,11 +123,14 @@ uv pip install -e ".[explain]"   # pip/venv 等价写法
 [build_native.py](../tools/build_native.py) 在目标操作系统构建独立应用，使用 PyInstaller 打包核心、Godot 导出 GUI；需要匹配的 Godot 导出模板。支持 Apple 芯片 macOS 和 Windows x64，不能把 macOS 上的本机构建当成 Windows 验证。
 
 ```bash
-uv sync --locked --group dev --group build
-uv run --group build python tools/build_native.py
+uv sync --locked --group dev --group build --extra explain
+uv run --locked --group build --extra explain python tools/build_native.py --output-dir dist/v0.3.0 \
+    --permutation-smoke --explain-smoke --coefficients-smoke
 ```
 
 脚本会重建同名 `dist/` 输出目录，运行两种任务的包内环境检查，并生成 ZIP 与 SHA-256。`--reuse-core` 仅适合核心和依赖完全未变的本地 GUI 调试；交付时完整重建。发布前核对版本、锁文件、平台、许可证、解压后的启动与原生文件窗口；未商业签名/公证的应用可能遇到系统安全提示。
+
+构建前先核对操作系统、原生 64 位 Python 与 Python/Godot 可执行文件头；导出后再核对 GUI 和冻结核心的真实架构与包名一致（Mach-O arm64 或 PE x64）。以上安装和运行命令均保留 explain extra，并运行交付所需的三项可选包内 smoke。BUILD.json 记录初始源码状态、提交、uv.lock SHA-256，以及全部 smoke 完成后的最终状态。新增源码修改、提交变化或锁文件变化会中止打包。构建后源码变更允许清单明确为空：dist/、tmp/、gui/.godot/ 已被忽略；Godot 若改写源码或导入配置，应审查并提交后重建，不对 GUI 目录整批放行。初始脏工作区或复用核心的包仅供本地调试，不能通过发布校验。
 
 **原生导出只走 `tools/build_native.py`。** `gui/export_presets.cfg` 中的 macOS/Windows 版本字段（`application/short_version`、`application/version`、`application/file_version`、`application/product_version`）保存的是占位符 `@PSYML_MACOS_VERSION@` / `@PSYML_WINDOWS_VERSION@`，不是可发布的版本号；直接用 Godot 编辑器的导出功能会失败或写出错误版本。`build_native.py` 在一次导出期间用 `src/psyml/__init__.py` 的单一常量派生数值版本（正式版 `0.3.0` 与开发版 `0.3.0.dev0` 都导出为 macOS `0.3.0`、Windows `0.3.0.0`），导出结束后在 `finally` 中恢复模板，成功或失败都不留下被改写的预设文件。因此原生导出统一通过该脚本触发，不要绕过它直接使用 Godot 预设。
 
@@ -137,17 +140,30 @@ uv run --group build python tools/build_native.py
 
 0.3.0 的 GitHub Release 只上传 Windows-x64 与 macOS-arm64 两个独立应用 ZIP，发布说明保持中英法三语（见 [RELEASE_NOTES_0.3.0.md](RELEASE_NOTES_0.3.0.md)）。构建脚本仍生成 SHA-256 供本地验证，不上传校验附件或额外源码 ZIP；发布候选的校验清单由 `tools/verify_release_artifacts.py` 在本地复核。GitHub 自动提供的 Source code 留给开发者。`tools/package_release.py` 是可选的本地源码归档工具，需要干净工作区和最新 PDF；不要把它的输出混入应用附件。历史参考：v0.2.0 的 Release 采用同一规则。
 
-先核对 README 与研究者指南对应 0.3.0，再生成 PDF；下方字体路径须替换为支持中文且允许嵌入的 TrueType 字体。`output/pdf/sources.json` 记录内容来源哈希；来源改变后应重新生成并逐页渲染检查。PDF 的默认标签来自核心版本（`v0.3.0`）；重新生成历史版本时显式传 `--label v0.2.0 --base-ref v0.2.0`，该文档会被标为历史版本而不是当前正式版。
+先核对 README 与研究者指南对应 0.3.0，再生成 PDF；下方字体路径须替换为支持中文且允许嵌入的 TrueType 字体。`dist/v0.3.0/docs/sources.json` 记录本次发布候选的内容来源哈希；来源改变后应重新生成并逐页渲染检查。PDF 的默认标签来自核心版本（`v0.3.0`）；重新生成历史版本时显式传 `--label v0.2.0 --base-ref v0.2.0`，该文档会被标为历史版本而不是当前正式版。
 
 ```bash
 uv run --with reportlab python tools/build_release_pdfs.py --font /path/to/chinese-font.ttf \
     --output-dir dist/v0.3.0/docs
-uv run python tools/verify_release_artifacts.py --directory dist/v0.3.0 --platform all
-uv run python tools/package_researcher_share.py --windows-zip dist/PsyML-Toolkit-0.2.0-Windows-x64.zip
 ```
 
-`tools/verify_release_artifacts.py` 读取 ZIP 实际内容（BUILD.json 版本/提交/干净源、core 与 app 资源、必要许可证、安全路径）、对应 SHA-256 与（`all` 模式）两份非空中文 PDF 和发布清单 `SHA256SUMS`，不依赖日志中的成功字符串。`all` 模式要求 `dist/v0.3.0/` 同时存在两个平台 ZIP、`docs/README_ZH.pdf`、`docs/RESEARCHER_GUIDE_ZH.pdf`、`docs/sources.json` 与列全四件产物的 `SHA256SUMS`；单平台模式只要求该平台的 ZIP 与 `.sha256`，可在 Windows 包下载前先核验 Mac 包。
+把同一干净提交构建的两个平台 ZIP 与各自 .sha256 放入 `dist/v0.3.0/`。生成并检查 PDF 后，创建 `SHA256SUMS`，列出两个 ZIP 和两份 PDF 的 SHA-256 与相对路径，再执行完整校验。例如下面的跨平台 Python 命令会写出所需四项：
 
-分享脚本不调用发布接口，输出根目录的 `PsyML-Toolkit-Researcher-Share-v0.2.0.zip`，只用于直接分享，**不得上传 Release**；分享包不是发布附件，需要时另行确认生成。v0.2.0 分享包（最近一次生成）中 Windows/ 为程序，TestData/ 为训练、配置及预测资料，Documents/ 为中文使用指南和术语 PDF，“从这里开始.txt”解释运行顺序与文件夹，并引导 Mac 用户到 GitHub 下载。输出目录若已存在，先移走或备份旧包再重建；不要混用旧 PDF。
+```bash
+uv run python -c "import hashlib; from pathlib import Path; d=Path('dist/v0.3.0'); names=['PsyML-Toolkit-0.3.0-macOS-arm64.zip','PsyML-Toolkit-0.3.0-Windows-x64.zip','docs/README_ZH.pdf','docs/RESEARCHER_GUIDE_ZH.pdf']; (d/'SHA256SUMS').write_text(''.join(hashlib.sha256((d/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in names), encoding='utf-8')"
+uv run python tools/verify_release_artifacts.py --directory dist/v0.3.0 --platform all
+```
+
+`tools/verify_release_artifacts.py` 读取 ZIP 实际内容（BUILD.json 版本/提交/构建前后干净源码、非空必要资源/许可证/运行时、core 与 GUI 的真实可执行架构、安全路径）、对应 SHA-256 与（`all` 模式）两份非空中文 PDF 和发布清单 `SHA256SUMS`，不依赖日志中的成功字符串。`all` 模式要求 `dist/v0.3.0/` 同时存在两个平台 ZIP、`docs/README_ZH.pdf`、`docs/RESEARCHER_GUIDE_ZH.pdf`、`docs/sources.json` 与列全四件产物的 `SHA256SUMS`；单平台模式只要求该平台的 ZIP 与 `.sha256`，可在 Windows 包下载前先核验 Mac 包。
+
+单独确认需要本地分享包后，在 `output/pdf/` 生成当前 PDF；`package_researcher_share.py` 固定读取此目录，它与发布候选使用的 `dist/v0.3.0/docs/` 是两个输出位置：
+
+```bash
+uv run --with reportlab python tools/build_release_pdfs.py --font /path/to/chinese-font.ttf \
+    --output-dir output/pdf
+uv run python tools/package_researcher_share.py --windows-zip dist/v0.3.0/PsyML-Toolkit-0.3.0-Windows-x64.zip
+```
+
+分享脚本读取当前核心版本，在仓库根目录生成 `PsyML-Toolkit-Researcher-Share-v0.3.0.zip`，不调用发布接口；另行确认后才生成，并保持为本地直接分享材料，不加入 Release 附件。Windows/ 为程序，TestData/ 为训练、配置及预测资料，Documents/ 为两份中文 PDF，“从这里开始.txt”解释文件夹并引导 Mac 用户到 GitHub。输出目录已存在时先移走或备份；文档更新后重新生成两个输出位置的 PDF。
 
 版本升级时只在 `src/psyml/__init__.py` 修改 `__version__`（`pyproject.toml` 为 dynamic，自动读取；`gui/export_presets.cfg` 保持占位符，数值由 `tools/build_native.py` 在导出时派生），并核对 uv.lock、`tools/build_native.py`、`tools/NATIVE_START_HERE.txt`、PDF 构建器中的版本与链接，以及三语发布说明（`docs/RELEASE_NOTES_<版本>.md`）。检查 BUILD.json 的提交、初始工作区状态和构建生成的差异，用 `tools/verify_release_artifacts.py` 复核 ZIP 内容与本地校验值。界面包内检查覆盖分类/回归训练、模型保存与加载、各 10 行新数据预测（写入本次运行目录的 `predictions.csv`）以及“打开预测结果文件夹”恰指向该运行目录；不替代实际窗口检查。核心 CLI `export-table` 与多格式读写仍保留，不属于该包内检查范围。每项独立功能完成后单独 commit 并立即 push，不累积后一起推送。

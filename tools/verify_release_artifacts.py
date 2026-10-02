@@ -22,9 +22,11 @@ import argparse
 import hashlib
 import json
 import re
+import struct
 import subprocess
 import zipfile
 from pathlib import Path
+from typing import BinaryIO
 
 from psyml import __version__ as CORE_VERSION
 
@@ -35,10 +37,124 @@ PDF_SOURCES = ("README.md", "docs/RESEARCHER_GUIDE_ZH.md")
 MANIFEST_NAMES = ("SHA256SUMS", "SHA256SUMS.txt")
 SMOKE_MARKER = "PSYML_NATIVE_BUNDLE_OK"
 _HEX = re.compile(r"^[0-9a-f]{64}$")
+# Build outputs/caches live in ignored dist/, tmp/ and gui/.godot/. No tracked
+# source or untracked source addition is a justified packaging side effect.
+# Keep this explicit and fail closed; do not allow whole source directories.
+ALLOWED_POST_BUILD_CHANGES: frozenset[str] = frozenset()
 
 
 class VerificationError(Exception):
     """Raised with every structural failure found in the requested artifacts."""
+
+
+def executable_targets(stream: BinaryIO, size: int, *, offset: int = 0) -> set[str]:
+    """Read Mach-O/PE headers and payload bounds, without executing the file.
+
+    This is an architecture/structural check, not a substitute for native smoke
+    tests. Universal Mach-O slices are inspected individually, not just trusted
+    from the outer table. Reads are bounded, including for untrusted ZIP members.
+    """
+    def read(position: int, length: int) -> bytes:
+        if position < 0 or length < 0 or position + length > size:
+            raise VerificationError("truncated executable header or payload")
+        stream.seek(offset + position)
+        data = stream.read(length)
+        if len(data) != length:
+            raise VerificationError("truncated executable header or payload")
+        return data
+
+    magic = read(0, 4)
+    fat_formats = {b"\xca\xfe\xba\xbe": (">", False), b"\xbe\xba\xfe\xca": ("<", False),
+                   b"\xca\xfe\xba\xbf": (">", True), b"\xbf\xba\xfe\xca": ("<", True)}
+    if magic in fat_formats:
+        endian, wide = fat_formats[magic]
+        count = struct.unpack(endian + "I", read(4, 4))[0]
+        if not 1 <= count <= 16:
+            raise VerificationError("invalid universal Mach-O architecture count")
+        entry_size = 32 if wide else 20
+        table = read(8, count * entry_size)
+        targets: set[str] = set()
+        spans = []
+        for index in range(count):
+            entry = table[index * entry_size:(index + 1) * entry_size]
+            cpu, _, start, length = struct.unpack(endian + ("IIQQ" if wide else "IIII"),
+                                                 entry[:24 if wide else 16])
+            if start < 8 + len(table) or length < 32 or start + length > size:
+                raise VerificationError("invalid universal Mach-O slice bounds")
+            if any(start < end and start + length > begin for begin, end in spans):
+                raise VerificationError("overlapping universal Mach-O slices")
+            spans.append((start, start + length))
+            slice_magic = read(start, 4)
+            if slice_magic not in (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf"):
+                raise VerificationError("universal Mach-O slice is not a 64-bit executable")
+            slice_endian = "<" if slice_magic == b"\xcf\xfa\xed\xfe" else ">"
+            if struct.unpack(slice_endian + "I", read(start + 4, 4))[0] != cpu:
+                raise VerificationError("universal Mach-O CPU table disagrees with slice")
+            targets.update(executable_targets(stream, length, offset=offset + start))
+        return targets
+    if magic in (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf"):
+        endian = "<" if magic == b"\xcf\xfa\xed\xfe" else ">"
+        _, cpu, _, file_type, commands, command_size, _, _ = struct.unpack(
+            endian + "8I", read(0, 32))
+        if file_type != 2 or commands == 0 or commands > command_size // 8:
+            raise VerificationError("Mach-O is not an executable with load commands")
+        if 32 + command_size > size:
+            raise VerificationError("truncated Mach-O load commands")
+        position, has_payload = 32, False
+        for _ in range(commands):
+            command, length = struct.unpack(endian + "II", read(position, 8))
+            if length < 8 or length % 8 or position + length > 32 + command_size:
+                raise VerificationError("invalid Mach-O load command")
+            if command == 0x19:  # LC_SEGMENT_64
+                if length < 72:
+                    raise VerificationError("truncated Mach-O segment")
+                start, payload_size = struct.unpack(endian + "QQ", read(position + 40, 16))
+                if start + payload_size > size:
+                    raise VerificationError("Mach-O segment exceeds executable bounds")
+                has_payload |= payload_size > 0 and start + payload_size > 32 + command_size
+            position += length
+        if position != 32 + command_size or not has_payload:
+            raise VerificationError("Mach-O has no executable payload or inconsistent load commands")
+        target = {0x0100000C: "macOS-arm64", 0x01000007: "macOS-x86_64"}.get(cpu)
+        if target is None:
+            raise VerificationError(f"unsupported Mach-O CPU type: {cpu:#x}")
+        return {target}
+    if magic[:2] == b"MZ":
+        pe_offset = struct.unpack("<I", read(60, 4))[0]
+        if pe_offset < 64:
+            raise VerificationError("invalid PE header offset")
+        header = read(pe_offset, 24)
+        if header[:4] != b"PE\0\0":
+            raise VerificationError("invalid PE signature")
+        cpu, sections, _, _, _, optional_size, flags = struct.unpack("<HHIIIHH", header[4:])
+        if not flags & 0x0002 or flags & 0x2000 or not 1 <= sections <= 96:
+            raise VerificationError("PE is not an application executable")
+        optional = read(pe_offset + 24, optional_size)
+        if optional_size < 112 or optional[:2] != b"\x0b\x02":
+            raise VerificationError("PE is not a 64-bit executable")
+        table = read(pe_offset + 24 + optional_size, sections * 40)
+        has_payload = False
+        for index in range(sections):
+            length, start = struct.unpack_from("<II", table, index * 40 + 16)
+            if length and (start < pe_offset + 24 + optional_size + len(table)
+                           or start + length > size):
+                raise VerificationError("PE section exceeds executable payload bounds")
+            has_payload |= length > 0
+        if not has_payload:
+            raise VerificationError("PE has no executable payload")
+        target = {0x8664: "Windows-x64", 0xAA64: "Windows-arm64"}.get(cpu)
+        if target is None:
+            raise VerificationError(f"unsupported PE machine type: {cpu:#x}")
+        return {target}
+    raise VerificationError("not a supported Mach-O or PE executable")
+
+
+def check_file_architecture(path: Path, target: str, *, allow_universal: bool = False) -> None:
+    """Fail early on a wrong-architecture build tool or frozen executable."""
+    with path.open("rb") as stream:
+        actual = executable_targets(stream, path.stat().st_size)
+    if actual != {target} and not (allow_universal and target in actual):
+        raise VerificationError(f"{path}: executable architecture {sorted(actual)}, expected {target}")
 
 
 def sha256_file(path: Path) -> str:
@@ -106,10 +222,17 @@ def check_member_safety(archive: zipfile.ZipFile, root: str, errors: list[str]) 
             errors.append(f"archive entry is a symlink: {name!r}")
 
 
-def check_required_members(names: set[str], required: list[str], errors: list[str]) -> None:
+def check_required_members(archive: zipfile.ZipFile, required: list[str],
+                           errors: list[str]) -> None:
     for name in required:
-        if name not in names:
+        try:
+            info = archive.getinfo(name)
+        except KeyError:
             errors.append(f"missing required archive member: {name}")
+            continue
+        mode = (info.external_attr >> 16) & 0o170000
+        if info.is_dir() or mode not in (0, 0o100000) or info.file_size <= 0:
+            errors.append(f"empty or non-file required archive member: {name}")
 
 
 def check_build_json(archive: zipfile.ZipFile, member: str, version: str,
@@ -141,6 +264,17 @@ def check_build_json(archive: zipfile.ZipFile, member: str, version: str,
             f"{member}: working_tree_modified is not false; the build did not start "
             "from a clean source tree"
         )
+    if document.get("source_changes") != []:
+        errors.append(f"{member}: source_changes must record an empty initial source tree")
+    changes = document.get("post_build_changes")
+    if not isinstance(changes, list) or any(not isinstance(line, str) for line in changes):
+        errors.append(f"{member}: post_build_changes must be a list of git status records")
+    else:
+        unexpected = [line for line in changes if line not in ALLOWED_POST_BUILD_CHANGES]
+        if unexpected:
+            errors.append(f"{member}: unexpected post_build_changes: {unexpected!r}")
+    if document.get("reused_core", False) is not False:
+        errors.append(f"{member}: reused_core must be false for a release build")
     if document.get("published", False) is not False:
         errors.append(f"{member}: published is not false; a local build must not claim release")
 
@@ -198,11 +332,11 @@ def verify_platform(directory: Path, platform: str, version: str, commit: str) -
             f"{app}/Resources/core/psyml-core",
         ])
         core_prefix = f"{app}/Resources/core/"
-        binary_dir = f"{app}/MacOS/"
+        executables = [f"{app}/MacOS/PsyML Toolkit", f"{core_prefix}psyml-core"]
     else:
         required.extend([f"{root}/PsyML Toolkit.exe", f"{root}/core/psyml-core.exe"])
         core_prefix = f"{root}/core/"
-        binary_dir = f"{root}/"
+        executables = [f"{root}/PsyML Toolkit.exe", f"{core_prefix}psyml-core.exe"]
 
     try:
         archive = zipfile.ZipFile(archive_path)
@@ -212,25 +346,32 @@ def verify_platform(directory: Path, platform: str, version: str, commit: str) -
     with archive:
         names = {info.filename for info in archive.infolist()}
         check_member_safety(archive, root, errors)
-        check_required_members(names, required, errors)
-        if not any(name.startswith(core_prefix + "_internal/") for name in names):
+        check_required_members(archive, required, errors)
+        runtime = [info for info in archive.infolist()
+                   if info.filename.startswith(core_prefix + "_internal/") and not info.is_dir()
+                   and (info.external_attr >> 16) & 0o170000 in (0, 0o100000)]
+        if not runtime or not any(info.file_size > 0 for info in runtime):
             errors.append(f"missing bundled core runtime: {core_prefix}_internal/")
-        if not any(
-            name.startswith(f"{root}/licenses/") and not name.endswith("/")
-            for name in names
-        ):
-            errors.append(f"missing bundled licenses: {root}/licenses/")
-        if not any(
-            name.startswith(binary_dir) and not name.endswith("/") and name != binary_dir
-            for name in names
-        ):
-            errors.append(f"missing application binary under: {binary_dir}")
+        for member in executables:
+            if member not in names:
+                continue
+            try:
+                with archive.open(member) as stream:
+                    actual = executable_targets(stream, archive.getinfo(member).file_size)
+                if actual != {suffix}:
+                    errors.append(f"{member}: executable architecture {sorted(actual)}, "
+                                  f"expected {suffix}")
+            except (VerificationError, OSError, zipfile.BadZipFile) as error:
+                errors.append(f"{member}: {error}")
         build_member = f"{root}/BUILD.json"
         if build_member in names:
             check_build_json(archive, build_member, version, commit, suffix, errors)
         smoke_member = f"{root}/SMOKE_TEST.txt"
         if smoke_member in names:
-            smoke = archive.read(smoke_member).decode("utf-8").strip()
+            try:
+                smoke = archive.read(smoke_member).decode("utf-8").strip()
+            except UnicodeDecodeError:
+                smoke = None
             if smoke != SMOKE_MARKER:
                 errors.append(
                     f"{smoke_member}: {smoke!r} is not the expected {SMOKE_MARKER!r}"

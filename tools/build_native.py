@@ -8,6 +8,7 @@ import os
 import platform
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import zipfile
@@ -91,6 +92,26 @@ def run(*args):
     subprocess.run([str(arg) for arg in args], cwd=ROOT, check=True)
 
 
+def build_target() -> str:
+    """Require a supported OS and native 64-bit Python before changing files."""
+    machine = platform.machine().lower()
+    target = {("darwin", "arm64"): "macOS-arm64", ("darwin", "aarch64"): "macOS-arm64",
+              ("win32", "amd64"): "Windows-x64", ("win32", "x86_64"): "Windows-x64"}.get(
+                  (sys.platform, machine))
+    if target is None or struct.calcsize("P") != 8:
+        raise SystemExit("Build requires native 64-bit Python on Apple Silicon macOS "
+                         f"or Windows x64; found {sys.platform}/{machine}, "
+                         f"{struct.calcsize('P') * 8}-bit Python")
+    return target
+
+
+def source_status() -> list[str]:
+    """Record every non-ignored source addition/change, including nested files."""
+    return subprocess.check_output(
+        ["git", "status", "--porcelain=v1", "--untracked-files=all"], cwd=ROOT,
+        text=True).splitlines()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--godot", default="godot")
@@ -108,19 +129,23 @@ def main():
     parser.add_argument("--coefficients-smoke", action="store_true",
                         help="Run bundled-core fitted-coefficient classification/regression smoke")
     args = parser.parse_args()
+    architecture = build_target()
+    # A direct script invocation puts tools/ on sys.path. Keep this import local
+    # so the version-template helpers remain independently importable.
+    from verify_release_artifacts import ALLOWED_POST_BUILD_CHANGES, check_file_architecture
+
+    check_file_architecture(Path(sys.executable), architecture, allow_universal=True)
     if not args.output_dir.is_absolute():
         args.output_dir = ROOT / args.output_dir
     source_commit = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    source_changes = subprocess.check_output(
-        ["git", "status", "--porcelain"], cwd=ROOT, text=True).splitlines()
+    source_changes = source_status()
+    lock_sha256 = hashlib.sha256((ROOT / "uv.lock").read_bytes()).hexdigest()
     candidate = os.environ.get("GODOT", args.godot) if args.godot == "godot" else args.godot
     args.godot = str(Path(shutil.which(candidate) or candidate).resolve())
+    check_file_architecture(Path(args.godot), architecture, allow_universal=True)
     run(args.godot, "--version")
     mac = sys.platform == "darwin"
-    if not mac and sys.platform != "win32":
-        raise SystemExit("Build on Apple Silicon macOS or Windows x64")
-    architecture = "macOS-arm64" if mac else "Windows-x64"
     destination = args.output_dir / f"PsyML-Toolkit-{args.label}-{architecture}"
     if destination.exists():
         shutil.rmtree(destination)
@@ -168,22 +193,29 @@ def main():
     shutil.copy2(ROOT / "LICENSE", destination / "LICENSE")
     shutil.copy2(ROOT / "tools/NATIVE_START_HERE.txt", destination / "START_HERE.txt")
     shutil.copytree(ROOT / "tools/licenses", destination / "licenses", dirs_exist_ok=True)
-    (destination / "BUILD.json").write_text(json.dumps({
+    build_metadata = {
         "version": CORE_VERSION, "label": args.label,
         "development_label": is_development_version(CORE_VERSION) or args.label != CORE_VERSION,
         "published": False,
         "platform": architecture,
         "python": platform.python_version(),
         "commit": source_commit,
+        "lock_sha256": lock_sha256,
         "working_tree_modified": bool(source_changes),
         "source_changes": source_changes,
-        "post_build_changes": subprocess.check_output(
-            ["git", "status", "--porcelain"], cwd=ROOT, text=True).splitlines(),
-    }, indent=2), encoding="utf-8")
+        # Available to the GUI during smoke, but deliberately unverifiable until
+        # all smoke steps finish and the final source status replaces this null.
+        "post_build_changes": None,
+        "reused_core": args.reuse_core,
+    }
+    (destination / "BUILD.json").write_text(json.dumps(build_metadata, indent=2), encoding="utf-8")
     if mac:
         run("codesign", "--force", "--deep", "--sign", "-", app)
         run("codesign", "--verify", "--deep", "--strict", app)
     core = resource_dir / "core" / ("psyml-core" if mac else "psyml-core.exe")
+    executable = binary_dir / ("PsyML Toolkit" if mac else "PsyML Toolkit.exe")
+    for binary in [core, executable]:
+        check_file_architecture(binary, architecture)
     # Clear development configuration: this must run with the embedded interpreter.
     environment = dict(os.environ)
     for key in ["PYTHONPATH", "PYTHONHOME", "PSYML_PYTHON"]:
@@ -193,9 +225,6 @@ def main():
                            cwd=destination, env=environment, check=True, capture_output=True,
                            text=True, timeout=300)
     assert json.loads(smoke.stdout)["needs_data"] is False
-    executable = next(path for path in binary_dir.iterdir()
-                      if path.is_file() and (path.suffix == ".exe" if not mac
-                                             else os.access(path, os.X_OK)))
     report_path = ROOT / "tmp/native/smoke-report.txt"
     report_path.unlink(missing_ok=True)
     environment["PSYML_SMOKE_REPORT"] = str(report_path)
@@ -295,6 +324,22 @@ def main():
                 if not (out / name).is_file():
                     raise RuntimeError(f"missing bundled-core coefficient artefact: {name}")
         print("PSYML_COEFFICIENTS_BUNDLE_OK")
+    # Capture provenance after every build/smoke step, just before archiving.
+    # Existing dirty sources remain usable for local debugging, but release
+    # verification rejects them. No new source mutation is accepted silently.
+    post_build_changes = source_status()
+    unexpected = [line for line in post_build_changes
+                  if line not in source_changes and line not in ALLOWED_POST_BUILD_CHANGES]
+    if unexpected:
+        raise RuntimeError(f"Build changed source files; review before rebuilding: {unexpected!r}")
+    final_commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    if final_commit != source_commit:
+        raise RuntimeError("Source commit changed during the build; rebuild from one commit")
+    if hashlib.sha256((ROOT / "uv.lock").read_bytes()).hexdigest() != lock_sha256:
+        raise RuntimeError("uv.lock changed during the build; rebuild with one dependency lock")
+    build_metadata["post_build_changes"] = post_build_changes
+    (destination / "BUILD.json").write_text(json.dumps(build_metadata, indent=2), encoding="utf-8")
     archive = Path(str(destination) + ".zip")
     if mac:
         run("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", destination, archive)

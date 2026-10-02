@@ -27,7 +27,9 @@ jobs:
           use-dotnet: false
           include-templates: true
       - name: Build and smoke-test offline application
-        run: uv run --group build --extra explain python tools/build_native.py --permutation-smoke --explain-smoke --coefficients-smoke
+        run: uv run --locked --group build --extra explain python tools/build_native.py --permutation-smoke --explain-smoke --coefficients-smoke
+      - name: Verify actual executable architecture, contents and source provenance
+        run: uv run --locked --group build --extra explain python tools/verify_release_artifacts.py --directory dist --platform Windows
       - name: Inspect generated build metadata
         if: always()
         shell: bash

@@ -112,7 +112,7 @@ uv sync --extra explain
 uv pip install -e ".[explain]"   # équivalent pip/venv
 ```
 
-`pyproject.toml` fixe les versions SHAP adaptées à Python (3.10 → 0.49.x, 3.11 → 0.51.x, 3.12 → 0.52.x) ; `uv.lock` les enregistre sans mettre à jour scikit-learn ni d'autres dépendances. `tools/build_native.py` intègre shap/numba/llvmlite au noyau, copie leurs licences dans `tools/licenses/` et `--explain-smoke` vérifie l'explication et la reconstruction en classification/régression.
+`pyproject.toml` fixe les versions SHAP adaptées à Python (3.10 → 0.49.x, 3.11 → 0.51.x, 3.12 → 0.52.x) ; `uv.lock` les enregistre sans mettre à jour scikit-learn ni d'autres dépendances. `tools/build_native.py` intègre shap/numba/llvmlite au noyau, copie les notices maintenues dans `tools/licenses/` vers le répertoire `licenses/` du paquet et `--explain-smoke` vérifie l'explication et la reconstruction en classification/régression.
 
 ## Coefficients ajustés (sans dépendance supplémentaire)
 
@@ -123,11 +123,14 @@ uv pip install -e ".[explain]"   # équivalent pip/venv
 [build_native.py](../tools/build_native.py) utilise PyInstaller pour le noyau et Godot pour l’interface, sur le système cible avec les modèles d’export correspondants. Cibles : macOS avec puce Apple et Windows x64. Une construction effectuée sous macOS ne valide pas Windows.
 
 ```bash
-uv sync --locked --group dev --group build
-uv run --group build python tools/build_native.py
+uv sync --locked --group dev --group build --extra explain
+uv run --locked --group build --extra explain python tools/build_native.py --output-dir dist/v0.3.0 \
+    --permutation-smoke --explain-smoke --coefficients-smoke
 ```
 
 Le script reconstruit le dossier de sortie de même nom dans `dist/`, vérifie classification et régression avec l’environnement intégré, puis crée un ZIP et son SHA-256. `--reuse-core` sert uniquement au débogage local du GUI quand noyau et dépendances sont inchangés ; reconstruisez intégralement avant livraison. Vérifiez versions, verrouillage, architecture, licences, démarrage après extraction et dialogues natifs. Sans signature commerciale/notarisation, le système peut afficher une alerte.
+
+Avant la construction, le script vérifie le système, Python natif 64 bits et les en-têtes des exécutables Python/Godot ; après export, il vérifie que le GUI et le noyau gelé correspondent à la cible annoncée (Mach-O arm64 ou PE x64). Les commandes ci-dessus conservent l’extra explain à l’installation et à l’exécution, et lancent les trois tests intégrés optionnels requis pour la livraison. BUILD.json consigne l’état initial des sources, le commit, le SHA-256 de uv.lock et l’état final après les tests. Toute nouvelle modification des sources, du commit ou du verrouillage interrompt l’empaquetage. La liste des changements de sources autorisés après construction est vide : dist/, tmp/ et gui/.godot/ sont déjà ignorés. Examinez et commitez toute modification de source/import Godot avant de reconstruire ; ne dispensez pas globalement le GUI du contrôle. Un arbre initialement modifié ou un noyau réutilisé sert seulement au débogage local et échoue à la vérification de publication.
 
 **L’export natif passe uniquement par `tools/build_native.py`.** Les champs de version macOS/Windows de `gui/export_presets.cfg` (`application/short_version`, `application/version`, `application/file_version`, `application/product_version`) contiennent les jetons `@PSYML_MACOS_VERSION@` / `@PSYML_WINDOWS_VERSION@`, pas des numéros publiables ; un export direct depuis l’éditeur Godot échoue ou écrit de mauvaises versions. `build_native.py` dérive les versions numériques de la constante unique de `src/psyml/__init__.py` le temps d’un export (la version officielle `0.3.0` comme la version de développement `0.3.0.dev0` donnent macOS `0.3.0`, Windows `0.3.0.0`) puis restaure le modèle dans un bloc `finally` : ni un succès ni un échec ne laisse de preset modifié. Déclenchez donc toujours l’export natif via ce script plutôt que d’utiliser directement le preset Godot.
 
@@ -137,17 +140,30 @@ Le script reconstruit le dossier de sortie de même nom dans `dist/`, vérifie c
 
 La Release 0.3.0 ne reçoit que les ZIP Windows-x64 et macOS-arm64, avec des notes chinoises, anglaises et françaises (voir [RELEASE_NOTES_0.3.0.md](RELEASE_NOTES_0.3.0.md)). Les scripts produisent toujours des SHA-256 pour vérification locale ; ne publiez ni ces fichiers ni un ZIP de sources supplémentaire, et vérifiez le candidat localement avec `tools/verify_release_artifacts.py`. GitHub fournit ses téléchargements Source code. `tools/package_release.py` est un outil facultatif d’archivage local exigeant des sources propres et des PDF actuels ; sa sortie ne fait pas partie des applications publiées. Référence historique : la Release v0.2.0 suivait les mêmes règles.
 
-Vérifiez d’abord README et guide de référence pour 0.3.0, puis produisez les PDF. Remplacez le chemin ci-dessous par une police TrueType chinoise autorisant l’intégration. `output/pdf/sources.json` conserve les empreintes des sources ; régénérez et inspectez visuellement toutes les pages après modification. L’étiquette PDF par défaut vient de la version du noyau (`v0.3.0`) ; pour régénérer un document historique, passez explicitement `--label v0.2.0 --base-ref v0.2.0`, et le fichier est alors marqué comme historique plutôt que comme version courante.
+Vérifiez d’abord README et guide de référence pour 0.3.0, puis produisez les PDF. Remplacez le chemin ci-dessous par une police TrueType chinoise autorisant l’intégration. `dist/v0.3.0/docs/sources.json` conserve les empreintes des sources de ce candidat ; régénérez et inspectez visuellement toutes les pages après modification. L’étiquette PDF par défaut vient de la version du noyau (`v0.3.0`) ; pour régénérer un document historique, passez explicitement `--label v0.2.0 --base-ref v0.2.0`, et le fichier est alors marqué comme historique plutôt que comme version courante.
 
 ```bash
 uv run --with reportlab python tools/build_release_pdfs.py --font /path/to/chinese-font.ttf \
     --output-dir dist/v0.3.0/docs
-uv run python tools/verify_release_artifacts.py --directory dist/v0.3.0 --platform all
-uv run python tools/package_researcher_share.py --windows-zip dist/PsyML-Toolkit-0.2.0-Windows-x64.zip
 ```
 
-`tools/verify_release_artifacts.py` lit le contenu réel des ZIP (version/commit/sources propres dans BUILD.json, ressources du noyau et de l’application, licences requises, chemins sûrs), les SHA-256 correspondants et, en mode `all`, les deux PDF chinois non vides et le manifeste `SHA256SUMS` ; il ne se fie jamais à une chaîne de succès dans un journal. Le mode `all` exige les deux ZIP de plateforme, `docs/README_ZH.pdf`, `docs/RESEARCHER_GUIDE_ZH.pdf`, `docs/sources.json` et un `SHA256SUMS` listant les quatre artefacts dans `dist/v0.3.0/` ; le mode mono-plateforme ne demande que le ZIP et le `.sha256` de cette plateforme, ce qui permet de valider le paquet Mac avant l’arrivée du téléchargement Windows.
+Placez les deux ZIP et leurs fichiers .sha256, issus du même commit propre, dans `dist/v0.3.0/`. Après génération et inspection des PDF, créez `SHA256SUMS` avec l’empreinte SHA-256 et le chemin relatif des deux ZIP et des deux PDF, puis lancez le vérificateur complet. Cette commande Python multiplateforme écrit les quatre entrées requises :
 
-Le script de partage n’appelle aucune API de publication. Il crée `PsyML-Toolkit-Researcher-Share-v0.2.0.zip` à la racine pour partage direct uniquement ; **ne jamais le joindre à une Release** ; ce n’est pas un fichier de release, sa génération doit être confirmée séparément. Dans le dossier v0.2.0 (le dernier généré), Windows/ contient l’application, TestData/ les données et configurations, Documents/ les deux PDF chinois ; 从这里开始.txt décrit dossiers et étapes et renvoie les utilisateurs Mac vers GitHub. Déplacez ou sauvegardez un ancien dossier avant de reconstruire ; ne réutilisez pas de PDF périmés.
+```bash
+uv run python -c "import hashlib; from pathlib import Path; d=Path('dist/v0.3.0'); names=['PsyML-Toolkit-0.3.0-macOS-arm64.zip','PsyML-Toolkit-0.3.0-Windows-x64.zip','docs/README_ZH.pdf','docs/RESEARCHER_GUIDE_ZH.pdf']; (d/'SHA256SUMS').write_text(''.join(hashlib.sha256((d/n).read_bytes()).hexdigest()+'  '+n+'\n' for n in names), encoding='utf-8')"
+uv run python tools/verify_release_artifacts.py --directory dist/v0.3.0 --platform all
+```
+
+`tools/verify_release_artifacts.py` lit le contenu réel des ZIP (version/commit/sources propres avant et après construction dans BUILD.json, ressources/licences/environnement requis non vides, architecture réelle des exécutables noyau et GUI, chemins sûrs), les SHA-256 correspondants et, en mode `all`, les deux PDF chinois non vides et le manifeste `SHA256SUMS` ; il ne se fie jamais à une chaîne de succès dans un journal. Le mode `all` exige les deux ZIP de plateforme, `docs/README_ZH.pdf`, `docs/RESEARCHER_GUIDE_ZH.pdf`, `docs/sources.json` et un `SHA256SUMS` listant les quatre artefacts dans `dist/v0.3.0/` ; le mode mono-plateforme ne demande que le ZIP et le `.sha256` de cette plateforme, ce qui permet de valider le paquet Mac avant l’arrivée du téléchargement Windows.
+
+Pour un dossier de partage local demandé séparément, générez les PDF actuels dans `output/pdf/`, répertoire lu par `package_researcher_share.py`. Cette destination est distincte des PDF du candidat dans `dist/v0.3.0/docs/` :
+
+```bash
+uv run --with reportlab python tools/build_release_pdfs.py --font /path/to/chinese-font.ttf \
+    --output-dir output/pdf
+uv run python tools/package_researcher_share.py --windows-zip dist/v0.3.0/PsyML-Toolkit-0.3.0-Windows-x64.zip
+```
+
+Le script de partage lit la version actuelle du noyau et crée `PsyML-Toolkit-Researcher-Share-v0.3.0.zip` à la racine. Il n’appelle aucune API de publication ; générez-le après confirmation séparée et conservez-le hors des pièces jointes de Release. Windows/ contient l’application, TestData/ les données et configurations, Documents/ les deux PDF chinois, et 从这里开始.txt explique les dossiers et renvoie les utilisateurs Mac vers GitHub. Déplacez ou sauvegardez tout dossier existant avant reconstruction. Régénérez les deux destinations PDF après modification des documents.
 
 Pour changer la version, ne modifiez que `__version__` dans `src/psyml/__init__.py` (`pyproject.toml` est dynamique et suit automatiquement ; `gui/export_presets.cfg` garde ses jetons et `tools/build_native.py` dérive les valeurs numériques à l’export). Vérifiez aussi uv.lock, `tools/build_native.py`, `tools/NATIVE_START_HERE.txt`, versions/liens du générateur PDF et notes trilingues (`docs/RELEASE_NOTES_<version>.md`). Inspectez commit et états des sources dans BUILD.json, puis archives et empreintes locales avec `tools/verify_release_artifacts.py`. Les tests intégrés couvrent l’entraînement classification/régression, l’enregistrement/chargement, dix nouvelles prédictions par tâche (écrites dans `predictions.csv` du dossier de cette exécution) et le fait que l’action d’ouverture cible exactement ce dossier ; ils ne remplacent pas l’examen d’une vraie fenêtre. Le CLI `export-table` et la lecture/écriture multi-format restent pris en charge et ne font pas partie de ce contrôle intégré. Faites un commit par fonctionnalité indépendante terminée et poussez immédiatement, sans accumulation.
