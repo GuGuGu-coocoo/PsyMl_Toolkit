@@ -81,11 +81,19 @@ def prepared_export_presets(version: str = CORE_VERSION, path=None):
         target.write_text(original, encoding="utf-8")
 
 
-def export_gui(godot: str, platform_name: str, output: Path) -> None:
+def export_gui(godot: str, platform_name: str, output: Path, *, project: Path | None = None) -> None:
     """Export one GUI preset with versions generated from the core constant."""
-    with prepared_export_presets():
-        run(godot, "--headless", "--path", ROOT / "gui", "--export-release",
-            platform_name, output)
+    project = project if project is not None else ROOT / "gui"
+    with prepared_export_presets(path=project / "export_presets.cfg"):
+        run(godot, "--headless", "--path", project, "--export-release", platform_name, output)
+
+
+def prepare_gui_export(source: Path, destination: Path) -> Path:
+    """Let Godot import/export in a disposable build tree, preserving source bytes."""
+    if destination.exists():
+        shutil.rmtree(destination)
+    shutil.copytree(source, destination, ignore=shutil.ignore_patterns(".godot"))
+    return destination
 
 
 def run(*args):
@@ -170,14 +178,16 @@ def main():
     command.append(str(ROOT / "tools/frozen_core.py"))
     if not args.reuse_core:
         run(*command)
-    run(args.godot, "--headless", "--editor", "--path", ROOT / "gui", "--quit")
+    export_project = prepare_gui_export(ROOT / "gui", ROOT / "tmp/native/gui")
+    run(args.godot, "--headless", "--editor", "--path", export_project, "--quit")
     if mac:
         app = destination / "PsyML Toolkit.app"
-        export_gui(args.godot, "macOS", app)
+        export_gui(args.godot, "macOS", app, project=export_project)
         binary_dir = app / "Contents/MacOS"
     else:
         binary_dir = destination
-        export_gui(args.godot, "Windows", destination / "PsyML Toolkit.exe")
+        export_gui(args.godot, "Windows", destination / "PsyML Toolkit.exe",
+                   project=export_project)
     resource_dir = app / "Contents/Resources" if mac else binary_dir
     shutil.copytree(frozen / "psyml-core", resource_dir / "core", dirs_exist_ok=True)
     shutil.copytree(ROOT / "examples/synthetic", destination / "examples/synthetic",
@@ -190,6 +200,11 @@ def main():
     if mac:
         shutil.copytree(ROOT / "examples/quickstart", resource_dir / "examples/quickstart",
                         dirs_exist_ok=True)
+    # Quick-start Markdown links use ../../docs/images/... and remain usable
+    # offline both beside the app and inside its bundled example resources.
+    shutil.copytree(ROOT / "docs/images", destination / "docs/images", dirs_exist_ok=True)
+    if mac:
+        shutil.copytree(ROOT / "docs/images", resource_dir / "docs/images", dirs_exist_ok=True)
     shutil.copy2(ROOT / "LICENSE", destination / "LICENSE")
     shutil.copy2(ROOT / "tools/NATIVE_START_HERE.txt", destination / "START_HERE.txt")
     shutil.copytree(ROOT / "tools/licenses", destination / "licenses", dirs_exist_ok=True)

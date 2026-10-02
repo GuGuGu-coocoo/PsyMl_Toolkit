@@ -491,11 +491,13 @@ def test_native_build_records_final_status_after_smoke_and_blocks_new_source_cha
     monkeypatch.setattr(verify_release_artifacts, "check_file_architecture", lambda *a, **k: None)
     for relative, data in {
         "uv.lock": b"locked dependencies",
+        "gui/project.godot": b"project fixture",
         "LICENSE": b"license",
         "tools/NATIVE_START_HERE.txt": b"start",
         "tools/licenses/SHAP_LICENSE.txt": b"notice",
         "examples/synthetic/classification_config.json": b"{}",
         "examples/quickstart/README.md": b"examples",
+        "docs/images/zh/06-import-config.png": b"image fixture",
         "tmp/native/frozen/psyml-core/psyml-core.exe": _pe_executable(),
     }.items():
         path = fixture_dir / relative
@@ -519,7 +521,7 @@ def test_native_build_records_final_status_after_smoke_and_blocks_new_source_cha
     monkeypatch.setattr(module, "source_status", status)
     monkeypatch.setattr(module, "run", lambda *args: None)
     monkeypatch.setattr(module.shutil, "which", lambda candidate: candidate)
-    monkeypatch.setattr(module, "export_gui", lambda godot, platform, output:
+    monkeypatch.setattr(module, "export_gui", lambda godot, platform, output, **kwargs:
                         output.write_bytes(_pe_executable()))
     monkeypatch.setattr(module.subprocess, "check_output", lambda *a, **k: COMMIT)
     monkeypatch.setattr(module.subprocess, "run", run)
@@ -553,3 +555,52 @@ def test_release_rejects_corruption_in_unchecked_runtime_member(fixture_dir):
         hashlib.sha256(payload).hexdigest() + "  " + path.name + "\n")
     errors = module.verify_platform(fixture_dir, "Windows", VERSION, COMMIT)
     assert any("CRC/decompression integrity failure" in error for error in errors), errors
+
+
+@pytest.mark.parametrize("image_present", [False, True])
+def test_release_checks_offline_quickstart_images(fixture_dir, image_present):
+    module = _load("verify_release_artifacts")
+    root = f"PsyML-Toolkit-{VERSION}-Windows-x64"
+    extra = {f"{root}/examples/quickstart/README.md":
+             b"![Import configuration](../../docs/images/zh/06-import-config.png)\n"}
+    if image_present:
+        extra[f"{root}/docs/images/zh/06-import-config.png"] = b"image fixture"
+    _write_package(fixture_dir, "Windows", extra_members=extra)
+    errors = module.verify_platform(fixture_dir, "Windows", VERSION, COMMIT)
+    assert bool(errors) is (not image_present), errors
+
+
+def test_gui_export_imports_in_disposable_copy(fixture_dir):
+    module = _load("build_native")
+    source = fixture_dir / "source"
+    imported = source / "assets/icon.png.import"
+    imported.parent.mkdir(parents=True)
+    imported.write_bytes(b"original import settings\r\n")
+    (source / ".godot").mkdir()
+    (source / ".godot/local-cache").write_text("do not copy", encoding="utf-8")
+    destination = fixture_dir / "tmp/gui"
+    destination.mkdir(parents=True)
+    (destination / "stale.gd").write_text("stale", encoding="utf-8")
+    assert module.prepare_gui_export(source, destination) == destination
+    assert not (destination / ".godot").exists()
+    assert not (destination / "stale.gd").exists()
+    assert (destination / "assets/icon.png.import").read_bytes() == imported.read_bytes()
+    (destination / "assets/icon.png.import").write_bytes(b"Godot-generated import settings\n")
+    assert imported.read_bytes() == b"original import settings\r\n"
+
+
+@pytest.mark.parametrize("source", ["tools/build_release_pdfs.py", "tools/pdf_text.py",
+                                    "tools/release_metadata.py", "src/psyml/__init__.py"])
+@pytest.mark.parametrize("missing", [False, True])
+def test_release_requires_current_pdf_renderer_source_hashes(fixture_dir, source, missing):
+    module = _load("verify_release_artifacts")
+    _write_pdfs(fixture_dir)
+    manifest = fixture_dir / "docs/sources.json"
+    sources = json.loads(manifest.read_text(encoding="utf-8"))
+    if missing:
+        sources.pop(source)
+    else:
+        sources[source] = "f" * 64
+    manifest.write_text(json.dumps(sources), encoding="utf-8")
+    errors = module.verify_pdfs(fixture_dir)
+    assert any(source in error for error in errors), errors

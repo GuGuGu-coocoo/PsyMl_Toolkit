@@ -218,3 +218,16 @@ def test_metadata_and_persistence_use_the_distribution_version():
         text = (ROOT / relative).read_text(encoding="utf-8")
         assert "from importlib.metadata import" in text
         assert "psyml-toolkit" in text
+
+
+def test_native_presets_use_the_real_godot_architecture_option():
+    text = _export_presets_template()
+    assert 'binary_format/architecture="arm64"' in text
+    assert 'binary_format/architecture="x86_64"' in text
+    assert "application/architecture=" not in text
+
+
+def test_dependency_lock_bytes_are_fixed_across_platform_checkouts():
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+    assert "uv.lock text eol=lf" in attributes.splitlines()
+    assert b"\r\n" not in (ROOT / "uv.lock").read_bytes()

@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import posixpath
 import re
 import struct
 import subprocess
@@ -34,7 +35,9 @@ from psyml import __version__ as CORE_VERSION
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORM_SUFFIXES = {"macOS": "macOS-arm64", "Windows": "Windows-x64"}
 PDF_NAMES = ("README_ZH.pdf", "RESEARCHER_GUIDE_ZH.pdf")
-PDF_SOURCES = ("README_ZH.md", "docs/RESEARCHER_GUIDE_ZH.md")
+PDF_SOURCES = ("README_ZH.md", "docs/RESEARCHER_GUIDE_ZH.md",
+               "tools/build_release_pdfs.py", "tools/pdf_text.py",
+               "tools/release_metadata.py", "src/psyml/__init__.py")
 MANIFEST_NAMES = ("SHA256SUMS", "SHA256SUMS.txt")
 SMOKE_MARKER = "PSYML_NATIVE_BUNDLE_OK"
 _HEX = re.compile(r"^[0-9a-f]{64}$")
@@ -355,6 +358,20 @@ def verify_platform(directory: Path, platform: str, version: str, commit: str) -
         names = {info.filename for info in archive.infolist()}
         check_member_safety(archive, root, errors)
         check_required_members(archive, required, errors)
+        quickstart = f"{root}/examples/quickstart/README.md"
+        if quickstart in names:
+            try:
+                text = archive.read(quickstart).decode("utf-8")
+                for target in re.findall(r"!\[[^\]]*\]\(([^)]+)\)", text):
+                    if "://" in target:
+                        continue
+                    resolved = posixpath.normpath(posixpath.join(posixpath.dirname(quickstart), target))
+                    if not resolved.startswith(root + "/"):
+                        errors.append(f"quickstart image escapes package: {target}")
+                    else:
+                        check_required_members(archive, [resolved], errors)
+            except UnicodeDecodeError:
+                errors.append("quickstart README is not valid UTF-8")
         runtime = [info for info in archive.infolist()
                    if info.filename.startswith(core_prefix + "_internal/") and not info.is_dir()
                    and (info.external_attr >> 16) & 0o170000 in (0, 0o100000)]

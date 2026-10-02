@@ -1,3 +1,5 @@
+# Native build provenance hashes the dependency lock as exact bytes.
+uv.lock text eol=lf
 # Keep synthetic fixtures identical across platforms without rewriting legacy files.
 examples/synthetic/** text=auto eol=lf
 examples/quickstart/** text=auto eol=lf
