@@ -1,4 +1,4 @@
-# DSA 数值差异诊断附录：Linux 内核对照与本机 Mac 核查
+# DSA 数值差异诊断附录：Linux 内核对照与 macOS（aarch64）核查
 
 [English](VALIDATION_DSA_DIAGNOSTICS_EN.md) · [Français](VALIDATION_DSA_DIAGNOSTICS_FR.md)
 
@@ -6,17 +6,17 @@
 
 ## 1. 目的与结论
 
-本附录记录对已公开保留的跨平台差异（`roc_auc_ovr_weighted` 约 2.03e-7、折外概率最大约 2e-5）的有界数值诊断：一份在 Linux parity 环境完成的受控内核对照实验（共 25 次拟合：5 次单折探针 + 20 次四折内核对照），以及本机 macOS 上的最小只读核查。
+本附录记录对已公开保留的跨平台差异（`roc_auc_ovr_weighted` 约 2.03e-7、折外概率最大约 2e-5）的有界数值诊断：一份在 Linux parity 环境完成的受控内核对照实验（共 25 次拟合：5 次单折探针 + 20 次四折内核对照），以及 macOS（aarch64）上的最小只读核查。
 
-**结论。** Linux 对照中，仅切换 OpenBLAS CPU 内核分派，或对标准化输入做 1 ulp 级扰动，就足以产生与记录差异同量级、折 2 同方向、同样为单对排序翻转的 AUC 变化，且硬预测不变——这支持"拟合数值路径对极微小数值差异敏感"的机制。本机 Mac 的两折差异也可精确分解为每折恰好一对严格排序翻转（折 1 类别 6、折 2 类别 13）；其数值后端为 Apple Accelerate，而非 OpenBLAS。**但原始 Mac 差异的具体根因（哪一个库、指令路径或预处理步骤）仍未确认**，折 1 的变化未被 Linux 内核对照复现。
+**结论。** Linux 对照中，仅切换 OpenBLAS CPU 内核分派，或对标准化输入做 1 ulp 级扰动，就足以产生与记录差异同量级、折 2 同方向、同样为单对排序翻转的 AUC 变化，且硬预测不变——这支持"拟合数值路径对极微小数值差异敏感"的机制。macOS 复跑的两折差异也可精确分解为每折恰好一对严格排序翻转（折 1 类别 6、折 2 类别 13）；其数值后端为 Apple Accelerate，而非 OpenBLAS。**但原始 Mac 差异的具体根因（哪一个库、指令路径或预处理步骤）仍未确认**，折 1 的变化未被 Linux 内核对照复现。
 
 本附录不改变训练核心、冻结容差、基线或科学协议；不把诊断用的 tol/ftol/内核设置变成产品默认；不宣称 Mac 已被完整模拟，也不宣称跨平台数值等价。
 
 ## 2. 材料与来源
 
-- **Linux 诊断包**（dot 云端，2026-10-01）：含 `REPORT_ZH.md`、`DEEP_PLAN.md`、折 1 探针（`probe.py`、`results.json`、`rank_pair_checks.json`、`perturbation.json`）、四折内核对照（`deep_probe.py`、`default_*`、`Haswell*`、`Sandybridge*`、`deep_comparison.json`、`common_prediction_kernel.json`、`input_checks.json`）与 `remote_reverification_macos.json`。本机按包内 `MANIFEST.json` 逐文件校验，26/26 哈希匹配。
-- **本机核查环境**（案例 parity，与官方 `uv.lock` 复跑分开）：Python 3.12.14、NumPy 2.3.5、SciPy 1.17.0、scikit-learn 1.8.0、pandas 2.2.3、joblib 1.5.3、matplotlib 3.10.8；`OPENBLAS_NUM_THREADS`、`OMP_NUM_THREADS`、`MKL_NUM_THREADS` 均为 1。
-- **数据与产物**：冻结派生 CSV（SHA-256 `75a5fe87a58f4cfde777d914d674362b5148854a3c7064d8c686c0e25c3a047e`）、冻结 Linux 参考产物、本机 macOS 复跑产物（另见 `expected/reverification_macos.json`）。
+- **Linux 诊断记录**（2026-10-01）：包含折 1 探针与四折 OpenBLAS 内核对照，共 25 次拟合；接收时按清单校验，26/26 个文件哈希匹配。本附录提供实验设置与结果摘要。
+- **macOS 核查环境（aarch64，案例 parity，与官方 `uv.lock` 复跑分开）**：Python 3.12.14、NumPy 2.3.5、SciPy 1.17.0、scikit-learn 1.8.0、pandas 2.2.3、joblib 1.5.3、matplotlib 3.10.8；`OPENBLAS_NUM_THREADS`、`OMP_NUM_THREADS`、`MKL_NUM_THREADS` 均为 1。
+- **数据与产物**：冻结派生 CSV（SHA-256 `75a5fe87a58f4cfde777d914d674362b5148854a3c7064d8c686c0e25c3a047e`）、冻结 Linux 参考产物、macOS 复跑产物（另见 `expected/reverification_macos.json`）。
 - **工具**：`tools/cases/diagnose_auc_pairs.py`（本仓库新增，纯分析、不拟合模型、不参与训练）；单元测试 `tests/test_auc_rank_contribution.py`。
 
 ## 3. Linux 实验结果摘要
@@ -44,10 +44,10 @@
   - 折 2 AUC 在 Haswell 与 Sandybridge 下均增加 2.030539311e-7，其余折 AUC 不变。
   - 折 2 的精确逐对计数均为类别 13、1 对严格翻转、无平局；排序重建的 AUC 差与报告值在浮点舍入内一致。
 - 把全部模型参数放回默认内核、用共同预测内核重算输出，AUC 保持不变（概率重算差 ≤3.44e-15）→ 该对照中的 AUC 变化来自**拟合参数**，而非仅预测阶段的矩阵乘法。
-- 以独立公式复算带 L2 惩罚的多项 logistic 平均负对数似然与梯度，与捕获的求解器输出吻合（逐折值见归档）。
+- 以独立公式复算带 L2 惩罚的多项 logistic 平均负对数似然与梯度，与捕获的求解器输出吻合。
 - 该内核对照未复现折 1 的 AUC 变化（折 1 概率有变化，但排序未变）。
 
-## 4. 本机 Mac 最小核查（2026-10-02）
+## 4. macOS（aarch64）最小核查（2026-10-02）
 
 ### 4.1 输入与身份
 
@@ -55,7 +55,7 @@
 
 ### 4.2 折 1、折 2 的逐对排序分析
 
-用 `tools/cases/diagnose_auc_pairs.py` 比较冻结 Linux 概率与本机 Mac 概率：
+用 `tools/cases/diagnose_auc_pairs.py` 比较冻结 Linux 概率与 macOS 复跑概率：
 
 | 折 | 类别 | 变化对 | 严格翻转 | 新平局 | 解除平局 | 净一致对 | 贡献 | 实测 AUC 差 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -73,7 +73,7 @@
 
 - 逐折重建的 imputer/scaler 状态与冻结 `fit_audit` 相比：折 1、2 完全相等；折 3 方差差 8.88e-16、折 4 均值差 3.33e-16（求和顺序量级）。
 - 逐折系数/截距与冻结参考的最大绝对差：折 1 3.14e-5/6.73e-5、折 2 2.23e-5/5.97e-5、折 3 2.31e-5/8.78e-5、折 4 1.99e-5/6.00e-5。
-- 本机 NumPy 的 BLAS/LAPACK 为 **Apple Accelerate**（非 OpenBLAS）；threadpoolctl 仅报告 OpenMP 1 线程（该后端不经 threadpoolctl 暴露 BLAS 池）。
+- 该 macOS 环境 NumPy 的 BLAS/LAPACK 为 **Apple Accelerate**（非 OpenBLAS）；threadpoolctl 仅报告 OpenMP 1 线程（该后端不经 threadpoolctl 暴露 BLAS 池）。
 - 固定 C=1 的独立诊断重拟合（未改生产代码）：四折均以 "NORM OF PROJECTED GRADIENT <= PGTOL" 停止，`n_iter` 为 436/436/435/442（Linux 为 443/449/451/439），梯度 ∞-范数 9.08–9.84e-9；概率与 Mac 折外表最大差 1.11e-16，硬预测 0 变化。
 
 ## 5. 确认与未确认
@@ -81,24 +81,17 @@
 **确认（限于本案例记录范围）**
 
 - 极微小的输入数值变化（1 ulp 量级）或仅切换 OpenBLAS CPU 内核分派，就足以改变优化路径与停止位置，产生与记录差异同量级的概率与排序指标变化，同时保持硬预测与主要标签指标不变。
-- 本机 Mac 的两折差异同样可精确分解为每折一对严格排序翻转（折 1 类别 6、折 2 类别 13），无平局、无抵消；折 2 与 Linux 内核对照同为类别 13。
+- macOS 复跑的两折差异同样可精确分解为每折一对严格排序翻转（折 1 类别 6、折 2 类别 13），无平局、无抵消；折 2 与 Linux 内核对照同为类别 13。
 - Mac 与 Linux 的数值后端不同（Accelerate 对 OpenBLAS），而优化器停止条件相同（均为投影梯度准则），因此差异不是"停止条件不同"造成的。
 
 **未确认**
 
 - 原始 Mac 差异由哪一个具体库、指令路径或预处理步骤造成；本节只给出候选机制，不指定唯一原因。
 - 折 1 的变化未被 Linux 内核对照复现，不能声称已被解释。
-- 不写"Mac 已被完整模拟"、不写"全面数值等价"；统一种子或调小 tol 也不保证逐位一致，本附录的 tol/ftol 诊断即为反例。
+- 本附录不证明 Mac 已被完整模拟或跨平台全面数值等价；统一种子或调小 tol 也不保证逐位一致，本文的 tol/ftol 诊断即为反例。
 
-## 6. 若需闭合根因的最小证据需求
+## 6. 公开工具与复现入口
 
-- Linux 端保存的四折标准化训练/测试矩阵（或在相同行号上可重放的 imputer/scaler 状态），使两端能用**字节一致**的输入矩阵拟合；本包只保留了这些矩阵的哈希（`input_checks.json`）。
-- 或者 Mac 端提供与 Linux 内核对照等价的运行（相同矩阵、相同参数、逐折退出信息）用于双向比较。
-- 在上述证据到位前，不建议继续扩大实验范围；当前结论已足够记录可复现的数值路径敏感性。
-
-## 7. 证据与工具入口
-
-- 本机归档（Git 忽略，含 Linux 诊断包原件、全部本机诊断产物与逐文件哈希）：`docs/internal/completed/reports/2026-10-02-dsa-mac-numerical-diagnostics/`。
 - 工具与测试：`tools/cases/diagnose_auc_pairs.py`、`tests/test_auc_rank_contribution.py`（覆盖无变化、单次严格翻转、生成/解除平局、相互抵消、不同类别权重、行/列未对齐拒绝；均为小型测试，不运行完整拟合）。
 - 复现命令（仓库根目录）：
 
@@ -110,7 +103,7 @@ uv run python -m tools.cases.diagnose_auc_pairs \
   --output pair_diagnostics_fold2.json
 ```
 
-## 8. 参考
+## 7. 参考
 
 1. scikit-learn 1.8.0 `sklearn/linear_model/_logistic.py`（L-BFGS 停止条件与参数）：<https://github.com/scikit-learn/scikit-learn/blob/1.8.0/sklearn/linear_model/_logistic.py>
 2. SciPy `minimize(method='L-BFGS-B')` 文档（gtol/ftol 语义）：<https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html>

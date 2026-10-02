@@ -1,4 +1,4 @@
-# Diagnostics de l’écart numérique DSA : contraste de noyaux Linux et vérifications Mac locales
+# Diagnostics de l’écart numérique DSA : contraste de noyaux Linux et vérifications macOS (aarch64)
 
 [中文](VALIDATION_DSA_DIAGNOSTICS_ZH.md) · [English](VALIDATION_DSA_DIAGNOSTICS_EN.md)
 
@@ -6,17 +6,17 @@ Cas `psyml_dsa_group_nested_v1`, commit figé `de33abfe52ccfee67f461a850edd00a14
 
 ## 1. Objectif et conclusion
 
-Cet appendice documente un diagnostic borné de l’écart inter-plateformes publié (`roc_auc_ovr_weighted` environ 2,03e-7 ; probabilités hors pli jusqu’à environ 2e-5) : une expérience contrôlée de distribution de noyaux CPU menée dans l’environnement Linux de parité (25 ajustements au total : 5 ajustements de sonde sur un pli + 20 ajustements de contraste sur quatre plis), complétée par des vérifications minimales en lecture seule sur cette machine macOS.
+Cet appendice documente un diagnostic borné de l’écart inter-plateformes publié (`roc_auc_ovr_weighted` environ 2,03e-7 ; probabilités hors pli jusqu’à environ 2e-5) : une expérience contrôlée de distribution de noyaux CPU menée dans l’environnement Linux de parité (25 ajustements au total : 5 ajustements de sonde sur un pli + 20 ajustements de contraste sur quatre plis), complétée par des vérifications minimales en lecture seule dans un environnement macOS (aarch64).
 
-**Conclusion.** Dans le contraste Linux, changer uniquement la distribution des noyaux CPU OpenBLAS, ou décaler les entrées standardisées d’une unité de dernier rang, suffit à produire un écart d’AUC de même magnitude, de même direction sur le pli 2 et de même inversion d’une paire de classement, avec des prédictions dures inchangées. Cela soutient le mécanisme « le chemin numérique d’ajustement est sensible à des différences numériques extrêmement petites ». Sur ce Mac, les deux plis qui diffèrent se décomposent aussi exactement en une inversion stricte de paire par pli (pli 1 classe 6, pli 2 classe 13), et le backend numérique de cette machine est Apple Accelerate et non OpenBLAS. **La cause racine concrète de l’écart Mac d’origine (quelle bibliothèque, quel chemin d’instructions ou quelle étape de prétraitement) reste non confirmée**, et le changement du pli 1 n’a pas été reproduit par le contraste de noyaux Linux.
+**Conclusion.** Dans le contraste Linux, changer uniquement la distribution des noyaux CPU OpenBLAS, ou décaler les entrées standardisées d’une unité de dernier rang, suffit à produire un écart d’AUC de même magnitude, de même direction sur le pli 2 et de même inversion d’une paire de classement, avec des prédictions dures inchangées. Cela soutient le mécanisme « le chemin numérique d’ajustement est sensible à des différences numériques extrêmement petites ». Dans la reprise macOS (aarch64), les deux plis qui diffèrent se décomposent aussi exactement en une inversion stricte de paire par pli (pli 1 classe 6, pli 2 classe 13), et le backend numérique de l’environnement est Apple Accelerate et non OpenBLAS. **La cause racine concrète de l’écart Mac d’origine (quelle bibliothèque, quel chemin d’instructions ou quelle étape de prétraitement) reste non confirmée**, et le changement du pli 1 n’a pas été reproduit par le contraste de noyaux Linux.
 
 Cet appendice ne modifie ni le cœur d’entraînement, ni les tolérances figées, ni la base, ni le protocole scientifique ; aucun réglage diagnostique `tol`/`ftol`/noyau ne devient un défaut produit ; il ne prétend pas que le Mac a été entièrement simulé, ni l’équivalence numérique entre plateformes.
 
 ## 2. Matériel et provenance
 
-- **Paquet de diagnostic Linux** (cloud dot, 2026-10-01) : `REPORT_ZH.md`, `DEEP_PLAN.md`, la sonde du pli 1 (`probe.py`, `results.json`, `rank_pair_checks.json`, `perturbation.json`), le contraste de noyaux sur quatre plis (`deep_probe.py`, `default_*`, `Haswell*`, `Sandybridge*`, `deep_comparison.json`, `common_prediction_kernel.json`, `input_checks.json`) et `remote_reverification_macos.json`. Vérifié sur cette machine contre le `MANIFEST.json` du paquet : 26/26 empreintes correspondent.
+- **Relevé de diagnostic Linux** (2026-10-01) : la sonde du pli 1 et le contraste de noyaux OpenBLAS sur quatre plis, 25 ajustements au total ; vérifié contre le manifeste à la réception, 26/26 empreintes de fichiers correspondent. Cet appendice fournit la configuration expérimentale et le résumé des résultats.
 - **Environnement de vérification local** (parité du cas, distinct de la reprise officielle `uv.lock`) : Python 3.12.14, NumPy 2.3.5, SciPy 1.17.0, scikit-learn 1.8.0, pandas 2.2.3, joblib 1.5.3, matplotlib 3.10.8 ; `OPENBLAS_NUM_THREADS`, `OMP_NUM_THREADS` et `MKL_NUM_THREADS` à 1.
-- **Données et artefacts** : le CSV dérivé figé (SHA-256 `75a5fe87a58f4cfde777d914d674362b5148854a3c7064d8c686c0e25c3a047e`), les artefacts de référence Linux figés et les artefacts de la reprise macOS locale (voir aussi `expected/reverification_macos.json`).
+- **Données et artefacts** : le CSV dérivé figé (SHA-256 `75a5fe87a58f4cfde777d914d674362b5148854a3c7064d8c686c0e25c3a047e`), les artefacts de référence Linux figés et les artefacts de la reprise macOS (aarch64) (voir aussi `expected/reverification_macos.json`).
 - **Outil** : `tools/cases/diagnose_auc_pairs.py` (nouveau dans ce dépôt ; analyse seule, n’ajuste jamais de modèle et ne participe pas à l’entraînement) ; tests unitaires dans `tests/test_auc_rank_contribution.py`.
 
 ## 3. Résumé des expériences Linux
@@ -44,10 +44,10 @@ Cet appendice ne modifie ni le cœur d’entraînement, ni les tolérances figé
   - L’AUC du pli 2 augmente de 2.030539311e-7 avec Haswell comme avec Sandybridge ; les autres plis ne changent pas.
   - Le compte exact par paire au pli 2 est la classe 13, une inversion stricte, aucune égalité, sous les deux noyaux ; l’écart d’AUC reconstruit par le classement correspond à la valeur rapportée à l’arrondi flottant près.
 - En remettant tous les paramètres ajustés sur le noyau par défaut et en recalculant avec un noyau de prédiction commun, toutes les AUC restent inchangées (écart de recalcul des probabilités ≤3,44e-15) : l’écart d’AUC de ce contraste provient des **paramètres ajustés**, pas seulement de la multiplication matricielle en prédiction.
-- Une formule indépendante de la log-vraisemblance négative moyenne et du gradient du logistique multinomial avec pénalité L2 correspond à la sortie capturée du solveur (valeurs par pli dans l’archive).
+- Une formule indépendante de la log-vraisemblance négative moyenne et du gradient du logistique multinomial avec pénalité L2 correspond à la sortie capturée du solveur.
 - Ce contraste de noyaux n’a pas reproduit de changement d’AUC au pli 1 (les probabilités du pli 1 changent, mais aucun classement ne change).
 
-## 4. Vérifications Mac locales (2026-10-02)
+## 4. Vérifications macOS (aarch64) (2026-10-02)
 
 ### 4.1 Entrées et identité
 
@@ -55,7 +55,7 @@ L’empreinte du CSV dérivé correspond à la valeur figée ; l’appartenance 
 
 ### 4.2 Analyse du classement par paires aux plis 1 et 2
 
-`tools/cases/diagnose_auc_pairs.py` a comparé les probabilités Linux figées aux probabilités Mac locales :
+`tools/cases/diagnose_auc_pairs.py` a comparé les probabilités Linux figées aux probabilités de la reprise macOS :
 
 | Pli | Classe | Paires modifiées | Inversions strictes | Nouvelles égalités | Égalités résolues | Paires concordantes nettes | Contribution | Écart d’AUC mesuré |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -73,7 +73,7 @@ Paires concrètes (les probabilités sont celles de la classe en OVR ; les ident
 
 - États imputer/scaler reconstruits par pli contre le `fit_audit` figé : plis 1 et 2 exactement égaux ; pli 3 variance différente de 8,88e-16 et pli 4 moyenne différente de 3,33e-16 (niveau d’ordre de sommation).
 - Écarts maximaux absolus de coefficients/intercepts contre la référence figée : pli 1 3,14e-5/6,73e-5, pli 2 2,23e-5/5,97e-5, pli 3 2,31e-5/8,78e-5, pli 4 1,99e-5/6,00e-5.
-- Le NumPy de cette machine utilise **Apple Accelerate** pour BLAS/LAPACK (et non OpenBLAS) ; threadpoolctl ne rapporte que le pool OpenMP avec 1 thread (ce backend n’expose pas de pool BLAS à threadpoolctl).
+- Le NumPy de l’environnement macOS utilise **Apple Accelerate** pour BLAS/LAPACK (et non OpenBLAS) ; threadpoolctl ne rapporte que le pool OpenMP avec 1 thread (ce backend n’expose pas de pool BLAS à threadpoolctl).
 - Re-ajustements diagnostiques indépendants à C=1 fixé (aucun code de production modifié) : les quatre plis s’arrêtent sur « NORM OF PROJECTED GRADIENT <= PGTOL », `n_iter` 436/436/435/442 (Linux : 443/449/451/439), norme ∞ du gradient 9,08–9,84e-9 ; les probabilités correspondent à la table hors pli Mac à 1,11e-16 près et les prédictions dures ne changent pas.
 
 ## 5. Confirmé et non confirmé
@@ -88,17 +88,10 @@ Paires concrètes (les probabilités sont celles de la classe en OVR ; les ident
 
 - Quelle bibliothèque, quel chemin d’instructions ou quelle étape de prétraitement a causé l’écart Mac d’origine ; cet appendice propose un mécanisme candidat, pas une cause unique.
 - Le changement du pli 1 n’a pas été reproduit par le contraste de noyaux Linux et ne peut pas être déclaré expliqué.
-- Pas de « le Mac a été entièrement simulé », pas d’« équivalence numérique complète » ; unifier les graines ou resserrer `tol` ne garantit pas non plus l’accord bit à bit — les diagnostics `tol`/`ftol` ci-dessus en sont le contre-exemple.
+- Cet appendice ne démontre pas que le Mac a été entièrement simulé ni une équivalence numérique complète entre plateformes ; unifier les graines ou resserrer `tol` ne garantit pas non plus l’accord bit à bit — les diagnostics `tol`/`ftol` ci-dessus en sont le contre-exemple.
 
-## 6. Évidence minimale pour clore la cause racine
+## 6. Outils publics et points d’entrée de reproduction
 
-- Les quatre matrices standardisées d’entraînement/test sauvegardées côté Linux (ou des états imputer/scaler rejouables sur les mêmes numéros de ligne) pour que les deux plateformes ajustent sur des entrées **identiques bit à bit** ; le paquet n’a conservé que leurs empreintes (`input_checks.json`).
-- Ou bien une exécution Mac équivalente au contraste de noyaux Linux (mêmes matrices, mêmes paramètres, informations de sortie par pli) pour une comparaison bidirectionnelle.
-- En attendant cette évidence, il n’est pas recommandé d’élargir les expériences ; les résultats actuels suffisent à consigner une sensibilité reproductible au chemin numérique.
-
-## 7. Points d’entrée des preuves et de l’outil
-
-- Archive locale (ignorée par Git ; contient le paquet Linux d’origine, tous les artefacts de diagnostic locaux et les empreintes par fichier) : `docs/internal/completed/reports/2026-10-02-dsa-mac-numerical-diagnostics/`.
 - Outil et tests : `tools/cases/diagnose_auc_pairs.py`, `tests/test_auc_rank_contribution.py` (aucun changement, une inversion stricte, création/résolution d’égalités, annulation mutuelle, poids de classe explicites, rejet des désalignements lignes/colonnes ; tous petits, aucun n’ajuste de modèle complet).
 - Commande de reproduction (racine du dépôt) :
 
@@ -110,7 +103,7 @@ uv run python -m tools.cases.diagnose_auc_pairs \
   --output pair_diagnostics_fold2.json
 ```
 
-## 8. Références
+## 7. Références
 
 1. scikit-learn 1.8.0 `sklearn/linear_model/_logistic.py` (conditions d’arrêt et paramètres L-BFGS) : <https://github.com/scikit-learn/scikit-learn/blob/1.8.0/sklearn/linear_model/_logistic.py>
 2. Documentation SciPy `minimize(method='L-BFGS-B')` (sémantique gtol/ftol) : <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html>

@@ -50,7 +50,7 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 
 我们用一份公开的人体活动数据检验本工具的流程：UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F)，8 位参与者、19 类活动、共 9,120 条五秒记录。该案例采用按参与者分组的嵌套交叉验证，用不导入 PsyML 的独立 scikit-learn 参考实现逐项复算，并加入分组隔离审计、固定外折扰动与打乱标签 canary 等工程负控。
 
-案例已在记录的 Linux 环境完成，并在 macOS 与官方 `uv.lock` 环境中复跑核对；两次复跑彼此一致，与记录基线之间保留了小幅数值差异，原因尚未确认（见报告）。跨平台数值差异的机制诊断（Linux 内核对照与本机 Mac 核查）见[诊断附录](docs/VALIDATION_DSA_DIAGNOSTICS_ZH.md)：受控实验可重现同量级差异，支持拟合数值路径敏感性；原 Mac 具体根因仍未确认。结果只说明该案例所测流程的数值符合性与可复现性：不代表工具包全部功能均已全面验证，Windows 未复跑完整案例，自动化 GUI 检查也不替代真实窗口与打包应用的人工检查。
+案例已在记录的 Linux 环境完成，并在 macOS 与官方 `uv.lock` 环境中复跑核对；两次复跑彼此一致，与记录基线之间保留了小幅数值差异，原因尚未确认（见报告）。跨平台数值差异的机制诊断（Linux 内核对照与 macOS（aarch64）核查）见[诊断附录](docs/VALIDATION_DSA_DIAGNOSTICS_ZH.md)：受控实验可重现同量级差异，支持拟合数值路径敏感性；原 Mac 具体根因仍未确认。这些结果支持记录环境与固定协议下、本案例所测工作流的数值核对与复现，不代表工具包全部功能或发布包的全面验证。
 
 - 技术报告：[DSA 验证：数值复现与跨平台核验](docs/VALIDATION_DSA_ZH.md)
 - 复现说明：[可复算示例](examples/public/dsa_group_nested_v1/README.md)
@@ -71,6 +71,8 @@ PsyML Toolkit 是面向研究者的本地机器学习工具。它把数据检查
 ### 测试数据与快速复现
 
 内置样例无需在线下载，全部为合成数据，不用于提出真实研究结论。
+
+分类测试使用 Iris 鸢尾花数据集，根据花萼、花瓣的长度和宽度预测鸢尾花品种；回归测试使用混凝土抗压强度数据集，根据原料配比及养护龄期预测抗压强度。公开示例的运行方式见[公开示例说明](examples/public/README.md)。
 
 **统一测试入口：[examples/quickstart/ 使用说明](examples/quickstart/README.md)**。训练数据、配置和新数据预测样本都在同一资料夹。复制或分享时请保留整个资料夹。
 
@@ -368,7 +370,7 @@ Automatic reports are available in Chinese and English. Exported plot axes, clas
 
 We use one public human-activity dataset to check the workflow: UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) — 8 participants, 19 activities, 9,120 five-second records. The case runs a participant-grouped nested cross-validation, recomputes it point by point with an independent scikit-learn reference that does not import PsyML, and adds engineering controls: a group-isolation audit, fixed outer-fold perturbations and a shuffled-label canary.
 
-The case was completed in the recorded Linux environment and re-run on macOS and in the official `uv.lock` environment; the two re-runs agree with each other, and a small numerical difference against the recorded baseline is retained, with the cause not yet confirmed (see the report). The numerical-path diagnosis of that difference (Linux kernel contrast and local Mac checks) is in the [diagnostics appendix](docs/VALIDATION_DSA_DIAGNOSTICS_EN.md): controlled experiments reproduce differences of the same magnitude, supporting sensitivity of the fitted numerical path, while the original Mac root cause remains unconfirmed. The results cover the tested workflow of this case only: they do not verify every toolkit feature, Windows did not re-run the full case, and automated GUI checks do not replace human inspection of real windows and packaged applications.
+The case was completed in the recorded Linux environment and re-run on macOS and in the official `uv.lock` environment; the two re-runs agree with each other, and a small numerical difference against the recorded baseline is retained, with the cause not yet confirmed (see the report). The numerical-path diagnosis of that difference (Linux kernel contrast and macOS (aarch64) checks) is in the [diagnostics appendix](docs/VALIDATION_DSA_DIAGNOSTICS_EN.md): controlled experiments reproduce differences of the same magnitude, supporting sensitivity of the fitted numerical path, while the original Mac root cause remains unconfirmed. These results support numerical checks and reproduction of the tested workflow under the recorded environments and fixed protocol, rather than comprehensive validation of all toolkit features or release packages.
 
 - Technical report: [DSA validation: numerical reproduction and cross-platform verification](docs/VALIDATION_DSA_EN.md)
 - Reproduction: [reproducible example](examples/public/dsa_group_nested_v1/README.md)
@@ -389,6 +391,8 @@ Check [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) for av
 ### Sample data and quick reproduction
 
 The synthetic examples are included; no online data download is needed. They demonstrate the workflow and support no real-world research conclusions.
+
+Classification tests use the Iris dataset to predict the iris species from sepal and petal length and width; regression tests use the Concrete Compressive Strength dataset to predict compressive strength from mixture proportions and curing age. See the [public examples](examples/public/README.md) for how to run them.
 
 **One test entry point: [examples/quickstart/ instructions](examples/quickstart/README.md)**. Training data, configurations and new prediction samples are together. Keep the whole folder when copying or sharing.
 
@@ -652,7 +656,7 @@ Les rapports automatiques sont disponibles en chinois et en anglais. Les axes de
 
 Nous utilisons un jeu de données public d’activité humaine pour éprouver le flux de travail : UCI [Daily and Sports Activities](https://doi.org/10.24432/C5C59F) — 8 participants, 19 activités, 9 120 enregistrements de cinq secondes. Le cas applique une validation croisée imbriquée groupée par participant, la recalcule point par point avec une référence scikit-learn indépendante qui n’importe pas PsyML, et ajoute des contrôles d’ingénierie : audit d’isolement des groupes, perturbations ciblées du pli externe et canari de labels mélangés.
 
-Le cas a été exécuté dans l’environnement Linux documenté puis rejoué sous macOS et dans l’environnement officiel `uv.lock` ; les deux reprises concordent entre elles et un petit écart numérique par rapport à la base enregistrée est conservé, sa cause n’étant pas confirmée (voir le rapport). Le diagnostic du chemin numérique de cet écart (contraste de noyaux Linux et vérifications Mac locales) se trouve dans l’[appendice de diagnostic](docs/VALIDATION_DSA_DIAGNOSTICS_FR.md) : les expériences contrôlées reproduisent des écarts de même magnitude, ce qui soutient la sensibilité du chemin numérique d’ajustement, tandis que la cause racine Mac d’origine reste non confirmée. Les résultats ne portent que sur le flux testé de ce cas : ils ne valident pas toutes les fonctions de l’outil, Windows n’a pas rejoué le cas complet, et les contrôles GUI automatisés ne remplacent pas l’inspection humaine des fenêtres réelles et des applications empaquetées.
+Le cas a été exécuté dans l’environnement Linux documenté puis rejoué sous macOS et dans l’environnement officiel `uv.lock` ; les deux reprises concordent entre elles et un petit écart numérique par rapport à la base enregistrée est conservé, sa cause n’étant pas confirmée (voir le rapport). Le diagnostic du chemin numérique de cet écart (contraste de noyaux Linux et vérifications macOS (aarch64)) se trouve dans l’[appendice de diagnostic](docs/VALIDATION_DSA_DIAGNOSTICS_FR.md) : les expériences contrôlées reproduisent des écarts de même magnitude, ce qui soutient la sensibilité du chemin numérique d’ajustement, tandis que la cause racine Mac d’origine reste non confirmée. Ces résultats étayent les vérifications numériques et la reproduction du flux testé dans les environnements documentés et selon le protocole fixé, sans constituer une validation complète de toutes les fonctions ou des paquets distribués.
 
 - Rapport technique : [validation DSA : reproduction numérique et vérification inter-plateformes](docs/VALIDATION_DSA_FR.md)
 - Reproduction : [exemple reproductible](examples/public/dsa_group_nested_v1/README.md)
@@ -673,6 +677,8 @@ Consultez [Releases](https://github.com/GuGuGu-coocoo/PsyMl_Toolkit/releases) po
 ### Données de test et reproduction rapide
 
 Les exemples synthétiques sont fournis, sans téléchargement de données. Ils illustrent le parcours et ne permettent pas de conclusions de recherche réelles.
+
+Les tests de classification utilisent le jeu de données Iris pour prédire l’espèce à partir de la longueur et de la largeur des sépales et des pétales ; les tests de régression utilisent le jeu Concrete Compressive Strength pour prédire la résistance à la compression à partir des proportions du mélange et de l’âge de cure. Voir les [exemples publics](examples/public/README.md) pour leur exécution.
 
 **Entrée unique : [instructions examples/quickstart/](examples/quickstart/README.md)**. Données d’entraînement, configurations et nouveaux exemples à prédire sont réunis. Conservez le dossier entier lors d’une copie ou d’un partage.
 

@@ -112,7 +112,7 @@ uv sync --extra explain
 uv pip install -e ".[explain]"   # pip/venv equivalent
 ```
 
-`pyproject.toml` pins version-appropriate SHAP releases per Python (3.10 → 0.49.x, 3.11 → 0.51.x, 3.12 → 0.52.x). `uv.lock` records them without upgrading unrelated dependencies such as scikit-learn. `tools/build_native.py` bundles shap/numba/llvmlite into the core, copies their licenses into `tools/licenses/`, and `--explain-smoke` checks bundled classification/regression explanation and reconstruction. Windows is not executed on this Mac.
+`pyproject.toml` pins version-appropriate SHAP releases per Python (3.10 → 0.49.x, 3.11 → 0.51.x, 3.12 → 0.52.x). `uv.lock` records them without upgrading unrelated dependencies such as scikit-learn. `tools/build_native.py` bundles shap/numba/llvmlite into the core, copies their licenses into `tools/licenses/`, and `--explain-smoke` checks bundled classification/regression explanation and reconstruction.
 
 ## Fitted coefficients (no extra dependency)
 
@@ -120,7 +120,7 @@ uv pip install -e ".[explain]"   # pip/venv equivalent
 
 ## Building and release maintenance
 
-[build_native.py](../tools/build_native.py) freezes the core with PyInstaller and exports Godot on the target OS. Matching Godot export templates are required. Targets are Apple Silicon macOS and Windows x64; a Mac build does not validate Windows.
+[build_native.py](../tools/build_native.py) freezes the core with PyInstaller and exports Godot on the target OS. Matching Godot export templates are required. Targets are Apple Silicon macOS and Windows x64; a build made on macOS does not validate Windows.
 
 ```bash
 uv sync --locked --group dev --group build

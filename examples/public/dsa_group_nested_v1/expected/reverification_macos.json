@@ -162,6 +162,6 @@
     "gui_tested": false,
     "windows_tested": false,
     "official_uv_lock_environment_tested": false,
-    "statement": "Cross-platform record: Linux freeze values are not overwritten. GUI, Windows and the official locked environment remain unverified for this case."
+    "statement": "Historical macOS parity re-run only; the scope flags describe this run. Frozen Linux values are not overwritten. The later official-lock re-run is recorded separately in reverification_uv_lock.json."
   }
 }
